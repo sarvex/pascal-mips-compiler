@@ -1,4 +1,7 @@
 
+# default target
+all:
+
 # tools
 LEX = flex
 LEX_FLAGS =
@@ -7,29 +10,38 @@ YACC_FLAGS = -d
 CC = gcc
 CC_FLAGS = -g -Wall
 
+# dirs
+OUTPUT = output
+OUTPUT:
+	mkdir -p $@
+
 # files
 LEX_INPUT = pascal.l
-LEX_OUTPUT = $(OUTPUT)/lex.yy.c
+LEX_OUTPUT = lex.yy.c
 YACC_INPUT = pascal.y
-YACC_OUTPUT = $(OUTPUT)/pacal.tab.c
+YACC_OUTPUT = pascal.tab.c
+YACC_SIDE_EFFECTS = pascal.tab.h
 BINARY = opc
-SOURCES := $(wildcard *.c)
+SOURCES := $(wildcard *.c) $(LEX_OUTPUT) $(YACC_OUTPUT)
 OBJECTS = $(addprefix $(OUTPUT)/,$(addsuffix .o,$(SOURCES)))
+$(OBJECTS): | $(OUTPUT)
 
-all: 
+
+$(LEX_OUTPUT): $(LEX_INPUT)
+	$(LEX) $(LEX_FLAGS) $(LEX_INPUT) -o $(LEX_OUTPUT)
+
+$(YACC_OUTPUT): $(YACC_INPUT)
+	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
+
+
+all: $(BINARY)
 $(BINARY): $(OBJECTS)
 	gcc $(CC_FLAGS) $(OBJECTS) -o $(BINARY)
-
-$(LEX_OUTPUT):
-	$(LEX) $(LEX_FLAGS) pascal.l -o $(LEX_OUTPUT)
-
-yacc:
-	$(YACC) $(YACC_FLAGS) pascal.y
 
 .c.o:
 	gcc -c $(CC_FLAGS) $<
 clean:
-	-rm -rf $(OUTPUT) $(BINARY)
+	-rm -rf $(LEX_OUTPUT) $(YACC_OUTPUT) $(YACC_SIDE_EFFECTS) $(OUTPUT) $(BINARY)
 
-.PHONY: all clean tests
+.PHONY: all clean
 
