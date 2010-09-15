@@ -21,6 +21,8 @@ SOURCES := $(wildcard *.c)
 OBJECTS = $(addprefix $(OUTPUT)/,$(addsuffix .o,$(SOURCES)))
 ALL_OBJECTS = $(OBJECTS) $(LEX_OBJECT) $(YACC_OBJECT)
 $(ALL_OBJECTS): $(LEX_OUTPUT) $(YACC_OUTPUT)
+DEPEND_FILES = $(addsuffix .d,$(ALL_OBJECTS))
+-include $(DEPEND_FILES)
 
 # tools
 LEX = flex
@@ -29,19 +31,20 @@ YACC = bison
 YACC_FLAGS = -d -y
 CC = gcc
 CC_FLAGS = -g -Wall -I. -I$(OUTPUT)
+CC_COMPILE = $(CC) $(CC_FLAGS) -c -o $@ -MMD -MP -MF $@.d
 
 $(OBJECTS):
-	$(CC) $(CC_FLAGS) -c $(notdir $(basename $@)) -o $@
+	$(CC_COMPILE) $(notdir $(basename $@))
 
 $(LEX_OUTPUT): $(LEX_INPUT)
 	$(LEX) $(LEX_FLAGS) -o$(LEX_OUTPUT) $(LEX_INPUT)
 $(LEX_OBJECT):
-	$(CC) $(CC_FLAGS) -c $(LEX_OUTPUT) -o $(LEX_OBJECT)
+	$(CC_COMPILE) $(LEX_OUTPUT)
 
 $(YACC_OUTPUT): $(YACC_INPUT)
 	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
 $(YACC_OBJECT):
-	$(CC) $(CC_FLAGS) -c $(YACC_OUTPUT) -o $(YACC_OBJECT)
+	$(CC_COMPILE) $(YACC_OUTPUT)
 
 
 all: $(BINARY)
