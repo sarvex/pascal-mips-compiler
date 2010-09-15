@@ -6,8 +6,6 @@
 
 int line_number = 1;
 
-extern int error_flag;
-
 %}
 
 A [aA]
@@ -121,6 +119,6 @@ int yywrap() {
 
 void yyerror(const char *error) {
     printf("%d: %s at '%s'\n", line_number, error, yytext);
-    error_flag = 1;
+    exit(1);
 }
 

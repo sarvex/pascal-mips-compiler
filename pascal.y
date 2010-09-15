@@ -1,19 +1,12 @@
 %{
-/*
- * Pascal grammar in Yacc format, based originally on BNF given
- * in "Standard Pascal -- User Reference Manual", by Doug Cooper.
- * This in turn is the BNF given by the ANSI and ISO Pascal standards,
- * and so, is PUBLIC DOMAIN. The grammar is for ISO Level 0 Pascal.
- * The grammar has been massaged somewhat to make it LALR.
- */
+int yylex(void);
+void yyerror(const char *error);
 
-  int yylex(void);
-  void yyerror(const char *error);
+extern char *yytext;
+extern int line_number;
 
-  extern char *yytext;          /* yacc text variable */
-  extern int line_number;       /* Holds the current line number; specified
-				   in the lexer */
-  struct program_t *program;    /* points to our program */
+// main program
+struct program_t *program;
 %}
 
 %token AND ARRAY ASSIGNMENT CLASS COLON COMMA DIGSEQ
@@ -81,136 +74,86 @@
 %type <op> mulop
 
 %union {
-  struct type_denoter_t *tden;
-  char *id;
-  struct identifier_list_t *idl;
-  struct function_designator_t *fdes;
-  struct actual_parameter_list_t *apl;
-  struct actual_parameter_t *ap;
-  struct variable_declaration_list_t *vdl;
-  struct variable_declaration_t *vd;
-  struct range_t *r;
-  struct unsigned_number_t *un;
-  struct formal_parameter_section_list_t *fpsl;
-  struct formal_parameter_section_t *fps;
-  struct variable_access_t *va;
-  struct assignment_statement_t *as;
-  struct object_instantiation_t *os;
-  struct print_statement_t *ps;
-  struct expression_t *e;
-  struct statement_t *s;
-  struct statement_sequence_t *ss;
-  struct if_statement_t *is;
-  struct while_statement_t *ws;
-  struct indexed_variable_t *iv;
-  struct attribute_designator_t *ad;
-  struct method_designator_t *md;
-  struct index_expression_list_t *iel;
-  struct simple_expression_t *se;
-  struct term_t *t;
-  struct factor_t *f;
-  int *i;
-  struct primary_t *p;
-  struct array_type_t *at;
-  struct class_block_t *cb;
-  struct func_declaration_list_t *fdl;
-  struct function_declaration_t *funcd;
-  struct function_block_t *fb;
-  struct function_heading_t *fh;
-  struct class_identification_t *ci;
-  struct class_list_t *cl;
-  struct program_t *program;
-  struct program_heading_t *ph;
-  int op;
+    struct type_denoter_t *tden;
+    char *id;
+    struct identifier_list_t *idl;
+    struct function_designator_t *fdes;
+    struct actual_parameter_list_t *apl;
+    struct actual_parameter_t *ap;
+    struct variable_declaration_list_t *vdl;
+    struct variable_declaration_t *vd;
+    struct range_t *r;
+    struct unsigned_number_t *un;
+    struct formal_parameter_section_list_t *fpsl;
+    struct formal_parameter_section_t *fps;
+    struct variable_access_t *va;
+    struct assignment_statement_t *as;
+    struct object_instantiation_t *os;
+    struct print_statement_t *ps;
+    struct expression_t *e;
+    struct statement_t *s;
+    struct statement_sequence_t *ss;
+    struct if_statement_t *is;
+    struct while_statement_t *ws;
+    struct indexed_variable_t *iv;
+    struct attribute_designator_t *ad;
+    struct method_designator_t *md;
+    struct index_expression_list_t *iel;
+    struct simple_expression_t *se;
+    struct term_t *t;
+    struct factor_t *f;
+    int *i;
+    struct primary_t *p;
+    struct array_type_t *at;
+    struct class_block_t *cb;
+    struct func_declaration_list_t *fdl;
+    struct function_declaration_t *funcd;
+    struct function_block_t *fb;
+    struct function_heading_t *fh;
+    struct class_identification_t *ci;
+    struct class_list_t *cl;
+    struct program_t *program;
+    struct program_heading_t *ph;
+    int op;
 }
 
 %%
 
-program : program_heading semicolon class_list DOT
-	{
+program : program_heading semicolon class_list DOT {
+};
 
-	}
- ;
+program_heading : PROGRAM identifier {
+} | PROGRAM identifier LPAREN identifier_list RPAREN {
+};
 
-program_heading : PROGRAM identifier
-	{
+identifier_list : identifier_list comma identifier {
+} | identifier {
+};
 
-	}
- | PROGRAM identifier LPAREN identifier_list RPAREN
-	{
+class_list : class_list class_identification PBEGIN class_block END {
+} | class_identification PBEGIN class_block END {
+};
 
-	}
- ;
+class_identification : CLASS identifier {
+} | CLASS identifier EXTENDS identifier {
+};
 
-identifier_list : identifier_list comma identifier
-        {
+class_block : variable_declaration_part func_declaration_list {
+};
 
-        }
- | identifier
-        {
+type_denoter : array_type {
+} | identifier {
+};
 
-        }
- ;
+array_type : ARRAY LBRAC range RBRAC OF type_denoter {
+};
 
-class_list: class_list class_identification PBEGIN class_block END
-	{
+range : unsigned_integer DOTDOT unsigned_integer {
+};
 
-	}
- | class_identification PBEGIN class_block END
-	{
-
-	}
- ;
-
-class_identification : CLASS identifier
-	{
-
-	}
-| CLASS identifier EXTENDS identifier
-	{
-
-	}
-;
-
-class_block:
- variable_declaration_part
- func_declaration_list
-	{
-
-	}
- ;
-
-type_denoter : array_type
-	{
-
-	}
- | identifier
-	{
-
-	}
- ;
-
-array_type : ARRAY LBRAC range RBRAC OF type_denoter
-	{
-
-	}
- ;
-
-range : unsigned_integer DOTDOT unsigned_integer
-	{
-
-	}
- ;
-
-variable_declaration_part : VAR variable_declaration_list semicolon
-	{
-
-	}
- |
-	{
-
-	}
- ;
+variable_declaration_part : VAR variable_declaration_list semicolon {
+} | {
+};
 
 variable_declaration_list : variable_declaration_list semicolon variable_declaration
 	{
@@ -631,3 +574,9 @@ comma : COMMA
  ;
 
 %%
+
+int main() {
+    yyparse();
+    return 0;
+}
+
