@@ -52,7 +52,7 @@ $(BINARY): $(ALL_OBJECTS)
 	$(CC) $(CC_FLAGS) $(ALL_OBJECTS) -o $(BINARY)
 
 clean:
-	-rm -rf $(OUTPUT) $(BINARY)
+	rm -rf $(OUTPUT) $(BINARY)
 
 # the | in this list is because old make doesn't have order-only rules
 .PHONY: all clean |
