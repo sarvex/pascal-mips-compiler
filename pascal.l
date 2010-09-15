@@ -8,8 +8,6 @@ int line_number = 1;
 
 extern int error_flag;
 
-void commenteof();
-
 %}
 
 A [aA]
@@ -62,7 +60,7 @@ NQUOTE [^']
 {T}{H}{E}{N}   return(THEN);
 {V}{A}{R}   return(VAR);
 {W}{H}{I}{L}{E}   return(WHILE);
-[a-zA-Z]([a-zA-Z0-9])+  return(IDENTIFIER);
+[a-zA-Z]([a-zA-Z0-9])*  return(IDENTIFIER);
 
 ":="    return(ASSIGNMENT);
 ":"    return(COLON);
@@ -86,12 +84,12 @@ NQUOTE [^']
 "/"    return(SLASH);
 "*"    return(STAR);
 "(*" |
-"{" {
+"{"  {
     while (true) {
         int c = input();
-        if (c == '}') {
+        if (c == '}' && yytext[0] == '{') {
             break;
-        } else if (c == '*') {
+        } else if (c == '*' && yytext[0] == '(') {
             c = input();
             if (c == ')')
                 break;
@@ -100,7 +98,8 @@ NQUOTE [^']
         } else if (c == '\n') {
             line_number++;
         } else if (c == 0) {
-            commenteof();
+            fprintf(stderr, "unexpected EOF inside comment at line %d\n", line_number);
+            exit(1);
         }
     }
 }
@@ -115,11 +114,6 @@ NQUOTE [^']
     }
 
 %%
-
-void commenteof() {
-    fprintf(stderr, "unexpected EOF inside comment at line %d\n", line_number);
-    exit(1);
-}
 
 int yywrap() {
     return 1;
