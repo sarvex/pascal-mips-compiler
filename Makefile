@@ -2,46 +2,54 @@
 # default target
 all:
 
-# tools
-LEX = flex
-LEX_FLAGS =
-YACC = bison
-YACC_FLAGS = -d
-CC = gcc
-CC_FLAGS = -g -Wall
-
 # dirs
 OUTPUT = output
-OUTPUT:
+$(OUTPUT):
 	mkdir -p $@
 
 # files
 LEX_INPUT = pascal.l
-LEX_OUTPUT = lex.yy.c
+LEX_OUTPUT = $(OUTPUT)/lex.yy.c
+LEX_OBJECT = $(LEX_OUTPUT).o
+$(LEX_OUTPUT): | $(OUTPUT)
 YACC_INPUT = pascal.y
-YACC_OUTPUT = pascal.tab.c
-YACC_SIDE_EFFECTS = pascal.tab.h
+YACC_OUTPUT = $(OUTPUT)/y.tab.c
+$(YACC_OUTPUT): | $(OUTPUT)
+YACC_OBJECT = $(YACC_OUTPUT).o
 BINARY = opc
-SOURCES := $(wildcard *.c) $(LEX_OUTPUT) $(YACC_OUTPUT)
+SOURCES := $(wildcard *.c)
 OBJECTS = $(addprefix $(OUTPUT)/,$(addsuffix .o,$(SOURCES)))
-$(OBJECTS): | $(OUTPUT)
+ALL_OBJECTS = $(OBJECTS) $(LEX_OBJECT) $(YACC_OBJECT)
+$(ALL_OBJECTS): $(LEX_OUTPUT) $(YACC_OUTPUT)
 
+# tools
+LEX = flex
+LEX_FLAGS =
+YACC = bison
+YACC_FLAGS = -d -y
+CC = gcc
+CC_FLAGS = -g -Wall -I$(OUTPUT)
+
+$(OBJECTS):
+	$(CC) -c $(CC_FLAGS) $(notdir $(basename $@)) -o $@
 
 $(LEX_OUTPUT): $(LEX_INPUT)
-	$(LEX) $(LEX_FLAGS) $(LEX_INPUT) -o $(LEX_OUTPUT)
+	$(LEX) $(LEX_FLAGS) -o $(LEX_OUTPUT) $(LEX_INPUT)
+$(LEX_OBJECT):
+	$(CC) -c $(CC_FLAGS) $(LEX_OUTPUT) -o $(LEX_OBJECT)
 
 $(YACC_OUTPUT): $(YACC_INPUT)
 	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
+$(YACC_OBJECT):
+	$(CC) -c $(CC_FLAGS) $(YACC_OUTPUT) -o $(YACC_OBJECT)
 
 
 all: $(BINARY)
-$(BINARY): $(OBJECTS)
-	gcc $(CC_FLAGS) $(OBJECTS) -o $(BINARY)
+$(BINARY): $(ALL_OBJECTS)
+	$(CC) $(CC_FLAGS) $(ALL_OBJECTS) -o $(BINARY)
 
-.c.o:
-	gcc -c $(CC_FLAGS) $<
 clean:
-	-rm -rf $(LEX_OUTPUT) $(YACC_OUTPUT) $(YACC_SIDE_EFFECTS) $(OUTPUT) $(BINARY)
+	-rm -rf $(OUTPUT) $(BINARY)
 
 .PHONY: all clean
 

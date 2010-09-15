@@ -7,9 +7,6 @@
  * The grammar has been massaged somewhat to make it LALR.
  */
 
-#include "shared.h"
-#include "rulefuncs.h"
-
   int yylex(void);
   void yyerror(const char *error);
 

@@ -1,10 +1,8 @@
 %{
-  /*
-   * pascal.l
-   */	
 
 #include <stdio.h>
 #include "y.tab.h"
+
 int line_number = 1;
 
 extern int error_flag;
@@ -86,25 +84,24 @@ NQUOTE [^']
 ";"    return(SEMICOLON);
 "/"    return(SLASH);
 "*"    return(STAR);
-"(*"   |
-"{"    { register int c;
-     while ((c = input()))
-     {
-      if (c == '}')
-       break;
-      else if (c == '*')
-      {
-       if ((c = input()) == ')')
-        break;
-       else
-        unput (c);
-      }
-      else if (c == '\n')
-       line_number++;
-      else if (c == 0)
-       commenteof();
-     }
+"(*" |
+"{" {
+    int c;
+    while (c = input()) {
+        if (c == '}') {
+            break;
+        } else if (c == '*') {
+            if ((c = input()) == ')')
+                break;
+            else
+                unput(c);
+        } else if (c == '\n') {
+            line_number++;
+        } else if (c == 0) {
+            commenteof();
+        }
     }
+}
 
 [ \t\f]    ;
 
@@ -117,19 +114,17 @@ NQUOTE [^']
 
 %%
 
-void commenteof()
-{
- fprintf (stderr, "unexpected EOF inside comment at line %d\n", line_number);
- exit (1);
+void commenteof() {
+    fprintf(stderr, "unexpected EOF inside comment at line %d\n", line_number);
+    exit(1);
 }
 
-int yywrap ()
-{
- return 1;
+int yywrap() {
+    return 1;
 }
 
-void yyerror(const char *error)
-{
-  printf("%d: %s at '%s'\n", line_number, error, yytext);
-  error_flag = 1;
+void yyerror(const char *error) {
+    printf("%d: %s at '%s'\n", line_number, error, yytext);
+    error_flag = 1;
 }
+
