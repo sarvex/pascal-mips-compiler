@@ -31,17 +31,17 @@ CC = gcc
 CC_FLAGS = -g -Wall -I. -I$(OUTPUT)
 
 $(OBJECTS):
-	$(CC) -c $(CC_FLAGS) $(notdir $(basename $@)) -o $@
+	$(CC) $(CC_FLAGS) -c $(notdir $(basename $@)) -o $@
 
 $(LEX_OUTPUT): $(LEX_INPUT)
 	$(LEX) $(LEX_FLAGS) -o$(LEX_OUTPUT) $(LEX_INPUT)
 $(LEX_OBJECT):
-	$(CC) -c $(CC_FLAGS) $(LEX_OUTPUT) -o $(LEX_OBJECT)
+	$(CC) $(CC_FLAGS) -c $(LEX_OUTPUT) -o $(LEX_OBJECT)
 
 $(YACC_OUTPUT): $(YACC_INPUT)
 	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
 $(YACC_OBJECT):
-	$(CC) -c $(CC_FLAGS) $(YACC_OUTPUT) -o $(YACC_OBJECT)
+	$(CC) $(CC_FLAGS) -c $(YACC_OUTPUT) -o $(YACC_OBJECT)
 
 
 all: $(BINARY)

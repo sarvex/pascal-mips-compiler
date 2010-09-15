@@ -1,4 +1,6 @@
 %{
+#include "parser.h"
+
 int yylex(void);
 void yyerror(const char *error);
 
@@ -575,8 +577,7 @@ comma : COMMA
 
 %%
 
-int main() {
+void parse_input() {
     yyparse();
-    return 0;
 }
 
