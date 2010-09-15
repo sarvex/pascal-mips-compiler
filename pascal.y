@@ -9,11 +9,11 @@ extern int line_number;
 struct program_t *program;
 %}
 
-%token AND ARRAY ASSIGNMENT CLASS COLON COMMA DIGSEQ
-%token DO DOT DOTDOT ELSE END EQUAL EXTENDS FUNCTION
-%token GE GT IDENTIFIER IF LBRAC LE LPAREN LT MINUS MOD NEW NOT
-%token NOTEQUAL OF OR PBEGIN PLUS PRINT PROGRAM RBRAC
-%token RPAREN SEMICOLON SLASH STAR THEN
+%token AND ARRAY COLON_EQUAL CLASS COLON COMMA DIGIT_SEQUENCE
+%token DO DOT DOT_DOT ELSE END EQUAL EXTENDS FUNCTION
+%token GREATER_EQUAL GREATER IDENTIFIER IF LEFT_BRACE LESS_EQUAL LEFT_PARENS LESS MINUS MOD NEW NOT
+%token LESS_GREATER OF OR PBEGIN PLUS PRINT PROGRAM RIGHT_BRACE
+%token RIGHT_PARENS SEMICOLON SLASH STAR THEN
 %token VAR WHILE
 
 %type <tden> type_denoter
@@ -123,7 +123,7 @@ program : program_heading semicolon class_list DOT {
 };
 
 program_heading : PROGRAM identifier {
-} | PROGRAM identifier LPAREN identifier_list RPAREN {
+} | PROGRAM identifier LEFT_PARENS identifier_list RIGHT_PARENS {
 };
 
 identifier_list : identifier_list comma identifier {
@@ -145,10 +145,10 @@ type_denoter : array_type {
 } | identifier {
 };
 
-array_type : ARRAY LBRAC range RBRAC OF type_denoter {
+array_type : ARRAY LEFT_BRACE range RIGHT_BRACE OF type_denoter {
 };
 
-range : unsigned_integer DOTDOT unsigned_integer {
+range : unsigned_integer DOT_DOT unsigned_integer {
 };
 
 variable_declaration_part : VAR variable_declaration_list semicolon {
@@ -186,7 +186,7 @@ func_declaration_list : func_declaration_list semicolon function_declaration
 	}
  ;
 
-formal_parameter_list : LPAREN formal_parameter_section_list RPAREN 
+formal_parameter_list : LEFT_PARENS formal_parameter_section_list RIGHT_PARENS 
 	{
 
 	}
@@ -306,11 +306,11 @@ if_statement : IF boolean_expression THEN statement ELSE statement
 	}
  ;
 
-assignment_statement : variable_access ASSIGNMENT expression
+assignment_statement : variable_access COLON_EQUAL expression
 	{
 
 	}
- | variable_access ASSIGNMENT object_instantiation
+ | variable_access COLON_EQUAL object_instantiation
 	{
 
 	}
@@ -350,7 +350,7 @@ variable_access : identifier
 	}
  ;
 
-indexed_variable : variable_access LBRAC index_expression_list RBRAC
+indexed_variable : variable_access LEFT_BRACE index_expression_list RIGHT_BRACE
 	{
 
 	}
@@ -381,7 +381,7 @@ method_designator: variable_access DOT function_designator
  ;
 
 
-params : LPAREN actual_parameter_list RPAREN 
+params : LEFT_PARENS actual_parameter_list RIGHT_PARENS 
 	{
 
 	}
@@ -475,7 +475,7 @@ primary : variable_access
 	{
 
 	}
- | LPAREN expression RPAREN
+ | LEFT_PARENS expression RIGHT_PARENS
 	{
 
 	}
@@ -490,7 +490,7 @@ unsigned_constant : unsigned_number
 
 unsigned_number : unsigned_integer ;
 
-unsigned_integer : DIGSEQ
+unsigned_integer : DIGIT_SEQUENCE
 	{
 
 	}
@@ -539,23 +539,23 @@ relop : EQUAL
 	{
 
 	}
- | NOTEQUAL
+ | LESS_GREATER
 	{
 
 	}
- | LT
+ | LESS
 	{
 
 	}
- | GT
+ | GREATER
 	{
 
 	}
- | LE
+ | LESS_EQUAL
 	{
 
 	}
- | GE
+ | GREATER_EQUAL
 	{
 
 	}
