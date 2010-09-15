@@ -34,7 +34,7 @@ $(OBJECTS):
 	$(CC) -c $(CC_FLAGS) $(notdir $(basename $@)) -o $@
 
 $(LEX_OUTPUT): $(LEX_INPUT)
-	$(LEX) $(LEX_FLAGS) -o $(LEX_OUTPUT) $(LEX_INPUT)
+	$(LEX) $(LEX_FLAGS) -o$(LEX_OUTPUT) $(LEX_INPUT)
 $(LEX_OBJECT):
 	$(CC) -c $(CC_FLAGS) $(LEX_OUTPUT) -o $(LEX_OBJECT)
 
@@ -51,5 +51,6 @@ $(BINARY): $(ALL_OBJECTS)
 clean:
 	-rm -rf $(OUTPUT) $(BINARY)
 
-.PHONY: all clean
+# the | in this list is because old make doesn't have order-only rules
+.PHONY: all clean |
 
