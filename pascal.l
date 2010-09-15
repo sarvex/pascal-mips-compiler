@@ -1,6 +1,7 @@
 %{
 
 #include <stdio.h>
+#include "bool.h"
 #include "y.tab.h"
 
 int line_number = 1;
@@ -86,12 +87,13 @@ NQUOTE [^']
 "*"    return(STAR);
 "(*" |
 "{" {
-    int c;
-    while (c = input()) {
+    while (true) {
+        int c = input();
         if (c == '}') {
             break;
         } else if (c == '*') {
-            if ((c = input()) == ')')
+            c = input();
+            if (c == ')')
                 break;
             else
                 unput(c);

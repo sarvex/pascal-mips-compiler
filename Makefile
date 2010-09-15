@@ -28,7 +28,7 @@ LEX_FLAGS =
 YACC = bison
 YACC_FLAGS = -d -y
 CC = gcc
-CC_FLAGS = -g -Wall -I$(OUTPUT)
+CC_FLAGS = -g -Wall -I. -I$(OUTPUT)
 
 $(OBJECTS):
 	$(CC) -c $(CC_FLAGS) $(notdir $(basename $@)) -o $@
