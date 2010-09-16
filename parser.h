@@ -1,66 +1,9 @@
-
 #ifndef _PARSER_H_
 #define _PARSER_H_
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define K 1024
-#define MAX_ERROR_SIZE 1 * K
-#define MAX_NEW_CHAR_SIZE 255
-#define MAX_USRDEF_HASHKEYS 8
-#define MAX_SYMTAB_HASHKEYS 26
-#define PROGRAMNAME "opc"
-
-#define PRIMITIVE_TYPE_NAME_INTEGER "integer"
-#define PRIMITIVE_TYPE_NAME_BOOLEAN "boolean"
-#define PRIMITIVE_TYPE_NAME_POINTER "pointer"
-#define PRIMITIVE_TYPE_NAME_UNKNOWN "unknown"
-
-#define BOOLEAN_VALUE_TRUE "True"
-#define BOOLEAN_VALUE_FALSE "False"
-
-
-/* Macro that checks for a malloc error */
-#define CHECK_MEM_ERROR(name) {if (name == NULL) { \
-				 printf("Memory allocation error\n"); \
-				 exit(1); \
-				} \
-                              }
-
-/* Macro that iterates to the end of a linked list whose next
- * element pointer is named "next"
- */
-#define GOTO_END_OF_LIST(name) {while (name->next != NULL) \
-                                  name = name->next; \
-                               }
-
-/* ================================================================
- * Datatype declarations
- * ================================================================
- */
-
-extern int error_flag;
-
-struct args_t {
-  /** Print the user defined data types and symbol table */
-  int verbose;  
-  /** Exit after performing semantic analysis */
-  int exit_after_sem;  
-  /** Print the Intermediate Representation */
-  int printIr;
-  /** Print the Lower-level Intermediate Representation */
-  int printLir;
-  /** Apply constant folding */
-  int optimize_cf;
-  /** Apply redundant expression elimination */
-  int optimize_ree;
-  /** Apply value numbering */
-  int optimize_vn;
-  /** Apply global redundancy elimination */
-  int optimize_gre;
-};
 
 
 struct identifier_list_t;
@@ -368,11 +311,6 @@ struct statement_sequence_t{
  * Everything required for the program
  * ----------------------------------------------------------------
  */
-struct program_heading_t {
-  char *id;
-  struct identifier_list_t *il;
-};
-
 struct class_identification_t {
   char *id;
   char *extend;
@@ -380,7 +318,7 @@ struct class_identification_t {
 };
 
 struct class_block_t{
-  struct variable_declaration_list_t *vdl; /* == variable_declaration_part */
+  struct variable_declaration_list_t *vdl;
   struct func_declaration_list_t *fdl;
 };
 
@@ -392,7 +330,7 @@ struct class_list_t {
 };
 
 struct program_t {
-  struct program_heading_t *ph;
+  char *id;
   struct class_list_t *cl;
 };
 

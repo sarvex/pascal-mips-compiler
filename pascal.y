@@ -70,7 +70,6 @@ struct program_t *program;
 %type <cl> class_list
 %type <ci> class_identification
 %type <program> program
-%type <ph> program_heading
 %type <op> relop
 %type <op> addop
 %type <op> mulop
@@ -115,17 +114,12 @@ struct program_t *program;
     struct class_identification_t *ci;
     struct class_list_t *cl;
     struct program_t *program;
-    struct program_heading_t *ph;
     int op;
 }
 
 %%
 
-program : program_heading semicolon class_list DOT {
-};
-
-program_heading : PROGRAM identifier {
-} | PROGRAM identifier LEFT_PARENS identifier_list RIGHT_PARENS {
+program : PROGRAM identifier semicolon class_list DOT {
 };
 
 identifier_list : identifier_list comma identifier {

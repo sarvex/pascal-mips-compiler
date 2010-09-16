@@ -34,7 +34,6 @@ W [wW]
 X [xX]
 Y [yY]
 Z [zZ]
-NQUOTE [^']
 
 %%
 
