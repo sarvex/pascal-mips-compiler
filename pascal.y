@@ -173,6 +173,10 @@ class_block : variable_declaration_part func_declaration_list {
 
 type_denoter : array_type {
 } | identifier {
+} | KW_INTEGER {
+} | KW_REAL {
+} | KW_CHAR {
+} | KW_BOOLEAN {
 };
 
 array_type : KW_ARRAY KW_LEFT_BRACKET range KW_RIGHT_BRACKET KW_OF type_denoter {
