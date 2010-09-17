@@ -1,4 +1,3 @@
-
  ___________________
 < CSE 440 Project 1 >
  -------------------
@@ -7,7 +6,6 @@
             (__)\       )\/\
                 ||----w |
                 ||     ||
-
 
  _________________________________________________________________________________
 /       #                                 #     #                                 \
@@ -58,3 +56,64 @@
             (__)\       )\/\
                 ||----w |
                 ||     ||
+
+
+The parse tree looks something like this:
+
+Program
+    ClassList[]
+        ClassDeclaration
+            ClassBlock
+                VariableDeclarationList[]
+                    VariableDeclaration
+                        IdentifierList[]
+                        TypeDenoter
+                            ArrayType
+                FunctionDeclarationList[]
+                    FunctionDeclaration
+                        FunctionHeading
+                            FormalParameterSectionList[]
+                                FormalParameterSection
+                                    IdentifierList[]
+                                    TypeDenoter
+                        FunctionBlock
+                            VariableDeclarationList[]
+                            StatementList[]
+                                Statement
+                                    AssignmentStatement
+                                        VariableAccess
+                                            IndexedVariable
+                                                VariableAccess
+                                                ExpressionList[]
+                                                    Expression
+                                                        AdditiveExpression
+                                                            MultiplicativeExpression
+                                                                NegatableExpression[]
+                                                                    PrimaryExpression
+                                                                        VariableAccess
+                                                                        FunctionDesignator
+                                                                            ActualParameterList[]
+                                                                                ActualParameter
+                                                                                    Expression
+                                                                                    Expression
+                                                                                    Expression
+                                                                        MethodDesignator
+                                                                            VariableAccess
+                                                                            FunctionDesignator
+                                                                        Expression
+                                                                        PrimaryExpression
+                                                                MultiplicativeExpression
+                                                            AdditiveExpression
+                                                        AdditiveExpression
+                                            AttributeDesignator
+                                        Expression
+                                    IfStatement
+                                        Expression
+                                        Statement
+                                        Statement
+                                    PrintStatement
+                                        Expression
+                                    WhileStatement
+                                        Expression
+                                        Statement
+                                    StatementList[]

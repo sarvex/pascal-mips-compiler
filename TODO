@@ -1,4 +1,6 @@
 Project 1 Release:
+ - build parse tree
+ - build symbol tables
  - No arrays as parameters
  - No colons in parameters (except for write and writeln)
  - Identifying references to missing classes
@@ -23,3 +25,5 @@ Project 1 Release:
  - Support attribute designators
  - Support method designators
  - run test cases and see what is still broken
+ - test for leaving off the else
+ - test for functions with the same name in different classes
