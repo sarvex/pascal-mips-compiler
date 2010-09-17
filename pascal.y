@@ -112,52 +112,52 @@ Program *main_program;
 %type <op> mulop
 
 %union {
-    struct type_denoter_t *_type_denoter;
+    TypeDenoter *_type_denoter;
     char *_string;
-    struct identifier_list_t *idl;
-    struct function_designator_t *fdes;
-    struct actual_parameter_list_t *apl;
-    struct actual_parameter_t *ap;
-    struct variable_declaration_list_t *vdl;
-    struct variable_declaration_t *vd;
-    struct range_t *r;
-    struct unsigned_number_t *un;
-    struct formal_parameter_section_list_t *fpsl;
-    struct formal_parameter_section_t *fps;
-    struct variable_access_t *va;
-    struct assignment_statement_t *as;
-    struct object_instantiation_t *os;
-    struct print_statement_t *ps;
-    struct expression_t *e;
-    struct statement_t *s;
-    struct statement_sequence_t *ss;
-    struct if_statement_t *is;
-    struct while_statement_t *ws;
-    struct indexed_variable_t *iv;
-    struct attribute_designator_t *ad;
-    struct method_designator_t *md;
-    struct index_expression_list_t *iel;
-    struct simple_expression_t *se;
-    struct term_t *t;
-    struct factor_t *f;
+    IdentifierList *idl;
+    FunctionDesignator *fdes;
+    ActualParameterList *apl;
+    ActualParameter *ap;
+    VariableDeclarationList *vdl;
+    VariableDeclaration *vd;
+    Range *r;
+    UnsignedNumber *un;
+    FormalParameterSectionList *fpsl;
+    FormalParameterSection *fps;
+    VariableAccess *va;
+    AssignmentStatement *as;
+    ObjectInstantiation *os;
+    PrintStatement *ps;
+    Expression *e;
+    Statement *s;
+    StatementSequence *ss;
+    IfStatement *is;
+    WhileStatement *ws;
+    IndexedVariable *iv;
+    AttributeDesignator *ad;
+    MethodDesignator *md;
+    IndexExpressionList *iel;
+    SimpleExpression *se;
+    Term *t;
+    Factor *f;
     int *i;
-    struct primary_t *p;
-    struct array_type_t *at;
-    struct class_block_t *cb;
-    struct func_declaration_list_t *fdl;
-    struct function_declaration_t *funcd;
-    struct function_block_t *fb;
-    struct function_heading_t *fh;
-    struct class_identification_t *_class_identification;
-    struct class_list_t *cl;
+    Primary *p;
+    ArrayType *at;
+    ClassBlock *cb;
+    FunctionDeclarationList *fdl;
+    FunctionDeclaration *funcd;
+    FunctionBlock *fb;
+    FunctionHeading *fh;
+    ClassIdentification *_class_identification;
+    ClassList *cl;
     Program * program;
     int op;
 }
 
 %%
 
-program : KW_PROGRAM identifier KW_SEMICOLON class_list KW_DOT {
-    main_program = new_program($2, $4);
+program : KW_PROGRAM identifier semicolon class_list KW_DOT {
+    main_program = new Program($2, $4);
 };
 
 class_list : class_list class_identification KW_BEGIN class_block KW_END {
