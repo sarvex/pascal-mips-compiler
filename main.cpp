@@ -198,6 +198,7 @@ TypeDenoter * negatable_expression_type(NegatableExpression * negatable_expressi
     } else if (negatable_expression->type == NegatableExpression::PRIMARY) {
         return primary_expression_type(negatable_expression->primary_expression);
     }
+    return NULL; // TODO
 }
 
 TypeDenoter * primary_expression_type(PrimaryExpression * primary_expression) {
@@ -215,6 +216,7 @@ TypeDenoter * primary_expression_type(PrimaryExpression * primary_expression) {
         case PrimaryExpression::NOT:
             return primary_expression_type(primary_expression->not_expression);
     }
+    return NULL; // TODO
 }
 
 TypeDenoter * variable_access_type(VariableAccess * variable_access) {
@@ -228,21 +230,22 @@ TypeDenoter * variable_access_type(VariableAccess * variable_access) {
         case VariableAccess::ATTRIBUTE:
             return attribute_designator_type(variable_access->attribute);
     }
+    return NULL; // TODO
 }
 
 TypeDenoter * function_designator_type(FunctionDesignator * function_designator) {
     // look it up in the symbol table
-    // TODO
+    return NULL; // TODO
 }
 
 TypeDenoter * method_designator_type(MethodDesignator * method_designator) {
     // look it up in the symbol table
-    // TODO
+    return NULL; // TODO
 }
 
 TypeDenoter * object_instantiation_type(ObjectInstantiation * object_instantiation) {
     // look it up in the symbol table
-    // TODO
+    return NULL; // TODO
 }
 
 TypeDenoter * indexed_variable_type(IndexedVariable * indexed_variable) {
@@ -251,5 +254,5 @@ TypeDenoter * indexed_variable_type(IndexedVariable * indexed_variable) {
 
 TypeDenoter * attribute_designator_type(AttributeDesignator * attribute_designator) {
     // look it up in the symbol table
-    // TODO
+    return NULL; // TODO
 }
