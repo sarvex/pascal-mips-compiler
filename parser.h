@@ -56,12 +56,15 @@ struct Program {
 struct ClassList {
     ClassDeclaration * item;
     ClassList * next;
+    ClassList(ClassDeclaration * item, ClassList * next) : item(item), next(next) {}
 };
 
 struct ClassDeclaration {
-    char *id;
-    char *extend;
-    ClassBlock *cb;
+    char * id;
+    char * parent_id;
+    ClassBlock * class_block;
+    ClassDeclaration(char * id, char * parent_id, ClassBlock * class_block)
+        : id(id), parent_id(parent_id), class_block(class_block) {}
 };
 
 struct ClassBlock {
