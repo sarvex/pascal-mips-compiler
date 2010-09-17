@@ -65,88 +65,90 @@ Program *main_program;
 %token <_string> TOKEN_IDENTIFIER
 
 %type <type_denoter> type_denoter
-%type <idl> identifier_list
-%type <fdes> function_designator
-%type <apl> actual_parameter_list
-%type <apl> params
-%type <ap> actual_parameter
-%type <vd> variable_declaration
-%type <vdl> variable_declaration_list
-%type <fpsl> formal_parameter_section_list
-%type <fps> formal_parameter_section
-%type <va> variable_access
-%type <as> assignment_statement
-%type <os> object_instantiation
-%type <ps> print_statement
-%type <e> expression
-%type <s> statement
-%type <ss> compound_statement
-%type <ss> statement_sequence
-%type <is> if_statement
-%type <ws> while_statement
-%type <iv> indexed_variable
-%type <ad> attribute_designator
-%type <md> method_designator
-%type <el> expression_list
+%type <identifier_list> identifier_list
+%type <function_designator> function_designator
+%type <actual_parameter_list> actual_parameter_list
+%type <actual_parameter_list> params
+%type <actual_parameter> actual_parameter
+%type <variable_declaration> variable_declaration
+%type <variable_declaration_list> variable_declaration_list
+%type <formal_parameter_section_list> formal_parameter_section_list
+%type <formal_parameter_section> formal_parameter_section
+%type <variable_access> variable_access
+%type <assignment_statment> assignment_statement
+%type <object_instantiation> object_instantiation
+%type <print_statement> print_statement
+%type <expressoin> expression
+%type <statement> statement
+%type <statement_list> compound_statement
+%type <statement_list> statement_sequence
+%type <if_statement> if_statement
+%type <while_statement> while_statement
+%type <indexed_variable> indexed_variable
+%type <attribute_designator> attribute_designator
+%type <method_designator> method_designator
+%type <expression_list> expression_list
 %type <additive_expression> additive_expression
 %type <multiplicative_expression> multiplicative_expression
 %type <negatable_expression> negatable_expression
 %type <_int> sign
 %type <primary_expression> primary_expression
-%type <at> array_type
+%type <array_type> array_type
 %type <class_block> class_block
-%type <vdl> variable_declaration_part
-%type <fdl> func_declaration_list
-%type <funcd> function_declaration
-%type <fb> function_block
-%type <fh> function_heading
-%type <fpsl> formal_parameter_list
+%type <variable_declaration_list> variable_declaration_part
+%type <function_declaration_list> func_declaration_list
+%type <function_declaration> function_declaration
+%type <function_block> function_block
+%type <function_heading> function_heading
+%type <formal_parameter_section_list> formal_parameter_list
 %type <class_list> class_list
 %type <class_declaration> class_declaration
 %type <program> program
-%type <op> comparison_operator
-%type <op> additive_operator
-%type <op> multiplicative_operator
+%type <comparison_operator> comparison_operator
+%type <additive_operator> additive_operator
+%type <multiplicative_operator> multiplicative_operator
 
 %union {
-    TypeDenoter *type_denoter;
-    char *_string;
-    IdentifierList *idl;
-    FunctionDesignator *fdes;
-    ActualParameterList *apl;
-    ActualParameter *ap;
-    VariableDeclarationList *vdl;
-    VariableDeclaration *vd;
-    FormalParameterSectionList *fpsl;
-    FormalParameterSection *fps;
-    VariableAccess *va;
-    AssignmentStatement *as;
-    ObjectInstantiation *os;
-    PrintStatement *ps;
-    Expression *e;
-    Statement *s;
-    StatementList *ss;
-    IfStatement *is;
-    WhileStatement *ws;
-    IndexedVariable *iv;
-    AttributeDesignator *ad;
-    MethodDesignator *md;
-    ExpressionList *el;
+    TypeDenoter * type_denoter;
+    char * _string;
+    IdentifierList * identifier_list;
+    FunctionDesignator * function_designator;
+    ActualParameterList * actual_parameter_list;
+    ActualParameter * actual_parameter;
+    VariableDeclarationList * variable_declaration_list;
+    VariableDeclaration * variable_declaration;
+    FormalParameterSectionList * formal_parameter_section_list;
+    FormalParameterSection * formal_parameter_section;
+    VariableAccess * variable_access;
+    AssignmentStatement * assignment_statment;
+    ObjectInstantiation * object_instantiation;
+    PrintStatement * print_statement;
+    Expression * expressoin;
+    Statement * statement;
+    StatementList * statement_list;
+    IfStatement * if_statement;
+    WhileStatement * while_statement;
+    IndexedVariable * indexed_variable;
+    AttributeDesignator * attribute_designator;
+    MethodDesignator * method_designator;
+    ExpressionList * expression_list;
     AdditiveExpression * additive_expression;
     MultiplicativeExpression * multiplicative_expression;
     NegatableExpression * negatable_expression;
     int * _int;
     PrimaryExpression * primary_expression;
-    ArrayType *at;
+    ArrayType * array_type;
     ClassBlock * class_block;
-    FunctionDeclarationList *fdl;
-    FunctionDeclaration *funcd;
-    FunctionBlock *fb;
-    FunctionHeading *fh;
+    FunctionDeclarationList * function_declaration_list;
+    FunctionDeclaration * function_declaration;
+    FunctionBlock * function_block;
+    FunctionHeading * function_heading;
     ClassList * class_list;
     ClassDeclaration * class_declaration;
     Program * program;
-    int op;
+    Expression::Operator comparison_operator;
+    AdditiveExpression::Operator additive_operator;
+    MultiplicativeExpression::Operator multiplicative_operator;
 }
 
 %%
@@ -168,6 +170,7 @@ class_declaration : KEYWORD_CLASS TOKEN_IDENTIFIER KEYWORD_BEGIN class_block KEY
 };
 
 class_block : variable_declaration_part func_declaration_list {
+    $$ = new ClassBlock($1, $2);
 };
 
 type_denoter : array_type {
