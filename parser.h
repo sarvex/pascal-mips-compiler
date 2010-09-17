@@ -29,7 +29,7 @@ struct IfStatement;
 struct AssignmentStatement;
 struct PrintStatement;
 struct Expression;
-struct ExpressionData;
+struct SimpleExpression;
 struct ObjectInstantiation;
 struct VariableAccess;
 struct IndexedVariable;
@@ -43,6 +43,7 @@ struct Term;
 struct Factor;
 struct Primary;
 struct UnsignedNumber;
+struct ExpressionData;
 
 
 
@@ -52,20 +53,37 @@ struct Program {
     Program(char* id, ClassList * class_list) : id(id), class_list(class_list) {}
 };
 
+struct ClassList {
+    ClassIdentification *ci;
+    ClassBlock *cb;
+    ClassList *next;
+};
+
+struct ClassIdentification {
+    char *id;
+    char *extend;
+    int line_number;
+};
+
+struct ClassBlock{
+  VariableDeclarationList *vdl;
+  FunctionDeclarationList *fdl;
+};
+
+struct VariableDeclarationList {
+  VariableDeclaration *vd;
+  VariableDeclarationList *next;  
+};
+
+struct VariableDeclaration {
+  IdentifierList *il;
+  TypeDenoter *tden;
+  int line_number;
+};
 
 struct IdentifierList {
   char *id; 
   IdentifierList *next;
-};
-
-struct Range{
-  UnsignedNumber *min;
-  UnsignedNumber *max;
-};
-
-struct ArrayType{
-  Range *r;
-  TypeDenoter *td;
 };
 
 #define TYPE_DENOTER_T_ARRAY_TYPE 1
@@ -84,46 +102,24 @@ struct TypeDenoter{
   }data;
 };
 
-/* ---------------------------------------------------------------- */
-
-
-
-/* ----------------------------------------------------------------
- * Everything required for the variable_declaration_list
- * ----------------------------------------------------------------
- */
-struct VariableDeclaration {
-  IdentifierList *il;
-  TypeDenoter *tden;
-  int line_number;
+struct ArrayType{
+  Range *r;
+  TypeDenoter *td;
 };
 
-struct VariableDeclarationList {
-  VariableDeclaration *vd;
-  VariableDeclarationList *next;  
-};
-/* ---------------------------------------------------------------- */
-
-
-/* ----------------------------------------------------------------
- * Everything required for the func_declaration_list
- * ----------------------------------------------------------------
- */
-struct FormalParameterSection{
-  IdentifierList *il;
-  char *id;
-  int is_var;
+struct Range{
+  UnsignedNumber *min;
+  UnsignedNumber *max;
 };
 
-struct FormalParameterSectionList{
-  FormalParameterSection *fps;
-  FormalParameterSectionList *next;
+struct UnsignedNumber{
+  int ui;
+  ExpressionData *expr;
 };
 
-struct FunctionHeading{
-  char *id;
-  char *res; 
-  FormalParameterSectionList *fpsl; /* == formal_parameter_list */
+struct FunctionDeclarationList{
+  FunctionDeclaration *fd;
+  FunctionDeclarationList *next;
 };
 
 struct FunctionDeclaration {
@@ -132,78 +128,129 @@ struct FunctionDeclaration {
   int line_number;
 };
 
-struct FunctionDeclarationList{
-  FunctionDeclaration *fd;
-  FunctionDeclarationList *next;
-};
-/* ---------------------------------------------------------------- */
-
-
-
-/* ----------------------------------------------------------------
- * Everything required for the statement_sequence
- * ----------------------------------------------------------------
- */
-struct ActualParameter{
-  Expression *e1;
-  Expression *e2;
-  Expression *e3;
+struct FunctionHeading {
+  char *id;
+  char *res; 
+  FormalParameterSectionList *fpsl;
 };
 
-struct ActualParameterList{
-  ActualParameter *ap;
-  ActualParameterList *next;
+struct FormalParameterSectionList{
+  FormalParameterSection *fps;
+  FormalParameterSectionList *next;
 };
 
-struct FunctionDesignator{
+struct FormalParameterSection{
+  IdentifierList *il;
+  char *id;
+  int is_var;
+};
+
+struct FunctionBlock{
+  VariableDeclarationList *vdl;
+  StatementSequence *ss;
+};
+
+struct StatementSequence{
+  Statement *s;
+  StatementSequence *next;
+};
+
+#define STATEMENT_T_ASSIGNMENT 1
+#define STATEMENT_T_SEQUENCE 2
+#define STATEMENT_T_IF 3
+#define STATEMENT_T_WHILE 4
+#define STATEMENT_T_PRINT 5
+struct Statement {
+  int type;
+  union{
+    AssignmentStatement *as;
+    IfStatement *is;
+    PrintStatement *ps;
+    WhileStatement *ws;
+    StatementSequence *ss;
+  }data;
+  int line_number;
+};
+
+struct AssignmentStatement{
+  VariableAccess *va;
+  Expression *e;  
+  ObjectInstantiation *oe;
+};
+
+struct ObjectInstantiation{
   char *id;
   ActualParameterList *apl;
 };
 
-/* This is a temporary data structure used to hold the value and type of
-   an expression. It is included (inherited) by a bunch of other data
-   structures */
-struct ExpressionData{
-  float val;
-  char *type;
+struct IfStatement{
+  Expression *e;
+  Statement *s1;
+  Statement *s2;
 };
 
-struct UnsignedNumber{
-  int ui;
-  ExpressionData *expr;
+struct PrintStatement{
+  VariableAccess *va;
 };
 
-#define PRIMARY_T_VARIABLE_ACCESS 1
-#define PRIMARY_T_UNSIGNED_CONSTANT 2
-#define PRIMARY_T_FUNCTION_DESIGNATOR 3
-#define PRIMARY_T_EXPRESSION 4
-#define PRIMARY_T_PRIMARY 5
-struct Primary{
-  int type; /* 1 - variable_access
-	     * 2 - unsigned_constant
-	     * 3 - function_designator
-	     * 4 - expression
-	     * 5 - primary
-	     */
+struct WhileStatement{
+  Expression *e;
+  Statement *s;
+};
+
+#define VARIABLE_ACCESS_T_IDENTIFIER 1
+#define VARIABLE_ACCESS_T_INDEXED_VARIABLE 2
+#define VARIABLE_ACCESS_T_ATTRIBUTE_DESIGNATOR 3
+#define VARIABLE_ACCESS_T_METHOD_DESIGNATOR 4
+struct VariableAccess{
+  int type;
   union{
-    VariableAccess *va; 
-    UnsignedNumber *un; /* == unsigned_constant */
-    FunctionDesignator *fd;
-    Expression *e;
-    struct {
-      int _not;
-      Primary *next;
-    }p;
+    char *id;
+    IndexedVariable *iv;
+    AttributeDesignator *ad;
+    MethodDesignator *md;
   }data;
+  char *recordname;
   ExpressionData *expr;
+};
+
+struct IndexedVariable{
+  VariableAccess *va;
+  IndexExpressionList *iel;
+  ExpressionData *expr;
+};
+
+struct IndexExpressionList{
+  Expression *e;
+  IndexExpressionList *next;
+  ExpressionData *expr;
+};
+
+struct Expression{
+  SimpleExpression *se1;
+  int relop;
+  SimpleExpression *se2;
+  ExpressionData *expr;
+};
+
+struct SimpleExpression{
+  Term *t;
+  int addop;
+  ExpressionData *expr;
+  SimpleExpression *next;
+};
+
+struct Term{
+  Factor *f;
+  int mulop;
+  ExpressionData *expr;
+  Term *next;
 };
 
 #define FACTOR_T_SIGNFACTOR 1
 #define FACTOR_T_PRIMARY 2
 struct Factor{
-  int type; /* 1 - sign/factor
-	     * 2 - primary
-	     */
+  int type;
   union {
     struct {
       int *sign;
@@ -214,38 +261,42 @@ struct Factor{
   ExpressionData *expr;
 };
 
-struct Term{
-  Factor *f;
-  int mulop;
-  ExpressionData *expr;
-  Term *next;
-};
-
-struct SimpleExpression{
-  Term *t;
-  int addop;
-  ExpressionData *expr;
-  SimpleExpression *next;
-};
-
-struct Expression{
-  SimpleExpression *se1;
-  int relop;
-  SimpleExpression *se2;
-  ExpressionData *expr;
-};
-
-struct IndexExpressionList{
-  Expression *e;
-  IndexExpressionList *next;
+#define PRIMARY_T_VARIABLE_ACCESS 1
+#define PRIMARY_T_UNSIGNED_CONSTANT 2
+#define PRIMARY_T_FUNCTION_DESIGNATOR 3
+#define PRIMARY_T_EXPRESSION 4
+#define PRIMARY_T_PRIMARY 5
+struct Primary{
+  int type;
+  union {
+    VariableAccess *va; 
+    UnsignedNumber *un;
+    FunctionDesignator *fd;
+    Expression *e;
+    struct {
+      int _not;
+      Primary *next;
+    }p;
+  }data;
   ExpressionData *expr;
 };
 
-struct IndexedVariable{
-  VariableAccess *va;
-  IndexExpressionList *iel;
-  ExpressionData *expr;
+struct FunctionDesignator{
+  char *id;
+  ActualParameterList *apl;
 };
+
+struct ActualParameterList{
+  ActualParameter *ap;
+  ActualParameterList *next;
+};
+
+struct ActualParameter{
+  Expression *e1;
+  Expression *e2;
+  Expression *e3;
+};
+
 
 struct AttributeDesignator{
   VariableAccess *va;
@@ -257,111 +308,17 @@ struct MethodDesignator{
   FunctionDesignator *fd;
 };
 
-#define VARIABLE_ACCESS_T_IDENTIFIER 1
-#define VARIABLE_ACCESS_T_INDEXED_VARIABLE 2
-#define VARIABLE_ACCESS_T_ATTRIBUTE_DESIGNATOR 3
-#define VARIABLE_ACCESS_T_METHOD_DESIGNATOR 4
-struct VariableAccess{
-  int type; /* 1 - identifier
-	     * 2 - indexed_variable
-	     * 3 - attribute_designator
-	     * 4 - method_designator
-	     */
-  union{
-    char *id;
-    IndexedVariable *iv;
-    AttributeDesignator *ad;
-    MethodDesignator *md;
-  }data;
-  char *recordname;          /* This is a temporary field used to collect
-				a verbose description of the data type
-				that is validated */
-  ExpressionData *expr;
+
+/* This is a temporary data structure used to hold the value and type of
+   an expression. It is included (inherited) by a bunch of other data
+   structures */
+struct ExpressionData{
+  float val;
+  char *type;
 };
 
-struct ObjectInstantiation{
-  char *id;
-  ActualParameterList *apl;
-};
-
-struct AssignmentStatement{
-  VariableAccess *va;
-  Expression *e;  
-  ObjectInstantiation *oe;
-};
-
-struct IfStatement{
-  Expression *e;
-  Statement *s1;
-  Statement *s2;
-};
-
-struct WhileStatement{
-  Expression *e;
-  Statement *s;
-};
-
-struct PrintStatement{
-  VariableAccess *va;
-};
-
-struct FunctionBlock{
-  VariableDeclarationList *vdl;
-  StatementSequence *ss;
-};
-
-#define STATEMENT_T_ASSIGNMENT 1
-#define STATEMENT_T_SEQUENCE 2
-#define STATEMENT_T_IF 3
-#define STATEMENT_T_WHILE 4
-#define STATEMENT_T_PRINT 5
-struct Statement {
-  int type; /* 1 - assignment_statement
-	     * 2 - statement_sequence
-	     * 3 - if_statement
-	     * 4 - while_statement
-	     * 5 - print_statement
-	     */
-
-  union{
-    AssignmentStatement *as;
-    StatementSequence *ss;
-    IfStatement *is;
-    WhileStatement *ws;
-    PrintStatement *ps;
-  }data;
-  int line_number;
-};
-
-struct StatementSequence{
-  Statement *s;
-  StatementSequence *next;
-};
-
-/* ---------------------------------------------------------------- */
 
 
-
-/* ----------------------------------------------------------------
- * Everything required for the program
- * ----------------------------------------------------------------
- */
-struct ClassIdentification {
-  char *id;
-  char *extend;
-  int line_number;
-};
-
-struct ClassBlock{
-  VariableDeclarationList *vdl;
-  FunctionDeclarationList *fdl;
-};
-
-struct ClassList {
-  ClassIdentification *ci;
-  ClassBlock *cb;
-  ClassList *next;
-};
 
 
 Program * parse_input();
