@@ -1,8 +1,7 @@
 %{
 
 #include <stdio.h>
-#include "not_suck.h"
-#include "y.tab.h"
+#include "y.tab.hpp"
 
 int line_number = 1;
 
@@ -84,11 +83,11 @@ Z [zZ]
 "(*" |
 "{"  {
     while (true) {
-        int c = input();
+        int c = yyinput();
         if (c == '}' && yytext[0] == '{') {
             break;
         } else if (c == '*' && yytext[0] == '(') {
-            c = input();
+            c = yyinput();
             if (c == ')')
                 break;
             else

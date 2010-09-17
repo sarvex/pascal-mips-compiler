@@ -9,15 +9,15 @@ $(OUTPUT):
 
 # files
 LEX_INPUT = pascal.l
-LEX_OUTPUT = $(OUTPUT)/lex.yy.c
+LEX_OUTPUT = $(OUTPUT)/lex.yy.cpp
 LEX_OBJECT = $(LEX_OUTPUT).o
 $(LEX_OUTPUT): | $(OUTPUT)
 YACC_INPUT = pascal.y
-YACC_OUTPUT = $(OUTPUT)/y.tab.c
+YACC_OUTPUT = $(OUTPUT)/y.tab.cpp
 $(YACC_OUTPUT): | $(OUTPUT)
 YACC_OBJECT = $(YACC_OUTPUT).o
 BINARY = opc
-SOURCES := $(wildcard *.c)
+SOURCES := $(wildcard *.cpp)
 OBJECTS = $(addprefix $(OUTPUT)/,$(addsuffix .o,$(SOURCES)))
 ALL_OBJECTS = $(OBJECTS) $(LEX_OBJECT) $(YACC_OBJECT)
 $(ALL_OBJECTS): $(LEX_OUTPUT) $(YACC_OUTPUT)
@@ -29,10 +29,10 @@ LEX = flex
 LEX_FLAGS =
 YACC = bison
 YACC_FLAGS = -d -y
-CC = gcc
+CC = g++
 CC_FLAGS = -g -Wall -I. -I$(OUTPUT)
 CC_COMPILE = $(CC) $(CC_FLAGS) -c -o $@ -MMD -MP -MF $@.d
-LINK = gcc
+LINK = g++
 LINK_FLAGS =
 
 $(OBJECTS):
@@ -45,7 +45,7 @@ $(LEX_OBJECT):
 
 $(YACC_OUTPUT): $(YACC_INPUT)
 	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
-	sed -i 1i'#include "parser.h"' $(basename $(YACC_OUTPUT)).h
+	sed -i 1i'#include "parser.h"' $(basename $(YACC_OUTPUT)).hpp
 $(YACC_OBJECT):
 	$(CC_COMPILE) $(YACC_OUTPUT)
 

@@ -1,5 +1,4 @@
 %{
-#include "not_suck.h"
 #include "parser.h"
 
 int yylex(void);
@@ -608,7 +607,8 @@ comma : KW_COMMA
 
 %%
 
-void parse_input() {
+Program * parse_input() {
     yyparse();
+    return main_program;
 }
 

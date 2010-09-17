@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "not_suck.h"
-
 struct identifier_list_t;
 struct identifier_list_t {
   char *id; 
@@ -153,7 +151,7 @@ struct primary_t{
     struct function_designator_t *fd;
     struct expression_t *e;
     struct primary_data_t{
-      int not;
+      int _not;
       struct primary_t *next;
     }p;
   }data;
@@ -330,14 +328,14 @@ struct class_list_t {
   struct class_list_t *next;
 };
 
-typedef struct {
-  char *id;
-  struct class_list_t * class_list;
-} Program;
+struct Program {
+    char *id;
+    struct class_list_t * class_list;
+};
 Program * new_program(char* id, struct class_list_t * class_list);
 
 
-void parse_input();
+Program * parse_input();
 
 #endif
 
