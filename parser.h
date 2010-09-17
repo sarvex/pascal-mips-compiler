@@ -215,13 +215,13 @@ struct VariableAccess {
 
 struct IndexedVariable {
     VariableAccess *va;
-    IndexExpressionList *iel;
+    ExpressionList *expression_list;
     ExpressionData *expr;
 };
 
-struct IndexExpressionList {
+struct ExpressionList {
     Expression *e;
-    IndexExpressionList *next;
+    ExpressionList *next;
     ExpressionData *expr;
 };
 
