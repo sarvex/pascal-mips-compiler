@@ -88,11 +88,11 @@ Program *main_program;
 %type <ad> attribute_designator
 %type <md> method_designator
 %type <el> expression_list
-%type <se> additive_expression
-%type <t> multiplicative_expression
-%type <f> negatable_expression
+%type <additive_expression> additive_expression
+%type <multiplicative_expression> multiplicative_expression
+%type <negatable_expression> negatable_expression
 %type <_int> sign
-%type <p> primary_expression
+%type <primary_expression> primary_expression
 %type <at> array_type
 %type <class_block> class_block
 %type <vdl> variable_declaration_part
@@ -132,11 +132,11 @@ Program *main_program;
     AttributeDesignator *ad;
     MethodDesignator *md;
     ExpressionList *el;
-    SimpleExpression *se;
-    Term *t;
-    Factor *f;
+    AdditiveExpression * additive_expression;
+    MultiplicativeExpression * multiplicative_expression;
+    NegatableExpression * negatable_expression;
     int * _int;
-    Primary *p;
+    PrimaryExpression * primary_expression;
     ArrayType *at;
     ClassBlock * class_block;
     FunctionDeclarationList *fdl;
@@ -328,29 +328,13 @@ object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
 } | KEYWORD_NEW TOKEN_IDENTIFIER params {
 };
 
-print_statement : KEYWORD_PRINT variable_access
-        {
+print_statement : KEYWORD_PRINT expression {
+};
 
-        }
-;
-
-variable_access : TOKEN_IDENTIFIER
-	{
-
-	}
- | indexed_variable
-	{
-
-	}
- | attribute_designator
-	{
-
-	}
- | method_designator
-	{
-
-	}
- ;
+variable_access : TOKEN_IDENTIFIER {
+} | indexed_variable {
+} | attribute_designator {
+};
 
 indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_RIGHT_BRACKET
 	{
@@ -419,32 +403,21 @@ additive_expression : multiplicative_expression {
 } | additive_expression addop multiplicative_expression {
 };
 
-multiplicative_expression : negatable_expression
-	{
-
-	}
- | multiplicative_expression mulop negatable_expression
-	{
-
-	}
- ;
+multiplicative_expression : negatable_expression {
+} | multiplicative_expression mulop negatable_expression {
+};
 
 sign : KEYWORD_PLUS {
 } | KEYWORD_MINUS {
 };
 
-negatable_expression : sign negatable_expression
-	{
-
-	}
- | primary_expression 
-	{
-
-	}
- ;
+negatable_expression : sign negatable_expression {
+} | primary_expression {
+};
 
 primary_expression : variable_access {
 } | function_designator {
+} | method_designator {
 } | object_instantiation {
 } | KEYWORD_LEFT_PARENS expression KEYWORD_RIGHT_PARENS {
 } | KEYWORD_NOT primary_expression {

@@ -28,7 +28,7 @@ struct IfStatement;
 struct AssignmentStatement;
 struct PrintStatement;
 struct Expression;
-struct SimpleExpression;
+struct AdditiveExpression;
 struct ObjectInstantiation;
 struct VariableAccess;
 struct IndexedVariable;
@@ -38,9 +38,9 @@ struct FunctionDesignator;
 struct MethodDesignator;
 struct ActualParameterList;
 struct ActualParameter;
-struct Term;
-struct Factor;
-struct Primary;
+struct MultiplicativeExpression;
+struct NegatableExpression;
+struct PrimaryExpression;
 
 
 
@@ -169,106 +169,94 @@ struct Statement {
         WhileStatement * while_statement;
         StatementList * compound_statement;
     };
+    // TODO: resume writing constructors here
 };
 
 struct AssignmentStatement {
-    VariableAccess * variable_access;
+    VariableAccess * variable;
     Expression * expression;
 };
 
 struct ObjectInstantiation {
-    char *id;
-    ActualParameterList *apl;
+    char * id;
+    ActualParameterList * parameters;
 };
 
 struct IfStatement {
-    Expression *e;
-    Statement *s1;
-    Statement *s2;
+    Expression * expression;
+    Statement * then_statement;
+    Statement * else_statement;
 };
 
 struct PrintStatement {
-    VariableAccess *va;
+    Expression * expression;
 };
 
 struct WhileStatement {
-    Expression *e;
-    Statement *s;
+    Expression * expression;
+    Statement * statement;
 };
 
-#define VARIABLE_ACCESS_T_IDENTIFIER 1
-#define VARIABLE_ACCESS_T_INDEXED_VARIABLE 2
-#define VARIABLE_ACCESS_T_ATTRIBUTE_DESIGNATOR 3
-#define VARIABLE_ACCESS_T_METHOD_DESIGNATOR 4
 struct VariableAccess {
-    int type;
+    enum Type {IDENTIFIER, INDEXED_VARIABLE, ATTRIBUTE};
+    Type type;
     union {
-        char *id;
-        IndexedVariable *iv;
-        AttributeDesignator *ad;
-        MethodDesignator *md;
-    } data;
-    char *recordname;
+        char * id;
+        IndexedVariable * indexed_variable;
+        AttributeDesignator * attribute;
+    };
 };
 
 struct IndexedVariable {
-    VariableAccess *va;
-    ExpressionList *expression_list;
+    VariableAccess * variable;
+    ExpressionList * expression_list;
 };
 
 struct ExpressionList {
-    Expression *e;
-    ExpressionList *next;
+    Expression * item;
+    ExpressionList * next;
 };
 
 struct Expression {
-    SimpleExpression *se1;
+    AdditiveExpression * left;
     int relop;
-    SimpleExpression *se2;
+    AdditiveExpression * right;
 };
 
-struct SimpleExpression {
-    Term *t;
+struct AdditiveExpression {
+    MultiplicativeExpression * left;
     int addop;
-    SimpleExpression *next;
+    AdditiveExpression * right;
 };
 
-struct Term {
-    Factor *f;
+struct MultiplicativeExpression {
+    NegatableExpression * left;
     int mulop;
-    Term *next;
+    MultiplicativeExpression * right;
 };
 
-#define FACTOR_T_SIGNFACTOR 1
-#define FACTOR_T_PRIMARY 2
-struct Factor {
-    int type;
+struct NegatableExpression {
+    enum Type {SIGN, PRIMARY};
+    Type type;
     union {
         struct {
-            int *sign;
-            Factor *next;
-        } f;
-        Primary *p;
-    } data;
+            int sign;
+            NegatableExpression * next;
+        };
+        PrimaryExpression * primary_expression;
+    };
 };
 
-#define PRIMARY_T_VARIABLE_ACCESS 1
-#define PRIMARY_T_UNSIGNED_CONSTANT 2
-#define PRIMARY_T_FUNCTION_DESIGNATOR 3
-#define PRIMARY_T_EXPRESSION 4
-#define PRIMARY_T_PRIMARY 5
-struct Primary {
+struct PrimaryExpression {
+    enum Type {VARIABLE, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
     int type;
     union {
-        VariableAccess *va; 
-        int un;
-        FunctionDesignator *fd;
-        Expression *e;
-        struct {
-            int _not;
-            Primary *next;
-        } p;
-    } data;
+        VariableAccess * variable; 
+        FunctionDesignator * function;
+        MethodDesignator * method;
+        Expression * parens_expression;
+        PrimaryExpression * not_expression;
+    };
 };
 
 struct FunctionDesignator {
@@ -297,10 +285,6 @@ struct MethodDesignator {
     VariableAccess *va;
     FunctionDesignator *fd;
 };
-
-
-
-
 
 
 Program * parse_input();
