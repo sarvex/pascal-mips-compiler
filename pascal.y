@@ -156,7 +156,7 @@ Program *main_program;
 
 %%
 
-program : KW_PROGRAM identifier semicolon class_list KW_DOT {
+program : KW_PROGRAM identifier KW_SEMICOLON class_list KW_DOT {
     main_program = new Program($2, $4);
 };
 
