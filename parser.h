@@ -9,7 +9,6 @@
 struct Program;
 struct ClassList;
 struct ClassDeclaration;
-struct ClassIdentification;
 struct ClassBlock;
 struct TypeDenoter;
 struct ArrayType;
@@ -60,14 +59,9 @@ struct ClassList {
 };
 
 struct ClassDeclaration {
-    ClassIdentification *ci;
-    ClassBlock *cb;
-};
-
-struct ClassIdentification {
     char *id;
     char *extend;
-    int line_number;
+    ClassBlock *cb;
 };
 
 struct ClassBlock {
@@ -83,7 +77,6 @@ struct VariableDeclarationList {
 struct VariableDeclaration {
     IdentifierList *il;
     TypeDenoter *tden;
-    int line_number;
 };
 
 struct IdentifierList {
@@ -125,7 +118,6 @@ struct FunctionDeclarationList {
 struct FunctionDeclaration {
     FunctionHeading *fh;
     FunctionBlock *fb;
-    int line_number;
 };
 
 struct FunctionHeading {
@@ -169,7 +161,6 @@ struct Statement {
         WhileStatement *ws;
         StatementSequence *ss;
     } data;
-    int line_number;
 };
 
 struct AssignmentStatement {

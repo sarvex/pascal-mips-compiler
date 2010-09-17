@@ -24,11 +24,11 @@ bool check_semantics(Program * program) {
 
     // collect all the classes that are declared
     map<char *, ClassDeclaration *> class_map;
-    // class_list is a lie, needs renamed
     ClassList * class_list = program->class_list;
     while (class_list != NULL) {
-        class_map[class_list->item->ci->id] = class_list->item;
-        cout << "Found class: " << class_list->item->ci->id << endl;
+        ClassDeclaration * class_declaration = class_list->item;
+        class_map[class_declaration->id] = class_declaration;
+        cout << "Found class: " << class_declaration->id << endl;
         class_list = class_list->next;
     }
 

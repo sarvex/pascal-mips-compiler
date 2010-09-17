@@ -105,7 +105,6 @@ Program *main_program;
 %type <_string> function_identification
 %type <fpsl> formal_parameter_list
 %type <cl> class_list
-%type <_class_identification> class_identification
 %type <program> program
 %type <op> relop
 %type <op> addop
@@ -148,7 +147,6 @@ Program *main_program;
     FunctionDeclaration *funcd;
     FunctionBlock *fb;
     FunctionHeading *fh;
-    ClassIdentification *_class_identification;
     ClassList *cl;
     Program * program;
     int op;
@@ -160,12 +158,12 @@ program : KW_PROGRAM identifier KW_SEMICOLON class_list KW_DOT {
     main_program = new Program($2, $4);
 };
 
-class_list : class_list class_identification KW_BEGIN class_block KW_END {
-} | class_identification KW_BEGIN class_block KW_END {
+class_list : class_list class_declaration {
+} | class_declaration {
 };
 
-class_identification : KW_CLASS identifier {
-} | KW_CLASS identifier KW_EXTENDS identifier {
+class_declaration : KW_CLASS identifier KW_BEGIN class_block KW_END {
+} | KW_CLASS identifier KW_EXTENDS identifier KW_BEGIN class_block KW_END {
 };
 
 class_block : variable_declaration_part func_declaration_list {
