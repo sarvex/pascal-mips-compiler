@@ -30,7 +30,7 @@ Program *main_program;
 %token KW_GREATER
 %token KW_IDENTIFIER
 %token KW_IF
-%token KW_LEFT_BRACE
+%token KW_LEFT_BRACKET
 %token KW_LESS_EQUAL
 %token KW_LEFT_PARENS
 %token KW_LESS
@@ -45,16 +45,23 @@ Program *main_program;
 %token KW_PLUS
 %token KW_PRINT
 %token KW_PROGRAM
-%token KW_RIGHT_BRACE
+%token KW_RIGHT_BRACKET
 %token KW_RIGHT_PARENS
 %token KW_SEMICOLON
 %token KW_SLASH
 %token KW_STAR
 %token KW_THEN
-%token KW_VAR KW_WHILE
+%token KW_THIS
+%token KW_INTEGER
+%token KW_BOOLEAN
+%token KW_REAL
+%token KW_CHAR
+%token KW_TRUE
+%token KW_FALSE
+%token KW_VAR
+%token KW_WHILE
 
 %type <_type_denoter> type_denoter
-%type <_string> result_type
 %type <_string> identifier
 %type <idl> identifier_list
 %type <fdes> function_designator
@@ -77,22 +84,17 @@ Program *main_program;
 %type <s> statement
 %type <ss> compound_statement
 %type <ss> statement_sequence
-%type <ss> statement_part
 %type <is> if_statement
 %type <ws> while_statement
-%type <e> boolean_expression
 %type <iv> indexed_variable
 %type <ad> attribute_designator
 %type <md> method_designator
 %type <iel> index_expression_list
-%type <e> index_expression
 %type <se> simple_expression
 %type <t> term
 %type <f> factor
 %type <i> sign
 %type <p> primary
-%type <un> unsigned_constant
-%type <un> unsigned_number
 %type <at> array_type
 %type <cb> class_block
 %type <vdl> variable_declaration_part
@@ -173,17 +175,17 @@ type_denoter : array_type {
 } | identifier {
 };
 
-array_type : KW_ARRAY KW_LEFT_BRACE range KW_RIGHT_BRACE KW_OF type_denoter {
+array_type : KW_ARRAY KW_LEFT_BRACKET range KW_RIGHT_BRACKET KW_OF type_denoter {
 };
 
 range : unsigned_integer KW_DOT_DOT unsigned_integer {
 };
 
-variable_declaration_part : KW_VAR variable_declaration_list semicolon {
+variable_declaration_part : KW_VAR variable_declaration_list KW_SEMICOLON {
 } | {
 };
 
-variable_declaration_list : variable_declaration_list semicolon variable_declaration
+variable_declaration_list : variable_declaration_list KW_SEMICOLON variable_declaration
 	{
 
 	}
@@ -200,7 +202,7 @@ variable_declaration : identifier_list KW_COLON type_denoter
 	}
  ;
 
-func_declaration_list : func_declaration_list semicolon function_declaration
+func_declaration_list : func_declaration_list KW_SEMICOLON function_declaration
 	{
 
 	}
@@ -219,7 +221,7 @@ formal_parameter_list : KW_LEFT_PARENS formal_parameter_section_list KW_RIGHT_PA
 
 	}
 ;
-formal_parameter_section_list : formal_parameter_section_list semicolon formal_parameter_section
+formal_parameter_section_list : formal_parameter_section_list KW_SEMICOLON formal_parameter_section
 	{
 
 	}
@@ -239,7 +241,7 @@ value_parameter_specification : identifier_list KW_COLON identifier
 	}
  ;
 
-identifier_list : identifier_list comma identifier {
+identifier_list : identifier_list KW_COMMA identifier {
 } | identifier {
 };
 
@@ -249,27 +251,25 @@ variable_parameter_specification : KW_VAR identifier_list KW_COLON identifier
 	}
  ;
 
-function_declaration : function_identification semicolon function_block
+function_declaration : function_identification KW_SEMICOLON function_block
 	{
 
 	}
- | function_heading semicolon function_block
-	{
-
-	}
- ;
-
-function_heading : KW_FUNCTION identifier KW_COLON result_type
-	{
-
-	}
- | KW_FUNCTION identifier formal_parameter_list KW_COLON result_type
+ | function_heading KW_SEMICOLON function_block
 	{
 
 	}
  ;
 
-result_type : identifier ;
+function_heading : KW_FUNCTION identifier KW_COLON type_denoter
+	{
+
+	}
+ | KW_FUNCTION identifier formal_parameter_list KW_COLON type_denoter
+	{
+
+	}
+ ;
 
 function_identification : KW_FUNCTION identifier
 	{
@@ -279,14 +279,11 @@ function_identification : KW_FUNCTION identifier
 
 function_block : 
   variable_declaration_part
-  statement_part
+  compound_statement
 	{
 
 	}
 ;
-
-statement_part : compound_statement
- ;
 
 compound_statement : KW_BEGIN statement_sequence KW_END
 	{
@@ -298,7 +295,7 @@ statement_sequence : statement
 	{
 
 	}
- | statement_sequence semicolon statement
+ | statement_sequence KW_SEMICOLON statement
 	{
 
 	}
@@ -326,13 +323,13 @@ statement : assignment_statement
         }
  ;
 
-while_statement : KW_WHILE boolean_expression KW_DO statement
+while_statement : KW_WHILE expression KW_DO statement
 	{
 
 	}
  ;
 
-if_statement : KW_IF boolean_expression KW_THEN statement KW_ELSE statement
+if_statement : KW_IF expression KW_THEN statement KW_ELSE statement
 	{
 
 	}
@@ -382,23 +379,21 @@ variable_access : identifier
 	}
  ;
 
-indexed_variable : variable_access KW_LEFT_BRACE index_expression_list KW_RIGHT_BRACE
+indexed_variable : variable_access KW_LEFT_BRACKET index_expression_list KW_RIGHT_BRACKET
 	{
 
 	}
  ;
 
-index_expression_list : index_expression_list comma index_expression
+index_expression_list : index_expression_list KW_COMMA expression
 	{
 
 	}
- | index_expression
+ | expression
 	{
 
 	}
  ;
-
-index_expression : expression ;
 
 attribute_designator : variable_access KW_DOT identifier
 	{
@@ -419,7 +414,7 @@ params : KW_LEFT_PARENS actual_parameter_list KW_RIGHT_PARENS
 	}
  ;
 
-actual_parameter_list : actual_parameter_list comma actual_parameter
+actual_parameter_list : actual_parameter_list KW_COMMA actual_parameter
 	{
 
 	}
@@ -442,8 +437,6 @@ actual_parameter : expression
 
 	}
  ;
-
-boolean_expression : expression ;
 
 expression : simple_expression
 	{
@@ -499,7 +492,7 @@ primary : variable_access
 	{
 
 	}
- | unsigned_constant
+ | unsigned_integer
 	{
 
 	}
@@ -516,11 +509,6 @@ primary : variable_access
 
 	}
  ;
-
-unsigned_constant : unsigned_number
- ;
-
-unsigned_number : unsigned_integer ;
 
 unsigned_integer : KW_DIGIT_SEQUENCE
 	{
@@ -597,12 +585,6 @@ identifier : KW_IDENTIFIER
 	{
 
 	}
- ;
-
-semicolon : KW_SEMICOLON
- ;
-
-comma : KW_COMMA
  ;
 
 %%
