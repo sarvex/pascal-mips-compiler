@@ -8,6 +8,7 @@
 
 struct Program;
 struct ClassList;
+struct ClassDeclaration;
 struct ClassIdentification;
 struct ClassBlock;
 struct TypeDenoter;
@@ -48,15 +49,19 @@ struct ExpressionData;
 
 
 struct Program {
-    char *id;
+    char * id;
     ClassList * class_list;
     Program(char* id, ClassList * class_list) : id(id), class_list(class_list) {}
 };
 
 struct ClassList {
+    ClassDeclaration * item;
+    ClassList * next;
+};
+
+struct ClassDeclaration {
     ClassIdentification *ci;
     ClassBlock *cb;
-    ClassList *next;
 };
 
 struct ClassIdentification {
@@ -87,14 +92,12 @@ struct IdentifierList {
 };
 
 #define TYPE_DENOTER_T_ARRAY_TYPE 1
-#define TYPE_DENOTER_T_CLASS_TYPE 2
 #define TYPE_DENOTER_T_IDENTIFIER 3
 struct TypeDenoter {
     int type;
     char *name;
     union {
         ArrayType *at;
-        ClassList *cl;
         char *id;
     } data;
 };
