@@ -65,10 +65,10 @@ struct ClassDeclaration {
 };
 
 struct ClassBlock {
-    VariableDeclarationList * variables;
-    FunctionDeclarationList * functions;
-    ClassBlock(VariableDeclarationList * variables, FunctionDeclarationList * functions)
-        : variables(variables), functions(functions) {}
+    VariableDeclarationList * variable_list;
+    FunctionDeclarationList * function_list;
+    ClassBlock(VariableDeclarationList * variable_list, FunctionDeclarationList * function_list)
+        : variable_list(variable_list), function_list(function_list) {}
 };
 
 struct VariableDeclarationList {
@@ -147,10 +147,10 @@ struct FormalParameterSection {
 };
 
 struct FunctionBlock {
-    VariableDeclarationList * variables;
-    StatementList * statements;
-    FunctionBlock(VariableDeclarationList * variables, StatementList * statements)
-        : variables(variables), statements(statements) {}
+    VariableDeclarationList * variable_list;
+    StatementList * statement_list;
+    FunctionBlock(VariableDeclarationList * variable_list, StatementList * statement_list)
+        : variable_list(variable_list), statement_list(statement_list) {}
 };
 
 struct StatementList {
@@ -179,7 +179,7 @@ struct AssignmentStatement {
 
 struct ObjectInstantiation {
     char * id;
-    ActualParameterList * parameters;
+    ActualParameterList * parameter_list;
 };
 
 struct IfStatement {
@@ -264,7 +264,7 @@ struct PrimaryExpression {
 
 struct FunctionDesignator {
     char * id;
-    ActualParameterList * parameters;
+    ActualParameterList * parameter_list;
 };
 
 struct ActualParameterList {
