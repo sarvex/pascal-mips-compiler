@@ -1,4 +1,5 @@
 %{
+#include "not_suck.h"
 #include "parser.h"
 
 int yylex(void);
@@ -8,19 +9,54 @@ extern char *yytext;
 extern int line_number;
 
 // main program
-struct program_t *program;
+Program *main_program;
 %}
 
-%token AND ARRAY COLON_EQUAL CLASS COLON COMMA DIGIT_SEQUENCE
-%token DO DOT DOT_DOT ELSE END EQUAL EXTENDS FUNCTION
-%token GREATER_EQUAL GREATER IDENTIFIER IF LEFT_BRACE LESS_EQUAL LEFT_PARENS LESS MINUS MOD NEW NOT
-%token LESS_GREATER OF OR PBEGIN PLUS PRINT PROGRAM RIGHT_BRACE
-%token RIGHT_PARENS SEMICOLON SLASH STAR THEN
-%token VAR WHILE
+%token KW_AND
+%token KW_ARRAY
+%token KW_COLON_EQUAL
+%token KW_CLASS
+%token KW_COLON
+%token KW_COMMA
+%token KW_DIGIT_SEQUENCE
+%token KW_DO
+%token KW_DOT
+%token KW_DOT_DOT
+%token KW_ELSE
+%token KW_END
+%token KW_EQUAL
+%token KW_EXTENDS
+%token KW_FUNCTION
+%token KW_GREATER_EQUAL
+%token KW_GREATER
+%token KW_IDENTIFIER
+%token KW_IF
+%token KW_LEFT_BRACE
+%token KW_LESS_EQUAL
+%token KW_LEFT_PARENS
+%token KW_LESS
+%token KW_MINUS
+%token KW_MOD
+%token KW_NEW
+%token KW_NOT
+%token KW_LESS_GREATER
+%token KW_OF
+%token KW_OR
+%token KW_BEGIN
+%token KW_PLUS
+%token KW_PRINT
+%token KW_PROGRAM
+%token KW_RIGHT_BRACE
+%token KW_RIGHT_PARENS
+%token KW_SEMICOLON
+%token KW_SLASH
+%token KW_STAR
+%token KW_THEN
+%token KW_VAR KW_WHILE
 
-%type <tden> type_denoter
-%type <id> result_type
-%type <id> identifier
+%type <_type_denoter> type_denoter
+%type <_string> result_type
+%type <_string> identifier
 %type <idl> identifier_list
 %type <fdes> function_designator
 %type <apl> actual_parameter_list
@@ -65,18 +101,18 @@ struct program_t *program;
 %type <funcd> function_declaration
 %type <fb> function_block
 %type <fh> function_heading
-%type <id> function_identification
+%type <_string> function_identification
 %type <fpsl> formal_parameter_list
 %type <cl> class_list
-%type <ci> class_identification
+%type <_class_identification> class_identification
 %type <program> program
 %type <op> relop
 %type <op> addop
 %type <op> mulop
 
 %union {
-    struct type_denoter_t *tden;
-    char *id;
+    struct type_denoter_t *_type_denoter;
+    char *_string;
     struct identifier_list_t *idl;
     struct function_designator_t *fdes;
     struct actual_parameter_list_t *apl;
@@ -111,27 +147,24 @@ struct program_t *program;
     struct function_declaration_t *funcd;
     struct function_block_t *fb;
     struct function_heading_t *fh;
-    struct class_identification_t *ci;
+    struct class_identification_t *_class_identification;
     struct class_list_t *cl;
-    struct program_t *program;
+    Program * program;
     int op;
 }
 
 %%
 
-program : PROGRAM identifier semicolon class_list DOT {
+program : KW_PROGRAM identifier semicolon class_list KW_DOT {
+    main_program = new_program($2, $4);
 };
 
-identifier_list : identifier_list comma identifier {
-} | identifier {
+class_list : class_list class_identification KW_BEGIN class_block KW_END {
+} | class_identification KW_BEGIN class_block KW_END {
 };
 
-class_list : class_list class_identification PBEGIN class_block END {
-} | class_identification PBEGIN class_block END {
-};
-
-class_identification : CLASS identifier {
-} | CLASS identifier EXTENDS identifier {
+class_identification : KW_CLASS identifier {
+} | KW_CLASS identifier KW_EXTENDS identifier {
 };
 
 class_block : variable_declaration_part func_declaration_list {
@@ -141,13 +174,13 @@ type_denoter : array_type {
 } | identifier {
 };
 
-array_type : ARRAY LEFT_BRACE range RIGHT_BRACE OF type_denoter {
+array_type : KW_ARRAY KW_LEFT_BRACE range KW_RIGHT_BRACE KW_OF type_denoter {
 };
 
-range : unsigned_integer DOT_DOT unsigned_integer {
+range : unsigned_integer KW_DOT_DOT unsigned_integer {
 };
 
-variable_declaration_part : VAR variable_declaration_list semicolon {
+variable_declaration_part : KW_VAR variable_declaration_list semicolon {
 } | {
 };
 
@@ -162,7 +195,7 @@ variable_declaration_list : variable_declaration_list semicolon variable_declara
 
  ;
 
-variable_declaration : identifier_list COLON type_denoter
+variable_declaration : identifier_list KW_COLON type_denoter
 	{
 
 	}
@@ -182,7 +215,7 @@ func_declaration_list : func_declaration_list semicolon function_declaration
 	}
  ;
 
-formal_parameter_list : LEFT_PARENS formal_parameter_section_list RIGHT_PARENS 
+formal_parameter_list : KW_LEFT_PARENS formal_parameter_section_list KW_RIGHT_PARENS 
 	{
 
 	}
@@ -201,13 +234,17 @@ formal_parameter_section : value_parameter_specification
  | variable_parameter_specification
  ;
 
-value_parameter_specification : identifier_list COLON identifier
+value_parameter_specification : identifier_list KW_COLON identifier
 	{
 
 	}
  ;
 
-variable_parameter_specification : VAR identifier_list COLON identifier
+identifier_list : identifier_list comma identifier {
+} | identifier {
+};
+
+variable_parameter_specification : KW_VAR identifier_list KW_COLON identifier
 	{
 
 	}
@@ -223,11 +260,11 @@ function_declaration : function_identification semicolon function_block
 	}
  ;
 
-function_heading : FUNCTION identifier COLON result_type
+function_heading : KW_FUNCTION identifier KW_COLON result_type
 	{
 
 	}
- | FUNCTION identifier formal_parameter_list COLON result_type
+ | KW_FUNCTION identifier formal_parameter_list KW_COLON result_type
 	{
 
 	}
@@ -235,7 +272,7 @@ function_heading : FUNCTION identifier COLON result_type
 
 result_type : identifier ;
 
-function_identification : FUNCTION identifier
+function_identification : KW_FUNCTION identifier
 	{
 
 	}
@@ -252,7 +289,7 @@ function_block :
 statement_part : compound_statement
  ;
 
-compound_statement : PBEGIN statement_sequence END
+compound_statement : KW_BEGIN statement_sequence KW_END
 	{
 
 	}
@@ -290,39 +327,39 @@ statement : assignment_statement
         }
  ;
 
-while_statement : WHILE boolean_expression DO statement
+while_statement : KW_WHILE boolean_expression KW_DO statement
 	{
 
 	}
  ;
 
-if_statement : IF boolean_expression THEN statement ELSE statement
+if_statement : KW_IF boolean_expression KW_THEN statement KW_ELSE statement
 	{
 
 	}
  ;
 
-assignment_statement : variable_access COLON_EQUAL expression
+assignment_statement : variable_access KW_COLON_EQUAL expression
 	{
 
 	}
- | variable_access COLON_EQUAL object_instantiation
+ | variable_access KW_COLON_EQUAL object_instantiation
 	{
 
 	}
  ;
 
-object_instantiation: NEW identifier
+object_instantiation: KW_NEW identifier
 	{
 
 	}
- | NEW identifier params
+ | KW_NEW identifier params
 	{
 
 	}
 ;
 
-print_statement : PRINT variable_access
+print_statement : KW_PRINT variable_access
         {
 
         }
@@ -346,7 +383,7 @@ variable_access : identifier
 	}
  ;
 
-indexed_variable : variable_access LEFT_BRACE index_expression_list RIGHT_BRACE
+indexed_variable : variable_access KW_LEFT_BRACE index_expression_list KW_RIGHT_BRACE
 	{
 
 	}
@@ -364,20 +401,20 @@ index_expression_list : index_expression_list comma index_expression
 
 index_expression : expression ;
 
-attribute_designator : variable_access DOT identifier
+attribute_designator : variable_access KW_DOT identifier
 	{
 
 	}
 ;
 
-method_designator: variable_access DOT function_designator
+method_designator: variable_access KW_DOT function_designator
 	{
 
 	}
  ;
 
 
-params : LEFT_PARENS actual_parameter_list RIGHT_PARENS 
+params : KW_LEFT_PARENS actual_parameter_list KW_RIGHT_PARENS 
 	{
 
 	}
@@ -397,11 +434,11 @@ actual_parameter : expression
 	{
 
 	}
- | expression COLON expression
+ | expression KW_COLON expression
 	{
 
 	}
- | expression COLON expression COLON expression
+ | expression KW_COLON expression KW_COLON expression
 	{
 
 	}
@@ -439,11 +476,11 @@ term : factor
 	}
  ;
 
-sign : PLUS
+sign : KW_PLUS
 	{
 
 	}
- | MINUS
+ | KW_MINUS
 	{
 
 	}
@@ -471,11 +508,11 @@ primary : variable_access
 	{
 
 	}
- | LEFT_PARENS expression RIGHT_PARENS
+ | KW_LEFT_PARENS expression KW_RIGHT_PARENS
 	{
 
 	}
- | NOT primary
+ | KW_NOT primary
 	{
 
 	}
@@ -486,7 +523,7 @@ unsigned_constant : unsigned_number
 
 unsigned_number : unsigned_integer ;
 
-unsigned_integer : DIGIT_SEQUENCE
+unsigned_integer : KW_DIGIT_SEQUENCE
 	{
 
 	}
@@ -499,74 +536,74 @@ function_designator : identifier params
 	}
  ;
 
-addop: PLUS
+addop: KW_PLUS
 	{
 
 	}
- | MINUS
+ | KW_MINUS
 	{
 
 	}
- | OR
-	{
-
-	}
- ;
-
-mulop : STAR
-	{
-
-	}
- | SLASH
-	{
-
-	}
- | MOD
-	{
-
-	}
- | AND
+ | KW_OR
 	{
 
 	}
  ;
 
-relop : EQUAL
+mulop : KW_STAR
 	{
 
 	}
- | LESS_GREATER
+ | KW_SLASH
 	{
 
 	}
- | LESS
+ | KW_MOD
 	{
 
 	}
- | GREATER
-	{
-
-	}
- | LESS_EQUAL
-	{
-
-	}
- | GREATER_EQUAL
+ | KW_AND
 	{
 
 	}
  ;
 
-identifier : IDENTIFIER
+relop : KW_EQUAL
+	{
+
+	}
+ | KW_LESS_GREATER
+	{
+
+	}
+ | KW_LESS
+	{
+
+	}
+ | KW_GREATER
+	{
+
+	}
+ | KW_LESS_EQUAL
+	{
+
+	}
+ | KW_GREATER_EQUAL
 	{
 
 	}
  ;
 
-semicolon : SEMICOLON
+identifier : KW_IDENTIFIER
+	{
+
+	}
  ;
 
-comma : COMMA
+semicolon : KW_SEMICOLON
+ ;
+
+comma : KW_COMMA
  ;
 
 %%

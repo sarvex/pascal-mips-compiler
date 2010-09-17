@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "not_suck.h"
 
 struct identifier_list_t;
 struct identifier_list_t {
@@ -26,6 +27,7 @@ struct array_type_t{
 #define TYPE_DENOTER_T_ARRAY_TYPE 1
 #define TYPE_DENOTER_T_CLASS_TYPE 2
 #define TYPE_DENOTER_T_IDENTIFIER 3
+struct class_list_t;
 struct type_denoter_t{
   int type; /* 1 - array_type
 	     * 2 - class_type
@@ -322,17 +324,17 @@ struct class_block_t{
   struct func_declaration_list_t *fdl;
 };
 
-struct class_list_t;
 struct class_list_t {
   struct class_identification_t *ci;
   struct class_block_t *cb;
   struct class_list_t *next;
 };
 
-struct program_t {
+typedef struct {
   char *id;
-  struct class_list_t *cl;
-};
+  struct class_list_t * class_list;
+} Program;
+Program * new_program(char* id, struct class_list_t * class_list);
 
 
 void parse_input();

@@ -32,6 +32,8 @@ YACC_FLAGS = -d -y
 CC = gcc
 CC_FLAGS = -g -Wall -I. -I$(OUTPUT)
 CC_COMPILE = $(CC) $(CC_FLAGS) -c -o $@ -MMD -MP -MF $@.d
+LINK = gcc
+LINK_FLAGS =
 
 $(OBJECTS):
 	$(CC_COMPILE) $(notdir $(basename $@))
@@ -43,13 +45,14 @@ $(LEX_OBJECT):
 
 $(YACC_OUTPUT): $(YACC_INPUT)
 	$(YACC) $(YACC_FLAGS) $(YACC_INPUT) -o $(YACC_OUTPUT)
+	sed -i 1i'#include "parser.h"' $(basename $(YACC_OUTPUT)).h
 $(YACC_OBJECT):
 	$(CC_COMPILE) $(YACC_OUTPUT)
 
 
 all: $(BINARY)
 $(BINARY): $(ALL_OBJECTS)
-	$(CC) $(CC_FLAGS) $(ALL_OBJECTS) -o $(BINARY)
+	$(LINK) $(LINK_FLAGS) $(ALL_OBJECTS) -o $(BINARY)
 
 clean:
 	rm -rf $(OUTPUT) $(BINARY)

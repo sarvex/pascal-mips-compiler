@@ -1,7 +1,7 @@
 %{
 
 #include <stdio.h>
-#include "bool.h"
+#include "not_suck.h"
 #include "y.tab.h"
 
 int line_number = 1;
@@ -37,49 +37,50 @@ Z [zZ]
 
 %%
 
-{A}{N}{D}   return(AND);
-{A}{R}{R}{A}{Y}   return(ARRAY);
-{C}{L}{A}{S}{S}   return(CLASS);
-{D}{O}    return(DO);
-{E}{L}{S}{E}   return(ELSE);
-{E}{N}{D}   return(END);
-{E}{X}{T}{E}{N}{D}{S}   return(EXTENDS);
-{F}{U}{N}{C}{T}{I}{O}{N} return(FUNCTION);
-{I}{F}    return(IF);
-{M}{O}{D}   return(MOD);
-{N}{E}{W}    return(NEW);
-{N}{O}{T}   return(NOT);
-{O}{F}    return(OF);
-{O}{R}    return(OR);
-{P}{R}{I}{N}{T}  return(PRINT);
-{B}{E}{G}{I}{N}   return(PBEGIN);
-{P}{R}{O}{G}{R}{A}{M}  return(PROGRAM);
-{T}{H}{E}{N}   return(THEN);
-{V}{A}{R}   return(VAR);
-{W}{H}{I}{L}{E}   return(WHILE);
-[a-zA-Z]([a-zA-Z0-9])*  return(IDENTIFIER);
+{A}{N}{D}                return(KW_AND);
+{A}{R}{R}{A}{Y}          return(KW_ARRAY);
+{B}{E}{G}{I}{N}          return(KW_BEGIN);
+{C}{L}{A}{S}{S}          return(KW_CLASS);
+{D}{O}                   return(KW_DO);
+{E}{L}{S}{E}             return(KW_ELSE);
+{E}{N}{D}                return(KW_END);
+{E}{X}{T}{E}{N}{D}{S}    return(KW_EXTENDS);
+{F}{U}{N}{C}{T}{I}{O}{N} return(KW_FUNCTION);
+{I}{F}                   return(KW_IF);
+{M}{O}{D}                return(KW_MOD);
+{N}{E}{W}                return(KW_NEW);
+{N}{O}{T}                return(KW_NOT);
+{O}{F}                   return(KW_OF);
+{O}{R}                   return(KW_OR);
+{P}{R}{I}{N}{T}          return(KW_PRINT);
+{P}{R}{O}{G}{R}{A}{M}    return(KW_PROGRAM);
+{T}{H}{E}{N}             return(KW_THEN);
+{V}{A}{R}                return(KW_VAR);
+{W}{H}{I}{L}{E}          return(KW_WHILE);
+[a-zA-Z][a-zA-Z0-9]*     return(KW_IDENTIFIER);
 
-":="    return(COLON_EQUAL);
-":"     return(COLON);
-","     return(COMMA);
-[0-9]+  return(DIGIT_SEQUENCE);
-"."     return(DOT);
-".."    return(DOT_DOT);
-"="     return(EQUAL);
-">="    return(GREATER_EQUAL);
-">"     return(GREATER);
-"["     return(LEFT_BRACE);
-"<="    return(LESS_EQUAL);
-"("     return(LEFT_PARENS);
-"<"     return(LESS);
-"-"     return(MINUS);
-"<>"    return(LESS_GREATER);
-"+"     return(PLUS);
-"]"     return(RIGHT_BRACE);
-")"     return(RIGHT_PARENS);
-";"     return(SEMICOLON);
-"/"     return(SLASH);
-"*"     return(STAR);
+":="                     return(KW_COLON_EQUAL);
+":"                      return(KW_COLON);
+","                      return(KW_COMMA);
+[0-9]+                   return(KW_DIGIT_SEQUENCE);
+"."                      return(KW_DOT);
+".."                     return(KW_DOT_DOT);
+"="                      return(KW_EQUAL);
+">="                     return(KW_GREATER_EQUAL);
+">"                      return(KW_GREATER);
+"["                      return(KW_LEFT_BRACE);
+"<="                     return(KW_LESS_EQUAL);
+"("                      return(KW_LEFT_PARENS);
+"<"                      return(KW_LESS);
+"-"                      return(KW_MINUS);
+"<>"                     return(KW_LESS_GREATER);
+"+"                      return(KW_PLUS);
+"]"                      return(KW_RIGHT_BRACE);
+")"                      return(KW_RIGHT_PARENS);
+";"                      return(KW_SEMICOLON);
+"/"                      return(KW_SLASH);
+"*"                      return(KW_STAR);
+
 "(*" |
 "{"  {
     while (true) {
