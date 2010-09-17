@@ -19,7 +19,6 @@ Program *main_program;
 %token KEYWORD_CLASS
 %token KEYWORD_COLON
 %token KEYWORD_COMMA
-%token TOKEN_DIGIT_SEQUENCE
 %token KEYWORD_DO
 %token KEYWORD_DOT
 %token KEYWORD_DOT_DOT
@@ -62,6 +61,7 @@ Program *main_program;
 %token KEYWORD_VAR
 %token KEYWORD_WHILE
 
+%token <_int> TOKEN_DIGIT_SEQUENCE
 %token <_string> TOKEN_IDENTIFIER
 
 %type <type_denoter> type_denoter
@@ -96,11 +96,10 @@ Program *main_program;
 %type <array_type> array_type
 %type <class_block> class_block
 %type <variable_declaration_list> variable_declaration_part
-%type <function_declaration_list> func_declaration_list
+%type <function_declaration_list> function_declaration_part
+%type <function_declaration_list> function_declaration_list
 %type <function_declaration> function_declaration
 %type <function_block> function_block
-%type <function_heading> function_heading
-%type <formal_parameter_section_list> formal_parameter_list
 %type <class_list> class_list
 %type <class_declaration> class_declaration
 %type <program> program
@@ -135,14 +134,13 @@ Program *main_program;
     AdditiveExpression * additive_expression;
     MultiplicativeExpression * multiplicative_expression;
     NegatableExpression * negatable_expression;
-    int * _int;
+    int _int;
     PrimaryExpression * primary_expression;
     ArrayType * array_type;
     ClassBlock * class_block;
     FunctionDeclarationList * function_declaration_list;
     FunctionDeclaration * function_declaration;
     FunctionBlock * function_block;
-    FunctionHeading * function_heading;
     ClassList * class_list;
     ClassDeclaration * class_declaration;
     Program * program;
@@ -169,98 +167,81 @@ class_declaration : KEYWORD_CLASS TOKEN_IDENTIFIER KEYWORD_BEGIN class_block KEY
     $$ = new ClassDeclaration($2, $4, $6);
 };
 
-class_block : variable_declaration_part func_declaration_list {
+class_block : variable_declaration_part function_declaration_part {
     $$ = new ClassBlock($1, $2);
 };
 
-type_denoter : array_type {
+variable_declaration_part : KEYWORD_VAR variable_declaration_list KEYWORD_SEMICOLON {
+    $$ = $2;
+} | {
+    $$ = NULL;
+};
+
+variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable_declaration {
+    $$ = new VariableDeclarationList($3, $1);
+} | variable_declaration {
+    $$ = new VariableDeclarationList($1, NULL);
+};
+
+variable_declaration : identifier_list KEYWORD_COLON type_denoter {
+    $$ = new VariableDeclaration($1, $3);
+};
+
+identifier_list : identifier_list KEYWORD_COMMA TOKEN_IDENTIFIER {
+    $$ = new IdentifierList($3, $1);
 } | TOKEN_IDENTIFIER {
+    $$ = new IdentifierList($1, NULL);
+};
+
+type_denoter : array_type {
+    $$ = new TypeDenoter($1);
+} | TOKEN_IDENTIFIER {
+    $$ = new TypeDenoter($1);
 } | KEYWORD_INTEGER {
+    $$ = new TypeDenoter(TypeDenoter::INTEGER);
 } | KEYWORD_REAL {
+    $$ = new TypeDenoter(TypeDenoter::REAL);
 } | KEYWORD_CHAR {
+    $$ = new TypeDenoter(TypeDenoter::CHAR);
 } | KEYWORD_BOOLEAN {
+    $$ = new TypeDenoter(TypeDenoter::BOOLEAN);
 };
 
 array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_DIGIT_SEQUENCE KEYWORD_DOT_DOT TOKEN_DIGIT_SEQUENCE KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
+    $$ = new ArrayType($3, $5, $8);
 };
 
-variable_declaration_part : KEYWORD_VAR variable_declaration_list KEYWORD_SEMICOLON {
+
+function_declaration_part : function_declaration_list {
+    $$ = $1;
 } | {
+    $$ = NULL;
 };
 
-variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable_declaration
-	{
+function_declaration_list : function_declaration_list KEYWORD_SEMICOLON function_declaration {
+    $$ = new FunctionDeclarationList($3, $1);
+} | function_declaration {
+    $$ = new FunctionDeclarationList($1, NULL);
+};
 
-	}
- | variable_declaration
-	{
+function_declaration :
+    KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                                                   KEYWORD_SEMICOLON function_block {
+    $$ = new FunctionDeclaration($2, NULL, NULL, $4);
+} | KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                        KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
+    $$ = new FunctionDeclaration($2, NULL, $4, $6);
+} | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS formal_parameter_section_list KEYWORD_RIGHT_PARENS KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
+    $$ = new FunctionDeclaration($2, $4, $7, $9);
+};
 
-	}
-
- ;
-
-variable_declaration : identifier_list KEYWORD_COLON type_denoter
-	{
-
-	}
- ;
-
-func_declaration_list : func_declaration_list KEYWORD_SEMICOLON function_declaration
-	{
-
-	}
- | function_declaration
-	{
-
-	}
- |
-	{
-
-	}
- ;
-
-formal_parameter_list : KEYWORD_LEFT_PARENS formal_parameter_section_list KEYWORD_RIGHT_PARENS 
-	{
-
-	}
-;
-formal_parameter_section_list : formal_parameter_section_list KEYWORD_SEMICOLON formal_parameter_section
-	{
-
-	}
- | formal_parameter_section
-	{
-
-	}
- ;
+formal_parameter_section_list : formal_parameter_section_list KEYWORD_SEMICOLON formal_parameter_section {
+    $$ = new FormalParameterSectionList($3, $1);
+} | formal_parameter_section {
+    $$ = new FormalParameterSectionList($1, NULL);
+};
 
 formal_parameter_section : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
 } | KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
 };
-
-identifier_list : identifier_list KEYWORD_COMMA TOKEN_IDENTIFIER {
-} | TOKEN_IDENTIFIER {
-};
-
-function_declaration : KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_SEMICOLON function_block
-	{
-
-	}
- | function_heading KEYWORD_SEMICOLON function_block
-	{
-
-	}
- ;
-
-function_heading : KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_COLON type_denoter
-	{
-
-	}
- | KEYWORD_FUNCTION TOKEN_IDENTIFIER formal_parameter_list KEYWORD_COLON type_denoter
-	{
-
-	}
- ;
 
 function_block : 
   variable_declaration_part

@@ -19,7 +19,6 @@ struct FunctionDeclaration;
 struct FormalParameterSectionList;
 struct FormalParameterSection;
 struct IdentifierList;
-struct FunctionHeading;
 struct FunctionBlock;
 struct StatementList;
 struct Statement;
@@ -119,17 +118,12 @@ struct FunctionDeclarationList {
 };
 
 struct FunctionDeclaration {
-    FunctionHeading * heading;
-    FunctionBlock * block;
-    FunctionDeclaration(FunctionHeading * heading, FunctionBlock * block)
-        : heading(heading), block(block) {}
-};
-
-struct FunctionHeading {
     char * id;
     FormalParameterSectionList * parameter_list;
-    FunctionHeading(char * id, FormalParameterSectionList * parameter_list)
-        : id(id), parameter_list(parameter_list) {}
+    TypeDenoter * type;
+    FunctionBlock * block;
+    FunctionDeclaration(char * id, FormalParameterSectionList * parameter_list, TypeDenoter * type, FunctionBlock * block)
+        : id(id), parameter_list(parameter_list), type(type), block(block) {}
 };
 
 struct FormalParameterSectionList {
