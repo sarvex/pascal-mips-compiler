@@ -70,11 +70,8 @@ Program *main_program;
 %type <ap> actual_parameter
 %type <vd> variable_declaration
 %type <vdl> variable_declaration_list
-%type <un> unsigned_integer
 %type <fpsl> formal_parameter_section_list
 %type <fps> formal_parameter_section
-%type <fps> value_parameter_specification
-%type <fps> variable_parameter_specification
 %type <va> variable_access
 %type <as> assignment_statement
 %type <os> object_instantiation
@@ -101,7 +98,6 @@ Program *main_program;
 %type <funcd> function_declaration
 %type <fb> function_block
 %type <fh> function_heading
-%type <_string> function_identification
 %type <fpsl> formal_parameter_list
 %type <class_list> class_list
 %type <class_declaration> class_declaration
@@ -119,7 +115,6 @@ Program *main_program;
     ActualParameter *ap;
     VariableDeclarationList *vdl;
     VariableDeclaration *vd;
-    UnsignedNumber *un;
     FormalParameterSectionList *fpsl;
     FormalParameterSection *fps;
     VariableAccess *va;
@@ -128,7 +123,7 @@ Program *main_program;
     PrintStatement *ps;
     Expression *e;
     Statement *s;
-    StatementSequence *ss;
+    StatementList *ss;
     IfStatement *is;
     WhileStatement *ws;
     IndexedVariable *iv;
@@ -181,7 +176,7 @@ type_denoter : array_type {
 } | KEYWORD_BOOLEAN {
 };
 
-array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET unsigned_integer KEYWORD_DOT_DOT unsigned_integer KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
+array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_DIGIT_SEQUENCE KEYWORD_DOT_DOT TOKEN_DIGIT_SEQUENCE KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
 };
 
 variable_declaration_part : KEYWORD_VAR variable_declaration_list KEYWORD_SEMICOLON {
@@ -234,27 +229,15 @@ formal_parameter_section_list : formal_parameter_section_list KEYWORD_SEMICOLON 
 	}
  ;
 
-formal_parameter_section : value_parameter_specification
- | variable_parameter_specification
- ;
-
-value_parameter_specification : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER
-	{
-
-	}
- ;
+formal_parameter_section : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
+} | KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
+};
 
 identifier_list : identifier_list KEYWORD_COMMA TOKEN_IDENTIFIER {
 } | TOKEN_IDENTIFIER {
 };
 
-variable_parameter_specification : KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER
-	{
-
-	}
- ;
-
-function_declaration : function_identification KEYWORD_SEMICOLON function_block
+function_declaration : KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_SEMICOLON function_block
 	{
 
 	}
@@ -273,12 +256,6 @@ function_heading : KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_COLON type_denoter
 
 	}
  ;
-
-function_identification : KEYWORD_FUNCTION TOKEN_IDENTIFIER
-	{
-
-	}
-;
 
 function_block : 
   variable_declaration_part
@@ -499,10 +476,6 @@ primary : variable_access
 	{
 
 	}
- | unsigned_integer
-	{
-
-	}
  | function_designator
 	{
 
@@ -512,12 +485,6 @@ primary : variable_access
 
 	}
  | KEYWORD_NOT primary
-	{
-
-	}
- ;
-
-unsigned_integer : TOKEN_DIGIT_SEQUENCE
 	{
 
 	}

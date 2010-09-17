@@ -1,4 +1,5 @@
 Project 1 Release:
+ - No arrays as parameters
  - Identifying references to missing classes
  - Identifying use of undeclared variables
  - Identifying use of undefined datatypes

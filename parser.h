@@ -21,7 +21,7 @@ struct FormalParameterSection;
 struct IdentifierList;
 struct FunctionHeading;
 struct FunctionBlock;
-struct StatementSequence;
+struct StatementList;
 struct Statement;
 struct WhileStatement;
 struct IfStatement;
@@ -41,8 +41,6 @@ struct ActualParameter;
 struct Term;
 struct Factor;
 struct Primary;
-struct UnsignedNumber;
-struct ExpressionData;
 
 
 
@@ -113,62 +111,64 @@ struct ArrayType {
     ArrayType(int min, int max, TypeDenoter * type) : min(min), max(max), type(type) {}
 };
 
-struct UnsignedNumber {
-    int ui;
-    ExpressionData *expr;
-};
-
 struct FunctionDeclarationList {
-    FunctionDeclaration *fd;
-    FunctionDeclarationList *next;
+    FunctionDeclaration * item;
+    FunctionDeclarationList * next;
+    FunctionDeclarationList(FunctionDeclaration * item, FunctionDeclarationList * next)
+        : item(item), next(next) {}
 };
 
 struct FunctionDeclaration {
-    FunctionHeading *fh;
-    FunctionBlock *fb;
+    FunctionHeading * heading;
+    FunctionBlock * block;
+    FunctionDeclaration(FunctionHeading * heading, FunctionBlock * block)
+        : heading(heading), block(block) {}
 };
 
 struct FunctionHeading {
-    char *id;
-    char *res; 
-    FormalParameterSectionList *fpsl;
+    char * id;
+    FormalParameterSectionList * parameter_list;
+    FunctionHeading(char * id, FormalParameterSectionList * parameter_list)
+        : id(id), parameter_list(parameter_list) {}
 };
 
 struct FormalParameterSectionList {
-    FormalParameterSection *fps;
-    FormalParameterSectionList *next;
+    FormalParameterSection * item;
+    FormalParameterSectionList * next;
+    FormalParameterSectionList(FormalParameterSection * item, FormalParameterSectionList * next)
+        : item(item), next(next) {}
 };
 
 struct FormalParameterSection {
-    IdentifierList *il;
-    char *id;
-    int is_var;
+    IdentifierList * id_list;
+    TypeDenoter * type;
+    FormalParameterSection(IdentifierList * id_list, TypeDenoter * type)
+        : id_list(id_list), type(type) {}
 };
 
 struct FunctionBlock {
-    VariableDeclarationList *vdl;
-    StatementSequence *ss;
+    VariableDeclarationList * variables;
+    StatementList * statements;
+    FunctionBlock(VariableDeclarationList * variables, StatementList * statements)
+        : variables(variables), statements(statements) {}
 };
 
-struct StatementSequence {
-    Statement *s;
-    StatementSequence *next;
+struct StatementList {
+    Statement * item;
+    StatementList * next;
+    StatementList(Statement * item, StatementList * next) : item(item), next(next) {}
 };
 
-#define STATEMENT_T_ASSIGNMENT 1
-#define STATEMENT_T_SEQUENCE 2
-#define STATEMENT_T_IF 3
-#define STATEMENT_T_WHILE 4
-#define STATEMENT_T_PRINT 5
 struct Statement {
-    int type;
+    enum Type {ASSIGNMENT, IF, PRINT, WHILE, COMPOUND};
+    Type type;
     union {
-        AssignmentStatement *as;
-        IfStatement *is;
-        PrintStatement *ps;
-        WhileStatement *ws;
-        StatementSequence *ss;
-    } data;
+        AssignmentStatement * assignment;
+        IfStatement * if_statement;
+        PrintStatement * print_statement;
+        WhileStatement * while_statement;
+        StatementList * compound_statement;
+    };
 };
 
 struct AssignmentStatement {
@@ -210,39 +210,33 @@ struct VariableAccess {
         MethodDesignator *md;
     } data;
     char *recordname;
-    ExpressionData *expr;
 };
 
 struct IndexedVariable {
     VariableAccess *va;
     IndexExpressionList *iel;
-    ExpressionData *expr;
 };
 
 struct IndexExpressionList {
     Expression *e;
     IndexExpressionList *next;
-    ExpressionData *expr;
 };
 
 struct Expression {
     SimpleExpression *se1;
     int relop;
     SimpleExpression *se2;
-    ExpressionData *expr;
 };
 
 struct SimpleExpression {
     Term *t;
     int addop;
-    ExpressionData *expr;
     SimpleExpression *next;
 };
 
 struct Term {
     Factor *f;
     int mulop;
-    ExpressionData *expr;
     Term *next;
 };
 
@@ -257,7 +251,6 @@ struct Factor {
         } f;
         Primary *p;
     } data;
-    ExpressionData *expr;
 };
 
 #define PRIMARY_T_VARIABLE_ACCESS 1
@@ -269,7 +262,7 @@ struct Primary {
     int type;
     union {
         VariableAccess *va; 
-        UnsignedNumber *un;
+        int un;
         FunctionDesignator *fd;
         Expression *e;
         struct {
@@ -277,7 +270,6 @@ struct Primary {
             Primary *next;
         } p;
     } data;
-    ExpressionData *expr;
 };
 
 struct FunctionDesignator {
@@ -307,14 +299,6 @@ struct MethodDesignator {
     FunctionDesignator *fd;
 };
 
-
-/* This is a temporary data structure used to hold the value and type of
-   an expression. It is included (inherited) by a bunch of other data
-   structures */
-struct ExpressionData {
-    float val;
-    char *type;
-};
 
 
 
