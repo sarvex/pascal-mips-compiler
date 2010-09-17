@@ -104,9 +104,9 @@ Program *main_program;
 %type <class_list> class_list
 %type <class_declaration> class_declaration
 %type <program> program
-%type <op> relop
-%type <op> addop
-%type <op> mulop
+%type <op> comparison_operator
+%type <op> additive_operator
+%type <op> multiplicative_operator
 
 %union {
     TypeDenoter *type_denoter;
@@ -381,15 +381,15 @@ actual_parameter : expression {
 };
 
 expression : additive_expression {
-} | additive_expression relop additive_expression {
+} | additive_expression comparison_operator additive_expression {
 };
 
 additive_expression : multiplicative_expression {
-} | additive_expression addop multiplicative_expression {
+} | additive_expression additive_operator multiplicative_expression {
 };
 
 multiplicative_expression : negatable_expression {
-} | multiplicative_expression mulop negatable_expression {
+} | multiplicative_expression multiplicative_operator negatable_expression {
 };
 
 sign : KEYWORD_PLUS {
@@ -412,63 +412,24 @@ primary_expression : variable_access {
 function_designator : TOKEN_IDENTIFIER params {
 };
 
-addop: KEYWORD_PLUS
-	{
+additive_operator : KEYWORD_PLUS {
+} | KEYWORD_MINUS {
+} | KEYWORD_OR {
+};
 
-	}
- | KEYWORD_MINUS
-	{
+multiplicative_operator : KEYWORD_STAR {
+} | KEYWORD_SLASH {
+} | KEYWORD_MOD {
+} | KEYWORD_AND {
+};
 
-	}
- | KEYWORD_OR
-	{
-
-	}
- ;
-
-mulop : KEYWORD_STAR
-	{
-
-	}
- | KEYWORD_SLASH
-	{
-
-	}
- | KEYWORD_MOD
-	{
-
-	}
- | KEYWORD_AND
-	{
-
-	}
- ;
-
-relop : KEYWORD_EQUAL
-	{
-
-	}
- | KEYWORD_LESS_GREATER
-	{
-
-	}
- | KEYWORD_LESS
-	{
-
-	}
- | KEYWORD_GREATER
-	{
-
-	}
- | KEYWORD_LESS_EQUAL
-	{
-
-	}
- | KEYWORD_GREATER_EQUAL
-	{
-
-	}
- ;
+comparison_operator : KEYWORD_EQUAL {
+} | KEYWORD_LESS_GREATER {
+} | KEYWORD_LESS {
+} | KEYWORD_GREATER {
+} | KEYWORD_LESS_EQUAL {
+} | KEYWORD_GREATER_EQUAL {
+};
 
 %%
 

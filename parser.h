@@ -218,20 +218,23 @@ struct ExpressionList {
 };
 
 struct Expression {
+    enum Operator {EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL};
     AdditiveExpression * left;
-    int relop;
+    Operator _operator;
     AdditiveExpression * right;
 };
 
 struct AdditiveExpression {
+    enum Operator {PLUS, MINUS, OR};
     MultiplicativeExpression * left;
-    int addop;
+    Operator _operator;
     AdditiveExpression * right;
 };
 
 struct MultiplicativeExpression {
+    enum Operator {TIMES, DIVIDE, MOD, AND};
     NegatableExpression * left;
-    int mulop;
+    Operator _operator;
     MultiplicativeExpression * right;
 };
 
