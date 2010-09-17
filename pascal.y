@@ -336,6 +336,10 @@ if_statement : KEYWORD_IF expression KEYWORD_THEN statement KEYWORD_ELSE stateme
 	{
 
 	}
+ | KEYWORD_IF expression KEYWORD_THEN statement 
+ {
+
+ }
  ;
 
 assignment_statement : variable_access KEYWORD_COLON_EQUAL expression

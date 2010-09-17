@@ -37,7 +37,8 @@ def main():
             tests[test_name] = {}
 
         if ext == '.p.expected':
-            tests[test_name]['expected'] = open(absolute(f), 'r').read()
+            expected_output = open(absolute(f), 'r').read()
+            tests[test_name]['expected'] = expected_output.replace('Errors detected. Exiting.\n', '')
         else:
             tests[test_name]['source'] = open(absolute(f), 'r').read()
 
