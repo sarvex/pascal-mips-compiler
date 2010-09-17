@@ -283,27 +283,12 @@ statement_sequence : statement
 	}
  ;
 
-statement : assignment_statement
-	{
-
-	}
- | compound_statement
-	{
-
-	}
- | if_statement
-	{
-
-	}
- | while_statement
-	{
-
-	}
- | print_statement
-        {
-
-        }
- ;
+statement : assignment_statement {
+} | compound_statement {
+} | if_statement {
+} | while_statement {
+} | print_statement {
+};
 
 while_statement : KEYWORD_WHILE expression KEYWORD_DO statement
 	{

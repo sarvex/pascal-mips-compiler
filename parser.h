@@ -169,32 +169,45 @@ struct Statement {
         WhileStatement * while_statement;
         StatementList * compound_statement;
     };
-    // TODO: resume writing constructors here
+    Statement(AssignmentStatement * assignment) : type(ASSIGNMENT), assignment(assignment) {}
+    Statement(IfStatement * if_statement) : type(IF), if_statement(if_statement) {}
+    Statement(PrintStatement * print_statement) : type(PRINT), print_statement(print_statement) {}
+    Statement(WhileStatement * while_statement) : type(WHILE), while_statement(while_statement) {}
+    Statement(StatementList * compound_statement) : type(COMPOUND), compound_statement(compound_statement) {}
 };
 
 struct AssignmentStatement {
     VariableAccess * variable;
     Expression * expression;
+    AssignmentStatement(VariableAccess * variable, Expression * epxression)
+        : variable(variable), expression(expression) {}
 };
 
 struct ObjectInstantiation {
-    char * id;
+    char * class_id;
     ActualParameterList * parameter_list;
+    ObjectInstantiation(char * class_id, ActualParameterList * parameter_list)
+        : class_id(class_id), parameter_list(parameter_list) {}
 };
 
 struct IfStatement {
     Expression * expression;
     Statement * then_statement;
     Statement * else_statement;
+    IfStatement(Expression * expression, Statement * then_statement, Statement * else_statement)
+        : expression(expression), then_statement(then_statement), else_statement(else_statement) {}
 };
 
 struct PrintStatement {
     Expression * expression;
+    PrintStatement(Expression * expression) : expression(expression) {}
 };
 
 struct WhileStatement {
     Expression * expression;
     Statement * statement;
+    WhileStatement(Expression * expression, Statement * statement)
+        : expression(expression), statement(statement) {}
 };
 
 struct VariableAccess {
@@ -205,16 +218,23 @@ struct VariableAccess {
         IndexedVariable * indexed_variable;
         AttributeDesignator * attribute;
     };
+    VariableAccess(char * id) : type(IDENTIFIER), id(id) {}
+    VariableAccess(IndexedVariable * indexed_variable)
+        : type(INDEXED_VARIABLE), indexed_variable(indexed_variable) {}
+    VariableAccess(AttributeDesignator * attribute) : type(ATTRIBUTE), attribute(attribute) {}
 };
 
 struct IndexedVariable {
     VariableAccess * variable;
     ExpressionList * expression_list;
+    IndexedVariable(VariableAccess * variable, ExpressionList * expression_list)
+        : variable(variable), expression_list(expression_list) {}
 };
 
 struct ExpressionList {
     Expression * item;
     ExpressionList * next;
+    ExpressionList(Expression * item, ExpressionList * next) : item(item), next(next) {}
 };
 
 struct Expression {
@@ -222,6 +242,9 @@ struct Expression {
     AdditiveExpression * left;
     Operator _operator;
     AdditiveExpression * right;
+    Expression(AdditiveExpression * only_expression) : left(only_expression), right(NULL) {}
+    Expression(AdditiveExpression * left, Operator _operator, AdditiveExpression * right)
+        : left(left), _operator(_operator), right(right) {}
 };
 
 struct AdditiveExpression {
@@ -229,6 +252,10 @@ struct AdditiveExpression {
     MultiplicativeExpression * left;
     Operator _operator;
     AdditiveExpression * right;
+    AdditiveExpression(MultiplicativeExpression * only_expression)
+        : left(only_expression), right(NULL) {}
+    AdditiveExpression(MultiplicativeExpression * left, Operator _operator, AdditiveExpression * right)
+        : left(left), _operator(_operator), right(right) {}
 };
 
 struct MultiplicativeExpression {
@@ -236,6 +263,10 @@ struct MultiplicativeExpression {
     NegatableExpression * left;
     Operator _operator;
     MultiplicativeExpression * right;
+    MultiplicativeExpression(NegatableExpression * only_expression)
+        : left(only_expression), right(NULL) {}
+    MultiplicativeExpression(NegatableExpression * left, Operator _operator, MultiplicativeExpression * right)
+        : left(left), _operator(_operator), right(right) {}
 };
 
 struct NegatableExpression {
@@ -248,6 +279,9 @@ struct NegatableExpression {
         };
         PrimaryExpression * primary_expression;
     };
+    NegatableExpression(int sign, NegatableExpression * next) : type(SIGN), sign(sign), next(next) {}
+    NegatableExpression(PrimaryExpression * primary_expression)
+        : type(PRIMARY), primary_expression(primary_expression) {}
 };
 
 struct PrimaryExpression {
@@ -257,19 +291,32 @@ struct PrimaryExpression {
         VariableAccess * variable; 
         FunctionDesignator * function;
         MethodDesignator * method;
+        ObjectInstantiation * object_instantiation;
         Expression * parens_expression;
         PrimaryExpression * not_expression;
     };
+    PrimaryExpression(VariableAccess * variable) : type(VARIABLE), variable(variable) {}
+    PrimaryExpression(FunctionDesignator * function) : type(FUNCTION), function(function) {}
+    PrimaryExpression(MethodDesignator * method) : type(METHOD), method(method) {}
+    PrimaryExpression(ObjectInstantiation * object_instantiation) 
+        : type(OBJECT_INSTANTIATION), object_instantiation(object_instantiation) {}
+    PrimaryExpression(Expression * parens_expression)
+        : type(PARENS), parens_expression(parens_expression) {}
+    PrimaryExpression(PrimaryExpression * not_expression)
+        : type(NOT), not_expression(not_expression) {}
 };
 
 struct FunctionDesignator {
     char * id;
     ActualParameterList * parameter_list;
+    FunctionDesignator(char * id, ActualParameterList * parameter_list)
+        : id(id), parameter_list(parameter_list) {}
 };
 
 struct ActualParameterList {
     ActualParameter * item;
     ActualParameterList * next;
+    ActualParameterList(ActualParameter * item, ActualParameterList * next) : item(item), next(next) {}
 };
 
 struct ActualParameter {
@@ -277,17 +324,26 @@ struct ActualParameter {
     // only for write and writeln :(
     Expression * special_expression_1;
     Expression * special_expression_2;
+    ActualParameter(Expression * expression)
+        : expression(expression), special_expression_1(NULL), special_expression_2(NULL) {}
+    ActualParameter(Expression * expression, Expression * special_expression_1)
+        : expression(expression), special_expression_1(special_expression_1), special_expression_2(NULL) {}
+    ActualParameter(Expression * expression, Expression * special_expression_1, Expression * special_expression_2)
+        : expression(expression), special_expression_1(special_expression_1), special_expression_2(special_expression_2) {}
 };
 
 
 struct AttributeDesignator {
     VariableAccess * owner;
     char * id;
+    AttributeDesignator(VariableAccess * owner, char * id) : owner(owner), id(id) {}
 };
 
 struct MethodDesignator {
     VariableAccess * owner;
     FunctionDesignator * function;
+    MethodDesignator(VariableAccess * owner, FunctionDesignator * function)
+        : owner(owner), function(function) {}
 };
 
 
