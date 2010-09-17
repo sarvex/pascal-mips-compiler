@@ -11,6 +11,8 @@ extern int line_number;
 Program *main_program;
 %}
 
+%expect 1
+
 %token KEYWORD_AND
 %token KEYWORD_ARRAY
 %token KEYWORD_COLON_EQUAL
@@ -85,7 +87,7 @@ Program *main_program;
 %type <iv> indexed_variable
 %type <ad> attribute_designator
 %type <md> method_designator
-%type <iel> index_expression_list
+%type <el> expression_list
 %type <se> simple_expression
 %type <t> term
 %type <f> factor
@@ -129,7 +131,7 @@ Program *main_program;
     IndexedVariable *iv;
     AttributeDesignator *ad;
     MethodDesignator *md;
-    IndexExpressionList *iel;
+    ExpressionList *el;
     SimpleExpression *se;
     Term *t;
     Factor *f;
@@ -363,13 +365,13 @@ variable_access : TOKEN_IDENTIFIER
 	}
  ;
 
-indexed_variable : variable_access KEYWORD_LEFT_BRACKET index_expression_list KEYWORD_RIGHT_BRACKET
+indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_RIGHT_BRACKET
 	{
 
 	}
  ;
 
-index_expression_list : index_expression_list KEYWORD_COMMA expression
+expression_list : expression_list KEYWORD_COMMA expression
 	{
 
 	}

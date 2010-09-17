@@ -32,7 +32,7 @@ struct SimpleExpression;
 struct ObjectInstantiation;
 struct VariableAccess;
 struct IndexedVariable;
-struct IndexExpressionList;
+struct ExpressionList;
 struct AttributeDesignator;
 struct FunctionDesignator;
 struct MethodDesignator;
@@ -214,12 +214,12 @@ struct VariableAccess {
 
 struct IndexedVariable {
     VariableAccess *va;
-    IndexExpressionList *iel;
+    ExpressionList *expression_list;
 };
 
-struct IndexExpressionList {
+struct ExpressionList {
     Expression *e;
-    IndexExpressionList *next;
+    ExpressionList *next;
 };
 
 struct Expression {
