@@ -88,11 +88,11 @@ Program *main_program;
 %type <ad> attribute_designator
 %type <md> method_designator
 %type <el> expression_list
-%type <se> simple_expression
-%type <t> term
-%type <f> factor
+%type <se> additive_expression
+%type <t> multiplicative_expression
+%type <f> negatable_expression
 %type <_int> sign
-%type <p> primary
+%type <p> primary_expression
 %type <at> array_type
 %type <class_block> class_block
 %type <vdl> variable_declaration_part
@@ -321,25 +321,12 @@ if_statement : KEYWORD_IF expression KEYWORD_THEN statement KEYWORD_ELSE stateme
  }
  ;
 
-assignment_statement : variable_access KEYWORD_COLON_EQUAL expression
-	{
+assignment_statement : variable_access KEYWORD_COLON_EQUAL expression {
+};
 
-	}
- | variable_access KEYWORD_COLON_EQUAL object_instantiation
-	{
-
-	}
- ;
-
-object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER
-	{
-
-	}
- | KEYWORD_NEW TOKEN_IDENTIFIER params
-	{
-
-	}
-;
+object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
+} | KEYWORD_NEW TOKEN_IDENTIFIER params {
+};
 
 print_statement : KEYWORD_PRINT variable_access
         {
@@ -424,73 +411,44 @@ actual_parameter : expression
 	}
  ;
 
-expression : simple_expression
+expression : additive_expression {
+} | additive_expression relop additive_expression {
+};
+
+additive_expression : multiplicative_expression {
+} | additive_expression addop multiplicative_expression {
+};
+
+multiplicative_expression : negatable_expression
 	{
 
 	}
- | simple_expression relop simple_expression
-	{
-
-	}
- ;
-
-simple_expression : term
-	{
-
-	}
- | simple_expression addop term
-	{
-
-	}
- ;
-
-term : factor
-	{
-
-	}
- | term mulop factor
+ | multiplicative_expression mulop negatable_expression
 	{
 
 	}
  ;
 
-sign : KEYWORD_PLUS
+sign : KEYWORD_PLUS {
+} | KEYWORD_MINUS {
+};
+
+negatable_expression : sign negatable_expression
 	{
 
 	}
- | KEYWORD_MINUS
-	{
-
-	}
- ;
-
-factor : sign factor
-	{
-
-	}
- | primary 
+ | primary_expression 
 	{
 
 	}
  ;
 
-primary : variable_access
-	{
-
-	}
- | function_designator
-	{
-
-	}
- | KEYWORD_LEFT_PARENS expression KEYWORD_RIGHT_PARENS
-	{
-
-	}
- | KEYWORD_NOT primary
-	{
-
-	}
- ;
+primary_expression : variable_access {
+} | function_designator {
+} | object_instantiation {
+} | KEYWORD_LEFT_PARENS expression KEYWORD_RIGHT_PARENS {
+} | KEYWORD_NOT primary_expression {
+};
 
 /* functions with no params will be handled by plain identifier */
 function_designator : TOKEN_IDENTIFIER params

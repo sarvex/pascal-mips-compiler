@@ -172,9 +172,8 @@ struct Statement {
 };
 
 struct AssignmentStatement {
-    VariableAccess *va;
-    Expression *e;  
-    ObjectInstantiation *oe;
+    VariableAccess * variable_access;
+    Expression * expression;
 };
 
 struct ObjectInstantiation {
