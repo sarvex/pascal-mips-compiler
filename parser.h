@@ -260,30 +260,31 @@ struct PrimaryExpression {
 };
 
 struct FunctionDesignator {
-    char *id;
-    ActualParameterList *apl;
+    char * id;
+    ActualParameterList * parameters;
 };
 
 struct ActualParameterList {
-    ActualParameter *ap;
-    ActualParameterList *next;
+    ActualParameter * item;
+    ActualParameterList * next;
 };
 
 struct ActualParameter {
-    Expression *e1;
-    Expression *e2;
-    Expression *e3;
+    Expression * expression;
+    // only for write and writeln :(
+    Expression * special_expression_1;
+    Expression * special_expression_2;
 };
 
 
 struct AttributeDesignator {
-    VariableAccess *va;
-    char *id;
+    VariableAccess * owner;
+    char * id;
 };
 
 struct MethodDesignator {
-    VariableAccess *va;
-    FunctionDesignator *fd;
+    VariableAccess * owner;
+    FunctionDesignator * function;
 };
 
 

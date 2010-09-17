@@ -1,5 +1,6 @@
 Project 1 Release:
  - No arrays as parameters
+ - No colons in parameters (except for write and writeln)
  - Identifying references to missing classes
  - Identifying use of undeclared variables
  - Identifying use of undefined datatypes

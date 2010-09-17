@@ -352,17 +352,11 @@ expression_list : expression_list KEYWORD_COMMA expression
 	}
  ;
 
-attribute_designator : variable_access KEYWORD_DOT TOKEN_IDENTIFIER
-	{
+attribute_designator : variable_access KEYWORD_DOT TOKEN_IDENTIFIER {
+};
 
-	}
-;
-
-method_designator: variable_access KEYWORD_DOT function_designator
-	{
-
-	}
- ;
+method_designator: variable_access KEYWORD_DOT function_designator {
+};
 
 
 params : KEYWORD_LEFT_PARENS actual_parameter_list KEYWORD_RIGHT_PARENS 
@@ -381,19 +375,10 @@ actual_parameter_list : actual_parameter_list KEYWORD_COMMA actual_parameter
 	}
  ;
 
-actual_parameter : expression
-	{
-
-	}
- | expression KEYWORD_COLON expression
-	{
-
-	}
- | expression KEYWORD_COLON expression KEYWORD_COLON expression
-	{
-
-	}
- ;
+actual_parameter : expression {
+} | expression KEYWORD_COLON expression {
+} | expression KEYWORD_COLON expression KEYWORD_COLON expression {
+};
 
 expression : additive_expression {
 } | additive_expression relop additive_expression {
@@ -424,11 +409,8 @@ primary_expression : variable_access {
 };
 
 /* functions with no params will be handled by plain identifier */
-function_designator : TOKEN_IDENTIFIER params
-	{
-
-	}
- ;
+function_designator : TOKEN_IDENTIFIER params {
+};
 
 addop: KEYWORD_PLUS
 	{
