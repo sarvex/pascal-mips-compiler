@@ -67,7 +67,6 @@ Z [zZ]
 ":="                        return(KEYWORD_COLON_EQUAL);
 ":"                         return(KEYWORD_COLON);
 ","                         return(KEYWORD_COMMA);
-[0-9]+                      return(KEYWORD_DIGIT_SEQUENCE);
 "."                         return(KEYWORD_DOT);
 ".."                        return(KEYWORD_DOT_DOT);
 "="                         return(KEYWORD_EQUAL);
@@ -89,6 +88,11 @@ Z [zZ]
 [a-zA-Z][a-zA-Z0-9]* {
     yylval._string = strdup(yytext);
     return(TOKEN_IDENTIFIER);
+}
+[0-9]+ {
+    // TODO have string_to_int
+    // yylval._int = string_to_int(ttyext);
+    return(TOKEN_DIGIT_SEQUENCE);
 }
 
 "(*" |

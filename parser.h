@@ -12,7 +12,6 @@ struct ClassDeclaration;
 struct ClassBlock;
 struct TypeDenoter;
 struct ArrayType;
-struct Range;
 struct VariableDeclarationList;
 struct VariableDeclaration;
 struct FunctionDeclarationList;
@@ -68,44 +67,50 @@ struct ClassDeclaration {
 };
 
 struct ClassBlock {
-    VariableDeclarationList *vdl;
-    FunctionDeclarationList *fdl;
+    VariableDeclarationList * variables;
+    FunctionDeclarationList * functions;
+    ClassBlock(VariableDeclarationList * variables, FunctionDeclarationList * functions)
+        : variables(variables), functions(functions) {}
 };
 
 struct VariableDeclarationList {
-    VariableDeclaration *vd;
-    VariableDeclarationList *next;  
+    VariableDeclaration * item;
+    VariableDeclarationList * next;  
+    VariableDeclarationList(VariableDeclaration * item, VariableDeclarationList * next)
+        : item(item), next(next) {}
 };
 
 struct VariableDeclaration {
-    IdentifierList *il;
-    TypeDenoter *tden;
+    IdentifierList * id_list;
+    TypeDenoter * type;
+    VariableDeclaration(IdentifierList * id_list, TypeDenoter * type)
+        : id_list(id_list), type(type) {}
 };
 
 struct IdentifierList {
-    char *id; 
-    IdentifierList *next;
+    char * item; 
+    IdentifierList * next;
+    IdentifierList(char * item, IdentifierList * next)
+        : item(item), next(next) {}
 };
 
-#define TYPE_DENOTER_T_ARRAY_TYPE 1
-#define TYPE_DENOTER_T_IDENTIFIER 3
 struct TypeDenoter {
-    int type;
-    char *name;
+    enum Type {INTEGER, REAL, CHAR, BOOLEAN, CLASS, ARRAY};
+    Type type;
     union {
-        ArrayType *at;
-        char *id;
-    } data;
+        char * class_id;
+        ArrayType * array_type;
+    };
+    TypeDenoter(Type type) : type(type) {}
+    TypeDenoter(char * class_id) : type(CLASS), class_id(class_id) {}
+    TypeDenoter(ArrayType * array_type) : type(ARRAY), array_type(array_type) {}
 };
 
 struct ArrayType {
-    Range *r;
-    TypeDenoter *td;
-};
-
-struct Range {
-    UnsignedNumber *min;
-    UnsignedNumber *max;
+    int min;
+    int max;
+    TypeDenoter * type;
+    ArrayType(int min, int max, TypeDenoter * type) : min(min), max(max), type(type) {}
 };
 
 struct UnsignedNumber {

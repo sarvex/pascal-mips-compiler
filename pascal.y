@@ -17,7 +17,7 @@ Program *main_program;
 %token KEYWORD_CLASS
 %token KEYWORD_COLON
 %token KEYWORD_COMMA
-%token KEYWORD_DIGIT_SEQUENCE
+%token TOKEN_DIGIT_SEQUENCE
 %token KEYWORD_DO
 %token KEYWORD_DOT
 %token KEYWORD_DOT_DOT
@@ -70,7 +70,6 @@ Program *main_program;
 %type <ap> actual_parameter
 %type <vd> variable_declaration
 %type <vdl> variable_declaration_list
-%type <r> range
 %type <un> unsigned_integer
 %type <fpsl> formal_parameter_section_list
 %type <fps> formal_parameter_section
@@ -93,7 +92,7 @@ Program *main_program;
 %type <se> simple_expression
 %type <t> term
 %type <f> factor
-%type <i> sign
+%type <_int> sign
 %type <p> primary
 %type <at> array_type
 %type <class_block> class_block
@@ -120,7 +119,6 @@ Program *main_program;
     ActualParameter *ap;
     VariableDeclarationList *vdl;
     VariableDeclaration *vd;
-    Range *r;
     UnsignedNumber *un;
     FormalParameterSectionList *fpsl;
     FormalParameterSection *fps;
@@ -140,7 +138,7 @@ Program *main_program;
     SimpleExpression *se;
     Term *t;
     Factor *f;
-    int *i;
+    int * _int;
     Primary *p;
     ArrayType *at;
     ClassBlock * class_block;
@@ -183,10 +181,7 @@ type_denoter : array_type {
 } | KEYWORD_BOOLEAN {
 };
 
-array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET range KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
-};
-
-range : unsigned_integer KEYWORD_DOT_DOT unsigned_integer {
+array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET unsigned_integer KEYWORD_DOT_DOT unsigned_integer KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
 };
 
 variable_declaration_part : KEYWORD_VAR variable_declaration_list KEYWORD_SEMICOLON {
@@ -518,7 +513,7 @@ primary : variable_access
 	}
  ;
 
-unsigned_integer : KEYWORD_DIGIT_SEQUENCE
+unsigned_integer : TOKEN_DIGIT_SEQUENCE
 	{
 
 	}
