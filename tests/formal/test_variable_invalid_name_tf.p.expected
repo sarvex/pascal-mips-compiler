@@ -1,3 +1,1 @@
-ERROR:7:Invalid variable name "True"
-ERROR:8:Invalid variable name "FaLse"
-Errors detected. Exiting.
+ERROR: line 7: syntax error at "True"
