@@ -24,7 +24,7 @@ Program * main_program;
 %token KEYWORD_COMMA
 %token KEYWORD_DO
 %token KEYWORD_DOT
-%token<_int> KEYWORD_DOT_DOT
+%token KEYWORD_DOT_DOT
 %token KEYWORD_ELSE
 %token KEYWORD_END
 %token KEYWORD_EQUAL
@@ -59,14 +59,13 @@ Program * main_program;
 %token KEYWORD_BOOLEAN
 %token KEYWORD_REAL
 %token KEYWORD_CHAR
-%token KEYWORD_TRUE
-%token KEYWORD_FALSE
 %token KEYWORD_VAR
 %token KEYWORD_WHILE
 
-%token <_int> TOKEN_DIGIT_SEQUENCE
-%token <_float> TOKEN_REAL
-%token <_string> TOKEN_STRING
+%token <literal_integer> TOKEN_DIGIT_SEQUENCE
+%token <literal_real> TOKEN_REAL
+%token <literal_string> TOKEN_STRING
+%token <literal_boolean> TOKEN_LITERAL_BOOLEAN
 %token <identifier> TOKEN_IDENTIFIER
 
 %type <type_denoter> type_denoter
@@ -107,7 +106,6 @@ Program * main_program;
 %type <program> program
 %type <additive_operator> additive_operator
 %type <multiplicative_operator> multiplicative_operator
-%type <_bool> boolean_literal
 
 %union {
     TypeDenoter * type_denoter;
@@ -145,9 +143,10 @@ Program * main_program;
     AdditiveOperator * additive_operator;
     MultiplicativeOperator * multiplicative_operator;
     int _int;
-    float _float;
-    char * _string;
-    bool _bool;
+    LiteralInteger * literal_integer;
+    LiteralReal * literal_real;
+    LiteralString * literal_string;
+    LiteralBoolean * literal_boolean;
 }
 
 %%
@@ -206,7 +205,7 @@ type_denoter : array_type {
 };
 
 array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_DIGIT_SEQUENCE KEYWORD_DOT_DOT TOKEN_DIGIT_SEQUENCE KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
-    $$ = new ArrayType($3, $4, $5, $8);
+    $$ = new ArrayType($3, $5, $8);
 };
 
 
@@ -377,7 +376,7 @@ primary_expression : TOKEN_DIGIT_SEQUENCE {
     $$ = new PrimaryExpression($1);
 } | TOKEN_STRING {
     $$ = new PrimaryExpression($1);
-} | boolean_literal {
+} | TOKEN_LITERAL_BOOLEAN {
     $$ = new PrimaryExpression($1);
 } | variable_access {
     $$ = new PrimaryExpression($1);
@@ -391,12 +390,6 @@ primary_expression : TOKEN_DIGIT_SEQUENCE {
     $$ = new PrimaryExpression($2);
 } | KEYWORD_NOT primary_expression {
     $$ = new PrimaryExpression($2);
-};
-
-boolean_literal : KEYWORD_TRUE {
-    $$ = true;
-} | KEYWORD_FALSE {
-    $$ = false;
 };
 
 function_designator : TOKEN_IDENTIFIER params {

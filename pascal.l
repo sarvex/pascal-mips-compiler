@@ -66,14 +66,12 @@ Z [zZ]
 {B}{O}{O}{L}{E}{A}{N}       return KEYWORD_BOOLEAN;
 {R}{E}{A}{L}                return KEYWORD_REAL;
 {C}{H}{A}{R}                return KEYWORD_CHAR;
-{T}{R}{U}{E}                return KEYWORD_TRUE;
-{F}{A}{L}{S}{E}             return KEYWORD_FALSE;
 
 ":="                        return KEYWORD_COLON_EQUAL;
 ":"                         return KEYWORD_COLON;
 ","                         return KEYWORD_COMMA;
 "."                         return KEYWORD_DOT;
-".."                        yylval._int = line_number; return KEYWORD_DOT_DOT;
+".."                        return KEYWORD_DOT_DOT;
 "="                         return KEYWORD_EQUAL;
 ">="                        return KEYWORD_GREATER_EQUAL;
 ">"                         return KEYWORD_GREATER;
@@ -90,17 +88,12 @@ Z [zZ]
 "/"                         return KEYWORD_SLASH;
 "*"                         return KEYWORD_STAR;
 
-[a-zA-Z][a-zA-Z0-9]* {
-    yylval.identifier = new Identifier(yytext, line_number);
-    return TOKEN_IDENTIFIER;
-}
-
 [0-9]+ {
-    yylval._int = Utils::string_to<int>(yytext);
+    yylval.literal_integer = new LiteralInteger(Utils::string_to<int>(yytext), line_number);
     return TOKEN_DIGIT_SEQUENCE;
 }
 [0-9]+\.[0-9]+ {
-    yylval._float = Utils::string_to<float>(yytext);
+    yylval.literal_real = new LiteralReal(Utils::string_to<float>(yytext), line_number);
     return TOKEN_REAL;
 }
 
@@ -117,8 +110,20 @@ Z [zZ]
             fatal_unexpected("EOF", "string");
         }
     }
-    yylval._string = strdup(yytext);
+    yylval.literal_string = new LiteralString(yytext, line_number);
     return TOKEN_STRING;
+}
+
+{T}{R}{U}{E} {
+    yylval.literal_boolean = new LiteralBoolean(true, line_number);
+}
+{F}{A}{L}{S}{E} {
+    yylval.literal_boolean = new LiteralBoolean(false, line_number);
+}
+
+[a-zA-Z][a-zA-Z0-9]* {
+    yylval.identifier = new Identifier(yytext, line_number);
+    return TOKEN_IDENTIFIER;
 }
 
 "(*" |

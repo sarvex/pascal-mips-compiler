@@ -40,6 +40,10 @@ struct MultiplicativeExpression;
 struct MultiplicativeOperator;
 struct NegatableExpression;
 struct PrimaryExpression;
+struct LiteralInteger;
+struct LiteralReal;
+struct LiteralString;
+struct LiteralBoolean;
 
 
 
@@ -112,12 +116,11 @@ struct TypeDenoter {
 };
 
 struct ArrayType {
-    int min;
-    int line_number;
-    int max;
+    LiteralInteger * min;
+    LiteralInteger * max;
     TypeDenoter * type;
-    ArrayType(int min, int line_number, int max, TypeDenoter * type)
-        : min(min), line_number(line_number), max(max), type(type) {}
+    ArrayType(LiteralInteger * min, LiteralInteger * max, TypeDenoter * type)
+        : min(min), max(max), type(type) {}
 };
 
 struct FunctionDeclarationList {
@@ -296,10 +299,10 @@ struct PrimaryExpression {
     enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
     int type;
     union {
-        int literal_integer;
-        float literal_real;
-        char * literal_string;
-        bool literal_boolean;
+        LiteralInteger * literal_integer;
+        LiteralReal * literal_real;
+        LiteralString * literal_string;
+        LiteralBoolean * literal_boolean;
         VariableAccess * variable; 
         FunctionDesignator * function;
         MethodDesignator * method;
@@ -307,10 +310,10 @@ struct PrimaryExpression {
         Expression * parens_expression;
         PrimaryExpression * not_expression;
     };
-    PrimaryExpression(int literal_integer) : type(INTEGER), literal_integer(literal_integer) {}
-    PrimaryExpression(float literal_real) : type(REAL), literal_real(literal_real) {}
-    PrimaryExpression(char * literal_string) : type(STRING), literal_string(literal_string) {}
-    PrimaryExpression(bool literal_boolean) : type(BOOLEAN), literal_boolean(literal_boolean) {}
+    PrimaryExpression(LiteralInteger * literal_integer) : type(INTEGER), literal_integer(literal_integer) {}
+    PrimaryExpression(LiteralReal * literal_real) : type(REAL), literal_real(literal_real) {}
+    PrimaryExpression(LiteralString * literal_string) : type(STRING), literal_string(literal_string) {}
+    PrimaryExpression(LiteralBoolean * literal_boolean) : type(BOOLEAN), literal_boolean(literal_boolean) {}
     PrimaryExpression(VariableAccess * variable) : type(VARIABLE), variable(variable) {}
     PrimaryExpression(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     PrimaryExpression(MethodDesignator * method) : type(METHOD), method(method) {}
@@ -320,6 +323,30 @@ struct PrimaryExpression {
         : type(PARENS), parens_expression(parens_expression) {}
     PrimaryExpression(PrimaryExpression * not_expression)
         : type(NOT), not_expression(not_expression) {}
+};
+
+struct LiteralInteger {
+    int value;
+    int line_number;
+    LiteralInteger(int value, int line_number) : value(value), line_number(line_number) {}
+};
+
+struct LiteralReal {
+    float value;
+    int line_number;
+    LiteralReal(float value, int line_number) : value(value), line_number(line_number) {}
+};
+
+struct LiteralString {
+    std::string value;
+    int line_number;
+    LiteralString(std::string value, int line_number) : value(value), line_number(line_number) {}
+};
+
+struct LiteralBoolean {
+    bool value;
+    int line_number;
+    LiteralBoolean(bool value, int line_number) : value(value), line_number(line_number) {}
 };
 
 struct FunctionDesignator {
