@@ -357,6 +357,8 @@ sign : KEYWORD_PLUS {
 
 primary_expression : variable_access {
     $$ = new PrimaryExpression($1);
+} | TOKEN_DIGIT_SEQUENCE {
+    $$ = new PrimaryExpression($1);
 } | function_designator {
     $$ = new PrimaryExpression($1);
 } | method_designator {
