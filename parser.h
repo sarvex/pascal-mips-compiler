@@ -187,7 +187,9 @@ struct IfStatement {
 
 struct PrintStatement {
     Expression * expression;
-    PrintStatement(Expression * expression) : expression(expression) {}
+    bool trailing_comma;
+    PrintStatement(Expression * expression, bool trailing_comma)
+        : expression(expression), trailing_comma(trailing_comma) {}
 };
 
 struct WhileStatement {

@@ -281,7 +281,9 @@ if_statement : KEYWORD_IF expression KEYWORD_THEN statement KEYWORD_ELSE stateme
 };
 
 print_statement : KEYWORD_PRINT expression {
-    $$ = new PrintStatement($2);
+    $$ = new PrintStatement($2, false);
+} | KEYWORD_PRINT expression KEYWORD_COMMA {
+    $$ = new PrintStatement($2, true);
 };
 
 while_statement : KEYWORD_WHILE expression KEYWORD_DO statement {

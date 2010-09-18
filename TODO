@@ -13,6 +13,7 @@ support:
     strings
     case insensitivity
     print statement
+    print statement with trailing comma (meaning no newline)
     evaluate constant expressions before semantic checking
     returning values from functions by assigning to the function name:
         tests/formal/test_class_preuse_function_valid.p
