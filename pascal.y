@@ -252,7 +252,11 @@ statement_list : statement_list KEYWORD_SEMICOLON statement {
     $$ = new StatementList($1, NULL);
 };
 
-statement : assignment_statement {
+statement : function_designator {
+    $$ = new Statement($1);
+} | method_designator {
+    $$ = new Statement($1);
+} | assignment_statement {
     $$ = new Statement($1);
 } | if_statement {
     $$ = new Statement($1);
@@ -262,6 +266,8 @@ statement : assignment_statement {
     $$ = new Statement($1);
 } | compound_statement {
     $$ = new Statement($1);
+} | {
+    $$ = NULL;
 };
 
 assignment_statement : variable_access KEYWORD_COLON_EQUAL expression {
@@ -396,6 +402,8 @@ function_designator : TOKEN_IDENTIFIER params {
 
 params : KEYWORD_LEFT_PARENS expression_list KEYWORD_RIGHT_PARENS {
     $$ = $2;
+} | KEYWORD_LEFT_PARENS KEYWORD_RIGHT_PARENS {
+    $$ = NULL;
 };
 
 

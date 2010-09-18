@@ -150,15 +150,19 @@ struct StatementList {
 };
 
 struct Statement {
-    enum Type {ASSIGNMENT, IF, PRINT, WHILE, COMPOUND};
+    enum Type {FUNCTION, METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND};
     Type type;
     union {
+        FunctionDesignator * function;
+        MethodDesignator * method;
         AssignmentStatement * assignment;
         IfStatement * if_statement;
         PrintStatement * print_statement;
         WhileStatement * while_statement;
         StatementList * compound_statement;
     };
+    Statement(FunctionDesignator * function) : type(FUNCTION), function(function) {}
+    Statement(MethodDesignator * method) : type(METHOD), method(method) {}
     Statement(AssignmentStatement * assignment) : type(ASSIGNMENT), assignment(assignment) {}
     Statement(IfStatement * if_statement) : type(IF), if_statement(if_statement) {}
     Statement(PrintStatement * print_statement) : type(PRINT), print_statement(print_statement) {}

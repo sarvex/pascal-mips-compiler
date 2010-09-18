@@ -17,6 +17,9 @@ support:
     returning values from functions by assigning to the function name:
         tests/formal/test_class_preuse_function_valid.p
     functions with parameters but no return type
+    statements that are just function calls
+    statements that are just method calls
+    invoking functions/methods with no parameters and ()
 report error for:
     arrays as parameter types
     undeclared variable
