@@ -16,8 +16,8 @@ struct VariableDeclarationList;
 struct VariableDeclaration;
 struct FunctionDeclarationList;
 struct FunctionDeclaration;
-struct FormalParameterSectionList;
-struct FormalParameterSection;
+struct VariableDeclarationList;
+struct VariableDeclaration;
 struct IdentifierList;
 struct FunctionBlock;
 struct StatementList;
@@ -119,25 +119,11 @@ struct FunctionDeclarationList {
 
 struct FunctionDeclaration {
     char * id;
-    FormalParameterSectionList * parameter_list;
+    VariableDeclarationList * parameter_list;
     TypeDenoter * type;
     FunctionBlock * block;
-    FunctionDeclaration(char * id, FormalParameterSectionList * parameter_list, TypeDenoter * type, FunctionBlock * block)
+    FunctionDeclaration(char * id, VariableDeclarationList * parameter_list, TypeDenoter * type, FunctionBlock * block)
         : id(id), parameter_list(parameter_list), type(type), block(block) {}
-};
-
-struct FormalParameterSectionList {
-    FormalParameterSection * item;
-    FormalParameterSectionList * next;
-    FormalParameterSectionList(FormalParameterSection * item, FormalParameterSectionList * next)
-        : item(item), next(next) {}
-};
-
-struct FormalParameterSection {
-    IdentifierList * id_list;
-    TypeDenoter * type;
-    FormalParameterSection(IdentifierList * id_list, TypeDenoter * type)
-        : id_list(id_list), type(type) {}
 };
 
 struct FunctionBlock {

@@ -72,8 +72,6 @@ Program *main_program;
 %type <actual_parameter> actual_parameter
 %type <variable_declaration> variable_declaration
 %type <variable_declaration_list> variable_declaration_list
-%type <formal_parameter_section_list> formal_parameter_section_list
-%type <formal_parameter_section> formal_parameter_section
 %type <variable_access> variable_access
 %type <assignment_statment> assignment_statement
 %type <object_instantiation> object_instantiation
@@ -116,8 +114,6 @@ Program *main_program;
     ActualParameter * actual_parameter;
     VariableDeclarationList * variable_declaration_list;
     VariableDeclaration * variable_declaration;
-    FormalParameterSectionList * formal_parameter_section_list;
-    FormalParameterSection * formal_parameter_section;
     VariableAccess * variable_access;
     AssignmentStatement * assignment_statment;
     ObjectInstantiation * object_instantiation;
@@ -229,20 +225,20 @@ function_declaration :
     $$ = new FunctionDeclaration($2, NULL, NULL, $4);
 } | KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                        KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, NULL, $4, $6);
-} | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS formal_parameter_section_list KEYWORD_RIGHT_PARENS KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
+} | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS variable_declaration_list KEYWORD_RIGHT_PARENS KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, $4, $7, $9);
 };
 
-formal_parameter_section_list : formal_parameter_section_list KEYWORD_SEMICOLON formal_parameter_section {
-    $$ = new FormalParameterSectionList($3, $1);
-} | formal_parameter_section {
-    $$ = new FormalParameterSectionList($1, NULL);
+variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable_declaration {
+    $$ = new VariableDeclarationList($3, $1);
+} | variable_declaration {
+    $$ = new VariableDeclarationList($1, NULL);
 };
 
-formal_parameter_section : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
-    $$ = new FormalParameterSection($1, new TypeDenoter($3));
+variable_declaration : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
+    $$ = new VariableDeclaration($1, new TypeDenoter($3));
 } | KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
-    $$ = new FormalParameterSection($2, new TypeDenoter($4));
+    $$ = new VariableDeclaration($2, new TypeDenoter($4));
 };
 
 function_block : variable_declaration_part compound_statement {

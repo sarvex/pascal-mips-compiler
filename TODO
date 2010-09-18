@@ -1,6 +1,6 @@
 Project 1 Release:
+ - line numbers
  - build parse tree
- - build symbol tables
  - No arrays as parameters
  - No colons in parameters (except for write and writeln)
  - Identifying references to missing classes
@@ -29,3 +29,4 @@ Project 1 Release:
  - test for functions with the same name in different classes
  - test for strings
  - case insensitivity
+ - test for colliding variable names, especially with function parameters
