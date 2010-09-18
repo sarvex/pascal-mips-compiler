@@ -92,6 +92,20 @@ bool SemanticChecker::types_equal(TypeDenoter * type1, TypeDenoter * type2)
     }
 }
 
+bool SemanticChecker::is_ancestor(TypeDenoter * child, TypeDenoter * ancestor)
+{
+    assert(child->type == TypeDenoter::CLASS);
+    assert(ancestor->type == TypeDenoter::CLASS);
+    if (child->class_identifier->text.compare(ancestor->class_identifier->text) == 0) {
+        return true;
+    } else {
+        ClassDeclaration * child_declaration = (*m_symbol_table)[child->class_identifier->text]->class_declaration;
+        if (child_declaration->parent_identifier == NULL)
+            return false;
+        return is_ancestor(new TypeDenoter(child_declaration->parent_identifier), ancestor);
+    }
+}
+
 bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * right_type)
 {
     // rules for assignment
@@ -104,6 +118,8 @@ bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * ri
             bool size_equal = (left_type->array_type->max->value - left_type->array_type->min->value) ==
                 (right_type->array_type->max->value - right_type->array_type->min->value);
             return size_equal && assignment_valid(left_type->array_type->type, right_type->array_type->type);
+        } else if (left_type->type == TypeDenoter::CLASS) {
+            return is_ancestor(left_type, right_type);
         } else {
             return true;
         }
@@ -155,9 +171,15 @@ void SemanticChecker::check_statement(Statement * statement)
             if (left_type == NULL || right_type == NULL)
                 break; // problem elsewhere
             if (! assignment_valid(left_type, right_type)) {
-                std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
-                    "cannot assign \"" << type_to_string(right_type) << "\" to \"" <<
-                    type_to_string(left_type) << "\"" << std::endl;
+                if (left_type->type == TypeDenoter::CLASS && right_type->type == TypeDenoter::CLASS) {
+                    std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
+                        "class \"" << type_to_string(right_type) << "\" is not a base class of \"" <<
+                        type_to_string(left_type) << "\" in the assignment" << std::endl;
+                } else {
+                    std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
+                        "cannot assign \"" << type_to_string(right_type) << "\" to \"" <<
+                        type_to_string(left_type) << "\"" << std::endl;
+                }
                 m_success = false;
             }
             break;
@@ -324,7 +346,7 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             } else {
                 // undeclared variable
                 std::cerr << err_header(variable_access->identifier->line_number) <<
-                    "Undeclared varable: " << variable_access->identifier->text << std::endl;
+                    "Variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
                 m_success = false;
                 return NULL;
             }
