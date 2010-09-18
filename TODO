@@ -1,33 +1,30 @@
 Project 1 Release:
-    - report error for:
-        - arrays as parameter types
-        - undeclared variable
-        - undeclared functions
-        - undeclared methods
-        - undefined type
-        - assignment type mismatch
-        - non-integer array indices
-        - redeclaration of functions
-        - redeclaration of variables
-    - support:
-        - Identifying use of multiple +/- signs
-        - Allowing setting the return value of a function
+support:
+    arithmetic expressions with proper order of operations
+    functions with return values
+    control flow statements
+    the "this" keyword
+    forward references for classes
+    object instantiation
+    attribute designators
+    method designators
+    leaving off the else
+    functions with the same name in different classes
+    strings
+    case insensitivity
+report error for:
+    arrays as parameter types
+    undeclared variable
+    undeclared functions
+    undeclared methods
+    undefined type
+    assignment type mismatch
+    non-integer array indices
+    redeclaration of functions
+    redeclaration of variables
+    colliding variable names with function parameters
+    invalid array bounds
+    wrong number of parameters in function calls
+    invalid array equivalence
+    strings of length zero
 
-        - Identifying invalid array bounds
-        - Identifying a wrong number of parameters in calls to functions
-        - Support control flow statements
-        - Support expressions
-        - Support the "this" keyword
-        - Identify invalid array equivalence
-        - Identify invalid class equivalence
-        - Support use of classes that are defined after they are used
-        - Support the "new" keyword for object instantiation
-        - Support attribute designators
-        - Support method designators
-        - run test cases and see what is still broken
-        - test for leaving off the else
-        - test for functions with the same name in different classes
-        - test for strings
-        - case insensitivity
-        - test for colliding variable names, especially with function parameters
-        - test for strings of length zero
