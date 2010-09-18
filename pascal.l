@@ -90,11 +90,11 @@ Z [zZ]
 
 [0-9]+ {
     yylval.literal_integer = new LiteralInteger(Utils::string_to<int>(yytext), line_number);
-    return TOKEN_DIGIT_SEQUENCE;
+    return TOKEN_LITERAL_INTEGER;
 }
 [0-9]+\.[0-9]+ {
     yylval.literal_real = new LiteralReal(Utils::string_to<float>(yytext), line_number);
-    return TOKEN_REAL;
+    return TOKEN_LITERAL_REAL;
 }
 
 "'" {
@@ -111,7 +111,7 @@ Z [zZ]
         }
     }
     yylval.literal_string = new LiteralString(yytext, line_number);
-    return TOKEN_STRING;
+    return TOKEN_LITERAL_STRING;
 }
 
 {T}{R}{U}{E} {

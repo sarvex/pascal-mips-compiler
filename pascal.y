@@ -62,9 +62,9 @@ Program * main_program;
 %token KEYWORD_VAR
 %token KEYWORD_WHILE
 
-%token <literal_integer> TOKEN_DIGIT_SEQUENCE
-%token <literal_real> TOKEN_REAL
-%token <literal_string> TOKEN_STRING
+%token <literal_integer> TOKEN_LITERAL_INTEGER
+%token <literal_real> TOKEN_LITERAL_REAL
+%token <literal_string> TOKEN_LITERAL_STRING
 %token <literal_boolean> TOKEN_LITERAL_BOOLEAN
 %token <identifier> TOKEN_IDENTIFIER
 
@@ -204,7 +204,7 @@ type_denoter : array_type {
     $$ = new TypeDenoter(TypeDenoter::BOOLEAN);
 };
 
-array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_DIGIT_SEQUENCE KEYWORD_DOT_DOT TOKEN_DIGIT_SEQUENCE KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
+array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_LITERAL_INTEGER KEYWORD_DOT_DOT TOKEN_LITERAL_INTEGER KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
     $$ = new ArrayType($3, $5, $8);
 };
 
@@ -370,11 +370,11 @@ sign : KEYWORD_PLUS {
     $$ = -1;
 };
 
-primary_expression : TOKEN_DIGIT_SEQUENCE {
+primary_expression : TOKEN_LITERAL_INTEGER {
     $$ = new PrimaryExpression($1);
-} | TOKEN_REAL {
+} | TOKEN_LITERAL_REAL {
     $$ = new PrimaryExpression($1);
-} | TOKEN_STRING {
+} | TOKEN_LITERAL_STRING {
     $$ = new PrimaryExpression($1);
 } | TOKEN_LITERAL_BOOLEAN {
     $$ = new PrimaryExpression($1);
