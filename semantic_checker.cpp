@@ -382,14 +382,14 @@ TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * 
     }
 }
 
-SemanticChecker::ConstantInteger SemanticChecker::constant_integer(Expression * expression)
+LiteralInteger * SemanticChecker::constant_integer(Expression * expression)
 {
     if (expression->right != NULL)
-        return ConstantInteger(false, 0);
+        return NULL;
     if (expression->left->left != NULL)
-        return ConstantInteger(false, 0);
+        return NULL;
     if (expression->left->right->left != NULL)
-        return ConstantInteger(false, 0);
+        return NULL;
 
     NegatableExpression * negatable_expression = expression->left->right->right;
     int sign = 1;
@@ -398,9 +398,9 @@ SemanticChecker::ConstantInteger SemanticChecker::constant_integer(Expression * 
         negatable_expression = negatable_expression->next;
     }
     if (negatable_expression->primary_expression->type != PrimaryExpression::INTEGER)
-        return ConstantInteger(false, 0);
+        return NULL;
 
-    return ConstantInteger(true, negatable_expression->primary_expression->literal_integer->value);
+    return negatable_expression->primary_expression->literal_integer;
 }
 
 TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_variable)
@@ -423,10 +423,10 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
             break;
         } else {
             // if expression is constant, check bounds
-            ConstantInteger const_int = constant_integer(expression);
-            if (const_int.is_constant_integer) {
-                if (! (const_int.value >= array_type->array_type->min->value && const_int.value <= array_type->array_type->max->value)) {
-                    std::cerr << err_header(100) << "array index " << const_int.value <<
+            LiteralInteger * literal_int = constant_integer(expression);
+            if (literal_int != NULL) {
+                if (! (literal_int->value >= array_type->array_type->min->value && literal_int->value <= array_type->array_type->max->value)) {
+                    std::cerr << err_header(literal_int->line_number) << "array index " << literal_int->value <<
                         " is out of the range [" << array_type->array_type->min->value << ".." <<
                         array_type->array_type->max->value << "]" << std::endl;
                 }
