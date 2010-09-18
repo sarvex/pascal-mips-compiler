@@ -1,12 +1,11 @@
 #ifndef _PARSER_H_
 #define _PARSER_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <string>
 
 
 struct Program;
+struct Identifier;
 struct ClassList;
 struct ClassDeclaration;
 struct ClassBlock;
@@ -44,9 +43,16 @@ struct PrimaryExpression;
 
 
 struct Program {
-    char * id;
+    Identifier * identifier;
     ClassList * class_list;
-    Program(char* id, ClassList * class_list) : id(id), class_list(class_list) {}
+    Program(Identifier * identifier, ClassList * class_list)
+        : identifier(identifier), class_list(class_list) {}
+};
+
+struct Identifier {
+    std::string text;
+    int line_number;
+    Identifier(std::string text, int line_number) : text(text), line_number(line_number) {}
 };
 
 struct ClassList {
@@ -56,11 +62,11 @@ struct ClassList {
 };
 
 struct ClassDeclaration {
-    char * id;
-    char * parent_id;
+    Identifier * identifier;
+    Identifier * parent_identifier;
     ClassBlock * class_block;
-    ClassDeclaration(char * id, char * parent_id, ClassBlock * class_block)
-        : id(id), parent_id(parent_id), class_block(class_block) {}
+    ClassDeclaration(Identifier * identifier, Identifier * parent_identifier, ClassBlock * class_block)
+        : identifier(identifier), parent_identifier(parent_identifier), class_block(class_block) {}
 };
 
 struct ClassBlock {
@@ -85,9 +91,9 @@ struct VariableDeclaration {
 };
 
 struct IdentifierList {
-    char * item; 
+    Identifier * item; 
     IdentifierList * next;
-    IdentifierList(char * item, IdentifierList * next)
+    IdentifierList(Identifier * item, IdentifierList * next)
         : item(item), next(next) {}
 };
 
@@ -95,11 +101,12 @@ struct TypeDenoter {
     enum Type {INTEGER, REAL, CHAR, BOOLEAN, CLASS, ARRAY};
     Type type;
     union {
-        char * class_id;
+        Identifier * class_identifier;
         ArrayType * array_type;
     };
     TypeDenoter(Type type) : type(type) {}
-    TypeDenoter(char * class_id) : type(CLASS), class_id(class_id) {}
+    TypeDenoter(Identifier * class_identifier)
+        : type(CLASS), class_identifier(class_identifier) {}
     TypeDenoter(ArrayType * array_type) : type(ARRAY), array_type(array_type) {}
 };
 
@@ -118,12 +125,12 @@ struct FunctionDeclarationList {
 };
 
 struct FunctionDeclaration {
-    char * id;
+    Identifier * identifier;
     VariableDeclarationList * parameter_list;
     TypeDenoter * type;
     FunctionBlock * block;
-    FunctionDeclaration(char * id, VariableDeclarationList * parameter_list, TypeDenoter * type, FunctionBlock * block)
-        : id(id), parameter_list(parameter_list), type(type), block(block) {}
+    FunctionDeclaration(Identifier * identifier, VariableDeclarationList * parameter_list, TypeDenoter * type, FunctionBlock * block)
+        : identifier(identifier), parameter_list(parameter_list), type(type), block(block) {}
 };
 
 struct FunctionBlock {
@@ -187,11 +194,11 @@ struct VariableAccess {
     enum Type {IDENTIFIER, INDEXED_VARIABLE, ATTRIBUTE};
     Type type;
     union {
-        char * id;
+        Identifier * identifier;
         IndexedVariable * indexed_variable;
         AttributeDesignator * attribute;
     };
-    VariableAccess(char * id) : type(IDENTIFIER), id(id) {}
+    VariableAccess(Identifier * identifier) : type(IDENTIFIER), identifier(identifier) {}
     VariableAccess(IndexedVariable * indexed_variable)
         : type(INDEXED_VARIABLE), indexed_variable(indexed_variable) {}
     VariableAccess(AttributeDesignator * attribute) : type(ATTRIBUTE), attribute(attribute) {}
@@ -280,10 +287,10 @@ struct PrimaryExpression {
 };
 
 struct FunctionDesignator {
-    char * id;
+    Identifier * identifier;
     ActualParameterList * parameter_list;
-    FunctionDesignator(char * id, ActualParameterList * parameter_list)
-        : id(id), parameter_list(parameter_list) {}
+    FunctionDesignator(Identifier * identifier, ActualParameterList * parameter_list)
+        : identifier(identifier), parameter_list(parameter_list) {}
 };
 
 struct ActualParameterList {
@@ -308,8 +315,9 @@ struct ActualParameter {
 
 struct AttributeDesignator {
     VariableAccess * owner;
-    char * id;
-    AttributeDesignator(VariableAccess * owner, char * id) : owner(owner), id(id) {}
+    Identifier * identifier;
+    AttributeDesignator(VariableAccess * owner, Identifier * identifier)
+        : owner(owner), identifier(identifier) {}
 };
 
 struct MethodDesignator {
@@ -320,11 +328,12 @@ struct MethodDesignator {
 };
 
 struct ObjectInstantiation {
-    char * class_id;
+    Identifier * class_identifier;
     ActualParameterList * parameter_list;
-    ObjectInstantiation(char * class_id) : class_id(class_id), parameter_list(NULL) {}
-    ObjectInstantiation(char * class_id, ActualParameterList * parameter_list)
-        : class_id(class_id), parameter_list(parameter_list) {}
+    ObjectInstantiation(Identifier * class_identifier)
+        : class_identifier(class_identifier), parameter_list(NULL) {}
+    ObjectInstantiation(Identifier * class_identifier, ActualParameterList * parameter_list)
+        : class_identifier(class_identifier), parameter_list(parameter_list) {}
 };
 
 

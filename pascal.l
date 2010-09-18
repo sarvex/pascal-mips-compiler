@@ -86,7 +86,7 @@ Z [zZ]
 "*"                         return(KEYWORD_STAR);
 
 [a-zA-Z][a-zA-Z0-9]* {
-    yylval._string = strdup(yytext);
+    yylval.identifier = new Identifier(yytext, line_number);
     return(TOKEN_IDENTIFIER);
 }
 [0-9]+ {

@@ -62,7 +62,7 @@ Program *main_program;
 %token KEYWORD_WHILE
 
 %token <_int> TOKEN_DIGIT_SEQUENCE
-%token <_string> TOKEN_IDENTIFIER
+%token <identifier> TOKEN_IDENTIFIER
 
 %type <type_denoter> type_denoter
 %type <identifier_list> identifier_list
@@ -107,7 +107,7 @@ Program *main_program;
 
 %union {
     TypeDenoter * type_denoter;
-    char * _string;
+    Identifier * identifier;
     IdentifierList * identifier_list;
     FunctionDesignator * function_designator;
     ActualParameterList * actual_parameter_list;
