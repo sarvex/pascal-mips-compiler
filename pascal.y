@@ -179,10 +179,6 @@ variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable
     $$ = new VariableDeclarationList($1, NULL);
 };
 
-variable_declaration : identifier_list KEYWORD_COLON type_denoter {
-    $$ = new VariableDeclaration($1, $3);
-};
-
 identifier_list : identifier_list KEYWORD_COMMA TOKEN_IDENTIFIER {
     $$ = new IdentifierList($3, $1);
 } | TOKEN_IDENTIFIER {
@@ -227,12 +223,6 @@ function_declaration :
     $$ = new FunctionDeclaration($2, NULL, $4, $6);
 } | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS variable_declaration_list KEYWORD_RIGHT_PARENS KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, $4, $7, $9);
-};
-
-variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable_declaration {
-    $$ = new VariableDeclarationList($3, $1);
-} | variable_declaration {
-    $$ = new VariableDeclarationList($1, NULL);
 };
 
 variable_declaration : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
