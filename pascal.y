@@ -225,10 +225,10 @@ function_declaration :
     $$ = new FunctionDeclaration($2, $4, $7, $9);
 };
 
-variable_declaration : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
-    $$ = new VariableDeclaration($1, new TypeDenoter($3));
-} | KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
-    $$ = new VariableDeclaration($2, new TypeDenoter($4));
+variable_declaration : identifier_list KEYWORD_COLON type_denoter {
+    $$ = new VariableDeclaration($1, $3);
+} | KEYWORD_VAR identifier_list KEYWORD_COLON type_denoter {
+    $$ = new VariableDeclaration($2, $4);
 };
 
 function_block : variable_declaration_part compound_statement {
