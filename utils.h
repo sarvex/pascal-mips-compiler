@@ -23,9 +23,9 @@ namespace Utils
     template <class T>
     std::string to_string(T value);
 
-    // string parsing
-    std::string toLower(std::string s);
-    std::string toUpper(std::string s);
+    // string processing
+    std::string to_lower(std::string s);
+    std::string to_upper(std::string s);
 }
 
 template <class T>
