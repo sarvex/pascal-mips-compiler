@@ -69,9 +69,7 @@ Program *main_program;
 %type <type_denoter> type_denoter
 %type <identifier_list> identifier_list
 %type <function_designator> function_designator
-%type <actual_parameter_list> actual_parameter_list
-%type <actual_parameter_list> params
-%type <actual_parameter> actual_parameter
+%type <expression_list> params
 %type <variable_declaration> variable_declaration
 %type <variable_declaration_list> variable_declaration_list
 %type <variable_access> variable_access
@@ -113,8 +111,6 @@ Program *main_program;
     Identifier * identifier;
     IdentifierList * identifier_list;
     FunctionDesignator * function_designator;
-    ActualParameterList * actual_parameter_list;
-    ActualParameter * actual_parameter;
     VariableDeclarationList * variable_declaration_list;
     VariableDeclaration * variable_declaration;
     VariableAccess * variable_access;
@@ -393,22 +389,8 @@ function_designator : TOKEN_IDENTIFIER params {
     $$ = new FunctionDesignator($1, $2);
 };
 
-params : KEYWORD_LEFT_PARENS actual_parameter_list KEYWORD_RIGHT_PARENS {
+params : KEYWORD_LEFT_PARENS expression_list KEYWORD_RIGHT_PARENS {
     $$ = $2;
-};
-
-actual_parameter_list : actual_parameter_list KEYWORD_COMMA actual_parameter {
-    $$ = new ActualParameterList($3, $1);
-} | actual_parameter {
-    $$ = new ActualParameterList($1, NULL);
-};
-
-actual_parameter : expression {
-    $$ = new ActualParameter($1);
-} | expression KEYWORD_COLON expression {
-    $$ = new ActualParameter($1, $3);
-} | expression KEYWORD_COLON expression KEYWORD_COLON expression {
-    $$ = new ActualParameter($1, $3, $5);
 };
 
 

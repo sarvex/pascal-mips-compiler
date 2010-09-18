@@ -36,8 +36,6 @@ struct ExpressionList;
 struct AttributeDesignator;
 struct FunctionDesignator;
 struct MethodDesignator;
-struct ActualParameterList;
-struct ActualParameter;
 struct MultiplicativeExpression;
 struct MultiplicativeOperator;
 struct NegatableExpression;
@@ -318,28 +316,9 @@ struct PrimaryExpression {
 
 struct FunctionDesignator {
     Identifier * identifier;
-    ActualParameterList * parameter_list;
-    FunctionDesignator(Identifier * identifier, ActualParameterList * parameter_list)
+    ExpressionList * parameter_list;
+    FunctionDesignator(Identifier * identifier, ExpressionList * parameter_list)
         : identifier(identifier), parameter_list(parameter_list) {}
-};
-
-struct ActualParameterList {
-    ActualParameter * item;
-    ActualParameterList * next;
-    ActualParameterList(ActualParameter * item, ActualParameterList * next) : item(item), next(next) {}
-};
-
-struct ActualParameter {
-    Expression * expression;
-    // only for write and writeln :(
-    Expression * special_expression_1;
-    Expression * special_expression_2;
-    ActualParameter(Expression * expression)
-        : expression(expression), special_expression_1(NULL), special_expression_2(NULL) {}
-    ActualParameter(Expression * expression, Expression * special_expression_1)
-        : expression(expression), special_expression_1(special_expression_1), special_expression_2(NULL) {}
-    ActualParameter(Expression * expression, Expression * special_expression_1, Expression * special_expression_2)
-        : expression(expression), special_expression_1(special_expression_1), special_expression_2(special_expression_2) {}
 };
 
 
@@ -359,10 +338,10 @@ struct MethodDesignator {
 
 struct ObjectInstantiation {
     Identifier * class_identifier;
-    ActualParameterList * parameter_list;
+    ExpressionList * parameter_list;
     ObjectInstantiation(Identifier * class_identifier)
         : class_identifier(class_identifier), parameter_list(NULL) {}
-    ObjectInstantiation(Identifier * class_identifier, ActualParameterList * parameter_list)
+    ObjectInstantiation(Identifier * class_identifier, ExpressionList * parameter_list)
         : class_identifier(class_identifier), parameter_list(parameter_list) {}
 };
 
