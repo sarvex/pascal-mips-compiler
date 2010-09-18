@@ -13,6 +13,7 @@ support:
     strings
     case insensitivity
     print statement
+    evaluate constant expressions before semantic checking
 report error for:
     arrays as parameter types
     undeclared variable
@@ -28,4 +29,5 @@ report error for:
     wrong number of parameters in function calls
     invalid array equivalence
     strings of length zero
+    test for invalid/valid array indicies with expressions like 8*8-32
 

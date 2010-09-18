@@ -23,6 +23,12 @@ class SemanticChecker {
         std::string m_function_id;
         // true if we have not encountered any errors
         bool m_success;
+
+        struct ConstantInteger {
+            bool is_constant_integer;
+            int value;
+            ConstantInteger(bool is_constant_integer, int value) : is_constant_integer(is_constant_integer), value(value) {}
+        };
     private: // methods
         void check_statement_list(StatementList * _statement_list);
         void check_statement(Statement * statement);
@@ -51,6 +57,8 @@ class SemanticChecker {
         bool assignment_valid(TypeDenoter * left_type, TypeDenoter * right_type);
         // programmer-friendly display of a type
         std::string type_to_string(TypeDenoter * type);
+        // returns whether the expression is a constant integer and its value if it is
+        ConstantInteger constant_integer(Expression * expression);
 };
 
 #endif
