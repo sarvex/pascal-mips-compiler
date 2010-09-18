@@ -73,7 +73,7 @@ Z [zZ]
 ":"                         return KEYWORD_COLON;
 ","                         return KEYWORD_COMMA;
 "."                         return KEYWORD_DOT;
-".."                        return KEYWORD_DOT_DOT;
+".."                        yylval._int = line_number; return KEYWORD_DOT_DOT;
 "="                         return KEYWORD_EQUAL;
 ">="                        return KEYWORD_GREATER_EQUAL;
 ">"                         return KEYWORD_GREATER;

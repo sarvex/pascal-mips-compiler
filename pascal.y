@@ -7,6 +7,7 @@ void yyerror(const char * error);
 
 extern char * yytext;
 extern FILE * yyin;
+
 extern int line_number;
 
 // main program
@@ -23,7 +24,7 @@ Program * main_program;
 %token KEYWORD_COMMA
 %token KEYWORD_DO
 %token KEYWORD_DOT
-%token KEYWORD_DOT_DOT
+%token<_int> KEYWORD_DOT_DOT
 %token KEYWORD_ELSE
 %token KEYWORD_END
 %token KEYWORD_EQUAL
@@ -204,7 +205,7 @@ type_denoter : array_type {
 };
 
 array_type : KEYWORD_ARRAY KEYWORD_LEFT_BRACKET TOKEN_DIGIT_SEQUENCE KEYWORD_DOT_DOT TOKEN_DIGIT_SEQUENCE KEYWORD_RIGHT_BRACKET KEYWORD_OF type_denoter {
-    $$ = new ArrayType($3, $5, $8);
+    $$ = new ArrayType($3, $4, $5, $8);
 };
 
 

@@ -113,9 +113,11 @@ struct TypeDenoter {
 
 struct ArrayType {
     int min;
+    int line_number;
     int max;
     TypeDenoter * type;
-    ArrayType(int min, int max, TypeDenoter * type) : min(min), max(max), type(type) {}
+    ArrayType(int min, int line_number, int max, TypeDenoter * type)
+        : min(min), line_number(line_number), max(max), type(type) {}
 };
 
 struct FunctionDeclarationList {
