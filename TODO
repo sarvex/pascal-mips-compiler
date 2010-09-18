@@ -8,19 +8,19 @@ support:
     object instantiation
     attribute designators
     method designators
-    leaving off the else
+    * leaving off the else
     functions with the same name in different classes
-    strings
+    * strings
     case insensitivity
     print statement
-    print statement with trailing comma (meaning no newline)
+    * print statement with trailing comma (meaning no newline)
     evaluate constant expressions before semantic checking
     returning values from functions by assigning to the function name:
         tests/formal/test_class_preuse_function_valid.p
-    functions with parameters but no return type
-    statements that are just function calls
-    statements that are just method calls
-    invoking functions/methods with no parameters and ()
+    * functions with parameters but no return type
+    * statements that are just function calls
+    * statements that are just method calls
+    * invoking functions/methods with no parameters and ()
 report error for:
     arrays as parameter types
     undeclared variable
@@ -35,6 +35,8 @@ report error for:
     invalid array bounds
     wrong number of parameters in function calls
     invalid array equivalence
-    strings of length zero
+    * strings of length zero
     test for invalid/valid array indicies with expressions like 8*8-32
+
+* = bonus
 
