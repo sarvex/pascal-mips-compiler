@@ -1,2 +1,1 @@
-ERROR:31:Class "bb" is not a base class of "aa" in the assignment
-Errors detected. Exiting.
+ERROR: line 30: class "BB" is not a base class of "AA" in the assignment

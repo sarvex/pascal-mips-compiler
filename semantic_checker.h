@@ -53,6 +53,7 @@ class SemanticChecker {
         std::string type_to_string(TypeDenoter * type);
         // returns whether the expression is a constant integer and its value if it is
         LiteralInteger * constant_integer(Expression * expression);
+        bool is_ancestor(TypeDenoter * child, TypeDenoter * ancestor);
 };
 
 #endif
