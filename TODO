@@ -27,3 +27,5 @@ Project 1 Release:
  - run test cases and see what is still broken
  - test for leaving off the else
  - test for functions with the same name in different classes
+ - test for strings
+ - case insensitivity
