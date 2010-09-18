@@ -1,12 +1,13 @@
 #include "parser.h"
+#include "symbol_table.h"
 
 #include <map>
 #include <iostream>
 
-bool check_program(Program * program);
-bool check_indexed_variable(IndexedVariable * indexed_variable);
-bool check_statement_list(StatementList * _statement_list);
-bool check_statement(Statement * statement);
+bool check_program(Program * program, SymbolTable * symbol_table);
+bool check_indexed_variable(IndexedVariable * indexed_variable, SymbolTable * symbol_table);
+bool check_statement_list(StatementList * _statement_list, SymbolTable * symbol_table);
+bool check_statement(Statement * statement, SymbolTable * symbol_table);
 
 // functions to get the types of structures
 // null means semantic error occured
@@ -25,8 +26,9 @@ TypeDenoter * attribute_designator_type(AttributeDesignator * attribute_designat
 
 int main() {
     Program * program = parse_input();
+    SymbolTable * symbol_table = build_symbol_table(program);
 
-    if (! check_program(program))
+    if (! check_program(program, symbol_table))
         return -1;
 
     return 0;
@@ -34,18 +36,7 @@ int main() {
 
 // check everything that could possibly go wrong. 
 // return true if everything is OK
-bool check_program(Program * program) {
-    // one pass to build symbol table
-    // collect all the classes that are declared
-    std::map<char *, ClassDeclaration *> class_map;
-    for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
-        ClassDeclaration * class_declaration = class_list->item;
-        class_map[class_declaration->id] = class_declaration;
-        // collect all the variables that are declared
-        // TODO
-    }
-
-    // now pass to validate
+bool check_program(Program * program, SymbolTable * symbol_table) {
     bool ok = true;
     for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
@@ -54,22 +45,22 @@ bool check_program(Program * program) {
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
             StatementList * statement_list = function_declaration->block->statement_list;
-            ok = check_statement_list(statement_list) && ok;
+            ok = check_statement_list(statement_list, symbol_table) && ok;
         }
     }
 
     return ok;
 }
 
-bool check_statement_list(StatementList * _statement_list) {
+bool check_statement_list(StatementList * _statement_list, SymbolTable * symbol_table) {
     bool ok = true;
     for (StatementList * statement_list = _statement_list; statement_list != NULL; statement_list = statement_list->next) {
-        ok = check_statement(statement_list->item) && ok;
+        ok = check_statement(statement_list->item, symbol_table) && ok;
     }
     return ok;
 }
 
-bool check_statement(Statement * statement) {
+bool check_statement(Statement * statement, SymbolTable * symbol_table) {
     bool ok = true;
     switch(statement->type) {
         case Statement::ASSIGNMENT:
@@ -79,7 +70,7 @@ bool check_statement(Statement * statement) {
                 case VariableAccess::IDENTIFIER:
                     break;
                 case VariableAccess::INDEXED_VARIABLE:
-                    ok = check_indexed_variable(variable_access->indexed_variable) && ok;
+                    ok = check_indexed_variable(variable_access->indexed_variable, symbol_table) && ok;
                     break;
                 case VariableAccess::ATTRIBUTE:
                     break;
@@ -98,7 +89,7 @@ bool check_statement(Statement * statement) {
     return ok;
 }
 
-bool check_indexed_variable(IndexedVariable * indexed_variable) {
+bool check_indexed_variable(IndexedVariable * indexed_variable, SymbolTable * symbol_table) {
     bool ok = true;
     // every expression in the list should be an integer
     for (ExpressionList * expression_list = indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
