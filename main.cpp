@@ -11,6 +11,8 @@ int main(int argc, char ** argv) {
 
     Program * program = parse_input(filename);
     SymbolTable * symbol_table = build_symbol_table(program);
+    if (symbol_table == NULL)
+        return -1;
     SemanticChecker * checker = new SemanticChecker(program, symbol_table);
 
     if (! checker->check())

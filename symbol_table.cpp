@@ -66,5 +66,5 @@ SymbolTable * build_symbol_table(Program * program) {
         }
     }
 
-    return symbol_table;
+    return success ? symbol_table : NULL;
 }
