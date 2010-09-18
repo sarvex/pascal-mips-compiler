@@ -133,7 +133,7 @@ int yywrap() {
 }
 
 void yyerror(const char *error) {
-    printf("%d: %s at '%s'\n", line_number, error, yytext);
+    fprintf(stderr, "%d: %s at '%s'\n", line_number, error, yytext);
     exit(1);
 }
 
