@@ -148,7 +148,7 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
     switch (primary_expression->type) {
         case PrimaryExpression::VARIABLE:
             return check_variable_access(primary_expression->variable);
-        case PrimaryExpression::INT:
+        case PrimaryExpression::INTEGER:
             return new TypeDenoter(TypeDenoter::INTEGER);
         case PrimaryExpression::FUNCTION:
             return check_function_designator(primary_expression->function);
