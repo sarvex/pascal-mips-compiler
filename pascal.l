@@ -116,9 +116,11 @@ Z [zZ]
 
 {T}{R}{U}{E} {
     yylval.literal_boolean = new LiteralBoolean(true, line_number);
+    return TOKEN_LITERAL_BOOLEAN;
 }
 {F}{A}{L}{S}{E} {
     yylval.literal_boolean = new LiteralBoolean(false, line_number);
+    return TOKEN_LITERAL_BOOLEAN;
 }
 
 [a-zA-Z][a-zA-Z0-9]* {
