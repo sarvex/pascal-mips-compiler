@@ -45,7 +45,7 @@ def main():
     fails = []
     compiler_exe = absolute('opc')
     passed = 0
-    for test_name, test in tests.iteritems():
+    for test_name, test in sorted(tests.iteritems()):
         if not test.has_key('source'):
             print("%s missing source" % test_name)
             continue
