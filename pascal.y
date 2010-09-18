@@ -81,7 +81,7 @@ Program *main_program;
 %type <expressoin> expression
 %type <statement> statement
 %type <statement_list> compound_statement
-%type <statement_list> statement_sequence
+%type <statement_list> statement_list
 %type <if_statement> if_statement
 %type <while_statement> while_statement
 %type <indexed_variable> indexed_variable
@@ -240,164 +240,184 @@ formal_parameter_section_list : formal_parameter_section_list KEYWORD_SEMICOLON 
 };
 
 formal_parameter_section : identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
+    $$ = new FormalParameterSection($1, new TypeDenoter($3));
 } | KEYWORD_VAR identifier_list KEYWORD_COLON TOKEN_IDENTIFIER {
+    $$ = new FormalParameterSection($2, new TypeDenoter($4));
 };
 
-function_block : 
-  variable_declaration_part
-  compound_statement
-	{
+function_block : variable_declaration_part compound_statement {
+    $$ = new FunctionBlock($1, $2);
+};
 
-	}
-;
+compound_statement : KEYWORD_BEGIN statement_list KEYWORD_END {
+    $$ = $2;
+};
 
-compound_statement : KEYWORD_BEGIN statement_sequence KEYWORD_END
-	{
-
-	}
- ;
-
-statement_sequence : statement
-	{
-
-	}
- | statement_sequence KEYWORD_SEMICOLON statement
-	{
-
-	}
- ;
+statement_list : statement_list KEYWORD_SEMICOLON statement {
+    $$ = new StatementList($3, $1);
+} | statement {
+    $$ = new StatementList($1, NULL);
+};
 
 statement : assignment_statement {
-} | compound_statement {
+    $$ = new Statement($1);
 } | if_statement {
-} | while_statement {
+    $$ = new Statement($1);
 } | print_statement {
+    $$ = new Statement($1);
+} | while_statement {
+    $$ = new Statement($1);
+} | compound_statement {
+    $$ = new Statement($1);
 };
-
-while_statement : KEYWORD_WHILE expression KEYWORD_DO statement
-	{
-
-	}
- ;
-
-if_statement : KEYWORD_IF expression KEYWORD_THEN statement KEYWORD_ELSE statement
-	{
-
-	}
- | KEYWORD_IF expression KEYWORD_THEN statement 
- {
-
- }
- ;
 
 assignment_statement : variable_access KEYWORD_COLON_EQUAL expression {
+    $$ = new AssignmentStatement($1, $3);
 };
 
-object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
-} | KEYWORD_NEW TOKEN_IDENTIFIER params {
+if_statement : KEYWORD_IF expression KEYWORD_THEN statement KEYWORD_ELSE statement {
+    $$ = new IfStatement($2, $4, $6);
+} | KEYWORD_IF expression KEYWORD_THEN statement {
+    $$ = new IfStatement($2, $4, NULL);
 };
 
 print_statement : KEYWORD_PRINT expression {
+    $$ = new PrintStatement($2);
+};
+
+while_statement : KEYWORD_WHILE expression KEYWORD_DO statement {
+    $$ = new WhileStatement($2, $4);
 };
 
 variable_access : TOKEN_IDENTIFIER {
+    $$ = new VariableAccess($1);
 } | indexed_variable {
+    $$ = new VariableAccess($1);
 } | attribute_designator {
+    $$ = new VariableAccess($1);
 };
 
-indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_RIGHT_BRACKET
-	{
-
-	}
- ;
-
-expression_list : expression_list KEYWORD_COMMA expression
-	{
-
-	}
- | expression
-	{
-
-	}
- ;
-
-attribute_designator : variable_access KEYWORD_DOT TOKEN_IDENTIFIER {
+indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_RIGHT_BRACKET {
+    $$ = new IndexedVariable($1, $3);
 };
 
-method_designator: variable_access KEYWORD_DOT function_designator {
-};
-
-
-params : KEYWORD_LEFT_PARENS actual_parameter_list KEYWORD_RIGHT_PARENS 
-	{
-
-	}
- ;
-
-actual_parameter_list : actual_parameter_list KEYWORD_COMMA actual_parameter
-	{
-
-	}
- | actual_parameter 
-	{
-
-	}
- ;
-
-actual_parameter : expression {
-} | expression KEYWORD_COLON expression {
-} | expression KEYWORD_COLON expression KEYWORD_COLON expression {
+expression_list : expression_list KEYWORD_COMMA expression {
+    $$ = new ExpressionList($3, $1);
+} | expression {
+    $$ = new ExpressionList($1, NULL);
 };
 
 expression : additive_expression {
+    $$ = new Expression($1);
 } | additive_expression comparison_operator additive_expression {
-};
-
-additive_expression : multiplicative_expression {
-} | additive_expression additive_operator multiplicative_expression {
-};
-
-multiplicative_expression : negatable_expression {
-} | multiplicative_expression multiplicative_operator negatable_expression {
-};
-
-sign : KEYWORD_PLUS {
-} | KEYWORD_MINUS {
-};
-
-negatable_expression : sign negatable_expression {
-} | primary_expression {
-};
-
-primary_expression : variable_access {
-} | function_designator {
-} | method_designator {
-} | object_instantiation {
-} | KEYWORD_LEFT_PARENS expression KEYWORD_RIGHT_PARENS {
-} | KEYWORD_NOT primary_expression {
-};
-
-/* functions with no params will be handled by plain identifier */
-function_designator : TOKEN_IDENTIFIER params {
-};
-
-additive_operator : KEYWORD_PLUS {
-} | KEYWORD_MINUS {
-} | KEYWORD_OR {
-};
-
-multiplicative_operator : KEYWORD_STAR {
-} | KEYWORD_SLASH {
-} | KEYWORD_MOD {
-} | KEYWORD_AND {
+    $$ = new Expression($1, $2, $3);
 };
 
 comparison_operator : KEYWORD_EQUAL {
+    $$ = Expression::EQUAL;
 } | KEYWORD_LESS_GREATER {
+    $$ = Expression::NOT_EQUAL;
 } | KEYWORD_LESS {
+    $$ = Expression::LESS;
 } | KEYWORD_GREATER {
+    $$ = Expression::GREATER;
 } | KEYWORD_LESS_EQUAL {
+    $$ = Expression::LESS_EQUAL;
 } | KEYWORD_GREATER_EQUAL {
+    $$ = Expression::GREATER_EQUAL;
+};
+
+additive_expression : multiplicative_expression {
+    $$ = new AdditiveExpression($1);
+} | additive_expression additive_operator multiplicative_expression {
+    $$ = new AdditiveExpression($1, $2, $3);
+};
+
+additive_operator : KEYWORD_PLUS {
+    $$ = AdditiveExpression::PLUS;
+} | KEYWORD_MINUS {
+    $$ = AdditiveExpression::MINUS;
+} | KEYWORD_OR {
+    $$ = AdditiveExpression::OR;
+};
+
+multiplicative_expression : negatable_expression {
+    $$ = new MultiplicativeExpression($1);
+} | multiplicative_expression multiplicative_operator negatable_expression {
+    $$ = new MultiplicativeExpression($1, $2, $3);
+};
+
+multiplicative_operator : KEYWORD_STAR {
+    $$ = MultiplicativeExpression::TIMES;
+} | KEYWORD_SLASH {
+    $$ = MultiplicativeExpression::DIVIDE;
+} | KEYWORD_MOD {
+    $$ = MultiplicativeExpression::MOD;
+} | KEYWORD_AND {
+    $$ = MultiplicativeExpression::AND;
+};
+
+negatable_expression : sign negatable_expression {
+    $$ = new NegatableExpression($1, $2);
+} | primary_expression {
+    $$ = new NegatableExpression($1);
+};
+
+sign : KEYWORD_PLUS {
+    $$ = 1;
+} | KEYWORD_MINUS {
+    $$ = -1;
+};
+
+primary_expression : variable_access {
+    $$ = new PrimaryExpression($1);
+} | function_designator {
+    $$ = new PrimaryExpression($1);
+} | method_designator {
+    $$ = new PrimaryExpression($1);
+} | object_instantiation {
+    $$ = new PrimaryExpression($1);
+} | KEYWORD_LEFT_PARENS expression KEYWORD_RIGHT_PARENS {
+    $$ = new PrimaryExpression($2);
+} | KEYWORD_NOT primary_expression {
+    $$ = new PrimaryExpression($2);
+};
+
+function_designator : TOKEN_IDENTIFIER params {
+    $$ = new FunctionDesignator($1, $2);
+};
+
+params : KEYWORD_LEFT_PARENS actual_parameter_list KEYWORD_RIGHT_PARENS {
+    $$ = $2;
+};
+
+actual_parameter_list : actual_parameter_list KEYWORD_COMMA actual_parameter {
+    $$ = new ActualParameterList($3, $1);
+} | actual_parameter {
+    $$ = new ActualParameterList($1, NULL);
+};
+
+actual_parameter : expression {
+    $$ = new ActualParameter($1);
+} | expression KEYWORD_COLON expression {
+    $$ = new ActualParameter($1, $3);
+} | expression KEYWORD_COLON expression KEYWORD_COLON expression {
+    $$ = new ActualParameter($1, $3, $5);
+};
+
+
+attribute_designator : variable_access KEYWORD_DOT TOKEN_IDENTIFIER {
+    $$ = new AttributeDesignator($1, $3);
+};
+
+method_designator: variable_access KEYWORD_DOT function_designator {
+    $$ = new MethodDesignator($1, $3);
+};
+
+object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
+    $$ = new ObjectInstantiation($2);
+} | KEYWORD_NEW TOKEN_IDENTIFIER params {
+    $$ = new ObjectInstantiation($2, $3);
 };
 
 %%

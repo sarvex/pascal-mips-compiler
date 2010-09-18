@@ -177,13 +177,6 @@ struct AssignmentStatement {
         : variable(variable), expression(expression) {}
 };
 
-struct ObjectInstantiation {
-    char * class_id;
-    ActualParameterList * parameter_list;
-    ObjectInstantiation(char * class_id, ActualParameterList * parameter_list)
-        : class_id(class_id), parameter_list(parameter_list) {}
-};
-
 struct IfStatement {
     Expression * expression;
     Statement * then_statement;
@@ -243,23 +236,23 @@ struct Expression {
 
 struct AdditiveExpression {
     enum Operator {PLUS, MINUS, OR};
-    MultiplicativeExpression * left;
+    AdditiveExpression * left;
     Operator _operator;
-    AdditiveExpression * right;
+    MultiplicativeExpression * right;
     AdditiveExpression(MultiplicativeExpression * only_expression)
-        : left(only_expression), right(NULL) {}
-    AdditiveExpression(MultiplicativeExpression * left, Operator _operator, AdditiveExpression * right)
+        : left(NULL), right(only_expression) {}
+    AdditiveExpression(AdditiveExpression * left, Operator _operator, MultiplicativeExpression * right)
         : left(left), _operator(_operator), right(right) {}
 };
 
 struct MultiplicativeExpression {
     enum Operator {TIMES, DIVIDE, MOD, AND};
-    NegatableExpression * left;
+    MultiplicativeExpression * left;
     Operator _operator;
-    MultiplicativeExpression * right;
+    NegatableExpression * right;
     MultiplicativeExpression(NegatableExpression * only_expression)
-        : left(only_expression), right(NULL) {}
-    MultiplicativeExpression(NegatableExpression * left, Operator _operator, MultiplicativeExpression * right)
+        : left(NULL), right(only_expression) {}
+    MultiplicativeExpression(MultiplicativeExpression * left, Operator _operator, NegatableExpression * right)
         : left(left), _operator(_operator), right(right) {}
 };
 
@@ -338,6 +331,14 @@ struct MethodDesignator {
     FunctionDesignator * function;
     MethodDesignator(VariableAccess * owner, FunctionDesignator * function)
         : owner(owner), function(function) {}
+};
+
+struct ObjectInstantiation {
+    char * class_id;
+    ActualParameterList * parameter_list;
+    ObjectInstantiation(char * class_id) : class_id(class_id), parameter_list(NULL) {}
+    ObjectInstantiation(char * class_id, ActualParameterList * parameter_list)
+        : class_id(class_id), parameter_list(parameter_list) {}
 };
 
 
