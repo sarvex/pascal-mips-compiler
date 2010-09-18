@@ -287,19 +287,25 @@ struct NegatableExpression {
 };
 
 struct PrimaryExpression {
-    enum Type {VARIABLE, INT, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
+    enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
     int type;
     union {
+        int literal_integer;
+        float literal_real;
+        char * literal_string;
+        bool literal_boolean;
         VariableAccess * variable; 
-        int literal_int;
         FunctionDesignator * function;
         MethodDesignator * method;
         ObjectInstantiation * object_instantiation;
         Expression * parens_expression;
         PrimaryExpression * not_expression;
     };
+    PrimaryExpression(int literal_integer) : type(INTEGER), literal_integer(literal_integer) {}
+    PrimaryExpression(float literal_real) : type(REAL), literal_real(literal_real) {}
+    PrimaryExpression(char * literal_string) : type(STRING), literal_string(literal_string) {}
+    PrimaryExpression(bool literal_boolean) : type(BOOLEAN), literal_boolean(literal_boolean) {}
     PrimaryExpression(VariableAccess * variable) : type(VARIABLE), variable(variable) {}
-    PrimaryExpression(int literal_int) : type(INT), literal_int(literal_int) {}
     PrimaryExpression(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     PrimaryExpression(MethodDesignator * method) : type(METHOD), method(method) {}
     PrimaryExpression(ObjectInstantiation * object_instantiation) 

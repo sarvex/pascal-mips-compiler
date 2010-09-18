@@ -62,6 +62,8 @@ Program *main_program;
 %token KEYWORD_WHILE
 
 %token <_int> TOKEN_DIGIT_SEQUENCE
+%token <_float> TOKEN_REAL
+%token <_string> TOKEN_STRING
 %token <identifier> TOKEN_IDENTIFIER
 
 %type <type_denoter> type_denoter
@@ -104,6 +106,7 @@ Program *main_program;
 %type <program> program
 %type <additive_operator> additive_operator
 %type <multiplicative_operator> multiplicative_operator
+%type <_bool> boolean_literal
 
 %union {
     TypeDenoter * type_denoter;
@@ -131,7 +134,6 @@ Program *main_program;
     AdditiveExpression * additive_expression;
     MultiplicativeExpression * multiplicative_expression;
     NegatableExpression * negatable_expression;
-    int _int;
     PrimaryExpression * primary_expression;
     ArrayType * array_type;
     ClassBlock * class_block;
@@ -143,6 +145,10 @@ Program *main_program;
     Program * program;
     AdditiveOperator * additive_operator;
     MultiplicativeOperator * multiplicative_operator;
+    int _int;
+    float _float;
+    char * _string;
+    bool _bool;
 }
 
 %%
@@ -355,9 +361,15 @@ sign : KEYWORD_PLUS {
     $$ = -1;
 };
 
-primary_expression : variable_access {
+primary_expression : TOKEN_DIGIT_SEQUENCE {
     $$ = new PrimaryExpression($1);
-} | TOKEN_DIGIT_SEQUENCE {
+} | TOKEN_REAL {
+    $$ = new PrimaryExpression($1);
+} | TOKEN_STRING {
+    $$ = new PrimaryExpression($1);
+} | boolean_literal {
+    $$ = new PrimaryExpression($1);
+} | variable_access {
     $$ = new PrimaryExpression($1);
 } | function_designator {
     $$ = new PrimaryExpression($1);
@@ -369,6 +381,12 @@ primary_expression : variable_access {
     $$ = new PrimaryExpression($2);
 } | KEYWORD_NOT primary_expression {
     $$ = new PrimaryExpression($2);
+};
+
+boolean_literal : KEYWORD_TRUE {
+    $$ = true;
+} | KEYWORD_FALSE {
+    $$ = false;
 };
 
 function_designator : TOKEN_IDENTIFIER params {
