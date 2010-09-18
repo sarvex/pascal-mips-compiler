@@ -12,6 +12,7 @@ support:
     functions with the same name in different classes
     strings
     case insensitivity
+    print statement
 report error for:
     arrays as parameter types
     undeclared variable
