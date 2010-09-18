@@ -26,6 +26,8 @@ class SemanticChecker {
     private: // methods
         void check_statement_list(StatementList * _statement_list);
         void check_statement(Statement * statement);
+        void check_variable_declaration_list(VariableDeclarationList * variable_list);
+        void check_variable_declaration(VariableDeclaration * variable);
 
         // functions to get the types of structures
         // null means semantic error occured

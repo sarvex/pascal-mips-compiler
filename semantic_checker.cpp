@@ -17,11 +17,15 @@ bool SemanticChecker::check()
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
         m_class_id = class_declaration->identifier->text;
+
+        check_variable_declaration_list(class_declaration->class_block->variable_list);
         
         // make sure array indicies are integers
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
             m_function_id = function_declaration->identifier->text;
+
+            check_variable_declaration_list(function_declaration->parameter_list);
 
             StatementList * statement_list = function_declaration->block->statement_list;
             check_statement_list(statement_list);
@@ -29,6 +33,39 @@ bool SemanticChecker::check()
     }
 
     return m_success;
+}
+
+void SemanticChecker::check_variable_declaration_list(VariableDeclarationList * _variable_list)
+{
+    for (VariableDeclarationList * variable_list = _variable_list; variable_list != NULL; variable_list = variable_list->next)
+        check_variable_declaration(variable_list->item);
+}
+
+void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
+{
+    TypeDenoter * type = variable->type;
+    switch(type->type) {
+        case TypeDenoter::INTEGER:
+            break;
+        case TypeDenoter::REAL:
+            break;
+        case TypeDenoter::CHAR:
+            break;
+        case TypeDenoter::BOOLEAN:
+            break;
+        case TypeDenoter::CLASS:
+            break;
+        case TypeDenoter::ARRAY:
+            // make sure the range is valid
+            if (! (type->array_type->max >= type->array_type->min)) {
+                std::cerr << err_header(type->array_type->line_number) << "invalid array range: [" <<
+                    type->array_type->min << ".." << type->array_type->max << "]" << std::endl;
+                m_success = false;
+            }
+            break;
+        default:
+            assert(false);
+    }
 }
 
 void SemanticChecker::check_statement_list(StatementList * _statement_list)

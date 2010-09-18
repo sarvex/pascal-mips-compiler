@@ -71,11 +71,7 @@ Program
                             ArrayType
                 FunctionDeclarationList[]
                     FunctionDeclaration
-                        FunctionHeading
-                            FormalParameterSectionList[]
-                                FormalParameterSection
-                                    IdentifierList[]
-                                    TypeDenoter
+                        VariableDeclarationList[]
                         FunctionBlock
                             VariableDeclarationList[]
                             StatementList[]
