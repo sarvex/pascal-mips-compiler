@@ -222,10 +222,12 @@ function_declaration_list : function_declaration_list KEYWORD_SEMICOLON function
 };
 
 function_declaration :
-    KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                                                   KEYWORD_SEMICOLON function_block {
+    KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                                               KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, NULL, NULL, $4);
-} | KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                        KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
+} | KEYWORD_FUNCTION TOKEN_IDENTIFIER                                                                    KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, NULL, $4, $6);
+} | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS variable_declaration_list KEYWORD_RIGHT_PARENS                            KEYWORD_SEMICOLON function_block {
+    $$ = new FunctionDeclaration($2, $4, NULL, $7);
 } | KEYWORD_FUNCTION TOKEN_IDENTIFIER KEYWORD_LEFT_PARENS variable_declaration_list KEYWORD_RIGHT_PARENS KEYWORD_COLON type_denoter KEYWORD_SEMICOLON function_block {
     $$ = new FunctionDeclaration($2, $4, $7, $9);
 };
