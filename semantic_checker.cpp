@@ -274,6 +274,20 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
             return check_variable_access(primary_expression->variable);
         case PrimaryExpression::INTEGER:
             return new TypeDenoter(TypeDenoter::INTEGER);
+        case PrimaryExpression::REAL:
+            return new TypeDenoter(TypeDenoter::REAL);
+        case PrimaryExpression::BOOLEAN:
+            return new TypeDenoter(TypeDenoter::BOOLEAN);
+        case PrimaryExpression::STRING:
+        {
+            std::string str = primary_expression->literal_string;
+            int str_len = (int) str.length();
+            if (str_len == 1) {
+                return new TypeDenoter(TypeDenoter::CHAR);
+            } else {
+                return new TypeDenoter(new ArrayType(0, 0, str_len-1, new TypeDenoter(TypeDenoter::CHAR)));
+            }
+        }
         case PrimaryExpression::FUNCTION:
             return check_function_designator(primary_expression->function);
         case PrimaryExpression::METHOD:
