@@ -418,7 +418,7 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
         }
         if (index_type->type != TypeDenoter::INTEGER) {
             std::cerr << err_header(indexed_variable->variable->identifier->line_number) <<
-                "Array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
+                "array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
             m_success = false;
             break;
         } else {

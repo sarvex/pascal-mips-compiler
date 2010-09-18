@@ -1,2 +1,1 @@
-ERROR:15:Array index not an integer for variable "rows"
-Errors detected. Exiting.
+ERROR: line 14: array index not an integer for variable "rows"
