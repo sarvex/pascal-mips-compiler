@@ -346,7 +346,7 @@ struct ObjectInstantiation {
 };
 
 
-Program * parse_input();
+Program * parse_input(char * filename);
 
 #endif
 

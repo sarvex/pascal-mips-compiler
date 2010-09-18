@@ -1,14 +1,16 @@
 %{
 #include "parser.h"
+#include <cstdio>
 
 int yylex(void);
-void yyerror(const char *error);
+void yyerror(const char * error);
 
-extern char *yytext;
+extern char * yytext;
+extern FILE * yyin;
 extern int line_number;
 
 // main program
-Program *main_program;
+Program * main_program;
 %}
 
 %expect 1
@@ -410,7 +412,10 @@ object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
 
 %%
 
-Program * parse_input() {
+Program * parse_input(char * filename) {
+    if (filename != NULL) {
+        yyin = fopen(filename, "r");
+    }
     yyparse();
     return main_program;
 }
