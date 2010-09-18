@@ -13,6 +13,8 @@ support:
     strings
     case insensitivity
     print statement
+    returning values from functions by assigning to the function name:
+        tests/formal/test_class_preuse_function_valid.p
 report error for:
     arrays as parameter types
     undeclared variable
