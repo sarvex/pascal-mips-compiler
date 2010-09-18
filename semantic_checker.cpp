@@ -17,11 +17,15 @@ bool SemanticChecker::check()
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
         m_class_id = class_declaration->identifier->text;
+
+        check_variable_declaration_list(class_declaration->class_block->variable_list);
         
         // make sure array indicies are integers
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
             m_function_id = function_declaration->identifier->text;
+
+            check_variable_declaration_list(function_declaration->parameter_list);
 
             StatementList * statement_list = function_declaration->block->statement_list;
             check_statement_list(statement_list);
@@ -29,6 +33,39 @@ bool SemanticChecker::check()
     }
 
     return m_success;
+}
+
+void SemanticChecker::check_variable_declaration_list(VariableDeclarationList * _variable_list)
+{
+    for (VariableDeclarationList * variable_list = _variable_list; variable_list != NULL; variable_list = variable_list->next)
+        check_variable_declaration(variable_list->item);
+}
+
+void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
+{
+    TypeDenoter * type = variable->type;
+    switch(type->type) {
+        case TypeDenoter::INTEGER:
+            break;
+        case TypeDenoter::REAL:
+            break;
+        case TypeDenoter::CHAR:
+            break;
+        case TypeDenoter::BOOLEAN:
+            break;
+        case TypeDenoter::CLASS:
+            break;
+        case TypeDenoter::ARRAY:
+            // make sure the range is valid
+            if (! (type->array_type->max >= type->array_type->min)) {
+                std::cerr << err_header(type->array_type->line_number) << "invalid array range: [" <<
+                    type->array_type->min << ".." << type->array_type->max << "]" << std::endl;
+                m_success = false;
+            }
+            break;
+        default:
+            assert(false);
+    }
 }
 
 void SemanticChecker::check_statement_list(StatementList * _statement_list)
@@ -237,6 +274,20 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
             return check_variable_access(primary_expression->variable);
         case PrimaryExpression::INTEGER:
             return new TypeDenoter(TypeDenoter::INTEGER);
+        case PrimaryExpression::REAL:
+            return new TypeDenoter(TypeDenoter::REAL);
+        case PrimaryExpression::BOOLEAN:
+            return new TypeDenoter(TypeDenoter::BOOLEAN);
+        case PrimaryExpression::STRING:
+        {
+            std::string str = primary_expression->literal_string;
+            int str_len = (int) str.length();
+            if (str_len == 1) {
+                return new TypeDenoter(TypeDenoter::CHAR);
+            } else {
+                return new TypeDenoter(new ArrayType(0, 0, str_len-1, new TypeDenoter(TypeDenoter::CHAR)));
+            }
+        }
         case PrimaryExpression::FUNCTION:
             return check_function_designator(primary_expression->function);
         case PrimaryExpression::METHOD:
@@ -272,6 +323,7 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
                 // undeclared variable
                 std::cerr << err_header(variable_access->identifier->line_number) <<
                     "Undeclared varable: " << variable_access->identifier->text << std::endl;
+                m_success = false;
                 return NULL;
             }
             break;
@@ -296,6 +348,7 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
     } else {
         std::cerr << err_header(function_designator->identifier->line_number) <<
             "Undeclared function: " << function_designator->identifier->text << std::endl;
+        m_success = false;
         return NULL;
     }
 }
@@ -311,6 +364,7 @@ TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method
     } else {
         std::cerr << err_header(method_designator->function->identifier->line_number) <<
             "Undeclared method: " << method_designator->function->identifier->text << std::endl;
+        m_success = false;
         return NULL;
     }
 }
@@ -323,15 +377,41 @@ TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * 
     } else {
         std::cerr << err_header(object_instantiation->class_identifier->line_number) <<
             "Undeclared class: " << object_instantiation->class_identifier->text << std::endl;
+        m_success = false;
         return NULL;
     }
 }
 
+SemanticChecker::ConstantInteger SemanticChecker::constant_integer(Expression * expression)
+{
+    if (expression->right != NULL)
+        return ConstantInteger(false, 0);
+    if (expression->left->left != NULL)
+        return ConstantInteger(false, 0);
+    if (expression->left->right->left != NULL)
+        return ConstantInteger(false, 0);
+
+    NegatableExpression * negatable_expression = expression->left->right->right;
+    int sign = 1;
+    while (negatable_expression->type == NegatableExpression::SIGN) {
+        sign *= negatable_expression->sign;
+        negatable_expression = negatable_expression->next;
+    }
+    if (negatable_expression->primary_expression->type != PrimaryExpression::INTEGER)
+        return ConstantInteger(false, 0);
+
+    return ConstantInteger(true, negatable_expression->primary_expression->literal_integer);
+}
+
 TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_variable)
 {
+    TypeDenoter * array_type = check_variable_access(indexed_variable->variable);
+    assert(array_type->type == TypeDenoter::ARRAY);
+
     // every expression in the list should be an integer
     for (ExpressionList * expression_list = indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
-        TypeDenoter * index_type = check_expression(expression_list->item);
+        Expression * expression = expression_list->item;
+        TypeDenoter * index_type = check_expression(expression);
         if (index_type == NULL) {
             // semantic error occured while determining type
             break;
@@ -341,10 +421,21 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
                 "Array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
             m_success = false;
             break;
+        } else {
+            // if expression is constant, check bounds
+            ConstantInteger const_int = constant_integer(expression);
+            if (const_int.is_constant_integer) {
+                if (! (const_int.value >= array_type->array_type->min && const_int.value <= array_type->array_type->max)) {
+                    std::cerr << err_header(100) << "array index " << const_int.value <<
+                        " is out of the range [" << array_type->array_type->min << ".." <<
+                        array_type->array_type->max << "]" << std::endl;
+                }
+            }
         }
     }
 
-    return check_variable_access(indexed_variable->variable);
+    // it's the array type of the variable access type
+    return array_type->array_type->type;
 }
 
 TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * attribute_designator)
@@ -357,6 +448,7 @@ TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * 
     } else {
         std::cerr << err_header(attribute_designator->identifier->line_number) <<
             "Undeclared class: " << owner_type->class_identifier->text;
+        m_success = false;
         return NULL;
     }
 }

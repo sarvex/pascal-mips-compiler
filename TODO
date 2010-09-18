@@ -13,6 +13,7 @@ support:
     strings
     case insensitivity
     print statement
+    evaluate constant expressions before semantic checking
     returning values from functions by assigning to the function name:
         tests/formal/test_class_preuse_function_valid.p
 report error for:
@@ -30,4 +31,5 @@ report error for:
     wrong number of parameters in function calls
     invalid array equivalence
     strings of length zero
+    test for invalid/valid array indicies with expressions like 8*8-32
 
