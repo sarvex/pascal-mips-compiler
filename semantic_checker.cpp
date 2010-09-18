@@ -408,34 +408,41 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
     TypeDenoter * array_type = check_variable_access(indexed_variable->variable);
     assert(array_type->type == TypeDenoter::ARRAY);
 
+    // the type that we keep iterating to get inner arrays
+    TypeDenoter * array_type_iterator = array_type;
+
     // every expression in the list should be an integer
     for (ExpressionList * expression_list = indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
         Expression * expression = expression_list->item;
         TypeDenoter * index_type = check_expression(expression);
         if (index_type == NULL) {
             // semantic error occured while determining type
-            break;
+            continue;
         }
         if (index_type->type != TypeDenoter::INTEGER) {
             std::cerr << err_header(indexed_variable->variable->identifier->line_number) <<
                 "array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
             m_success = false;
-            break;
         } else {
             // if expression is constant, check bounds
             LiteralInteger * literal_int = constant_integer(expression);
             if (literal_int != NULL) {
-                if (! (literal_int->value >= array_type->array_type->min->value && literal_int->value <= array_type->array_type->max->value)) {
+                assert(array_type_iterator->type == TypeDenoter::ARRAY);
+                if (! (literal_int->value >= array_type_iterator->array_type->min->value &&
+                    literal_int->value <= array_type_iterator->array_type->max->value))
+                {
                     std::cerr << err_header(literal_int->line_number) << "array index " << literal_int->value <<
-                        " is out of the range [" << array_type->array_type->min->value << ".." <<
-                        array_type->array_type->max->value << "]" << std::endl;
+                        " is out of the range [" << array_type_iterator->array_type->min->value << ".." <<
+                        array_type_iterator->array_type->max->value << "]" << std::endl;
+                    m_success = false;
                 }
             }
         }
+        array_type_iterator = array_type_iterator->array_type->type;
     }
 
     // it's the array type of the variable access type
-    return array_type->array_type->type;
+    return array_type_iterator;
 }
 
 TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * attribute_designator)
