@@ -16,6 +16,7 @@ support:
     evaluate constant expressions before semantic checking
     returning values from functions by assigning to the function name:
         tests/formal/test_class_preuse_function_valid.p
+    functions with parameters but no return type
 report error for:
     arrays as parameter types
     undeclared variable
