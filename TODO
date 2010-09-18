@@ -30,3 +30,4 @@ Project 1 Release:
  - test for strings
  - case insensitivity
  - test for colliding variable names, especially with function parameters
+ - test for strings of length zero

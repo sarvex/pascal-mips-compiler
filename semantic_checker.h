@@ -21,25 +21,25 @@ class SemanticChecker {
         std::string m_class_id;
         // current function_id in parsing
         std::string m_function_id;
+        // true if we have not encountered any errors
+        bool m_success;
     private: // methods
-        bool check_program();
-        bool check_statement_list(StatementList * _statement_list);
-        bool check_statement(Statement * statement);
-        bool check_indexed_variable(IndexedVariable * indexed_variable);
+        void check_statement_list(StatementList * _statement_list);
+        void check_statement(Statement * statement);
 
         // functions to get the types of structures
         // null means semantic error occured
-        TypeDenoter * expression_type(Expression * expression);
-        TypeDenoter * additive_expression_type(AdditiveExpression * additive_expression);
-        TypeDenoter * multiplicitive_expression_type(MultiplicativeExpression * multiplicative_expression);
-        TypeDenoter * negatable_expression_type(NegatableExpression * negatable_expression);
-        TypeDenoter * primary_expression_type(PrimaryExpression * primary_expression);
-        TypeDenoter * variable_access_type(VariableAccess * variable_access);
-        TypeDenoter * function_designator_type(FunctionDesignator * function_designator);
-        TypeDenoter * method_designator_type(MethodDesignator * method_designator);
-        TypeDenoter * object_instantiation_type(ObjectInstantiation * object_instantiation);
-        TypeDenoter * indexed_variable_type(IndexedVariable * indexed_variable);
-        TypeDenoter * attribute_designator_type(AttributeDesignator * attribute_designator);
+        TypeDenoter * check_expression(Expression * expression);
+        TypeDenoter * check_additive_expression(AdditiveExpression * additive_expression);
+        TypeDenoter * check_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
+        TypeDenoter * check_negatable_expression(NegatableExpression * negatable_expression);
+        TypeDenoter * check_primary_expression(PrimaryExpression * primary_expression);
+        TypeDenoter * check_variable_access(VariableAccess * variable_access);
+        TypeDenoter * check_function_designator(FunctionDesignator * function_designator);
+        TypeDenoter * check_method_designator(MethodDesignator * method_designator);
+        TypeDenoter * check_object_instantiation(ObjectInstantiation * object_instantiation);
+        TypeDenoter * check_indexed_variable(IndexedVariable * indexed_variable);
+        TypeDenoter * check_attribute_designator(AttributeDesignator * attribute_designator);
 
         // get the result type of adding/multiplying/etc types
         TypeDenoter * combined_type(TypeDenoter * left_type, TypeDenoter * right_type);
