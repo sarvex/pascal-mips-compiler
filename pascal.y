@@ -77,6 +77,7 @@ Program *main_program;
 %type <object_instantiation> object_instantiation
 %type <print_statement> print_statement
 %type <expressoin> expression
+%type <comparison_operator> comparison_operator
 %type <statement> statement
 %type <statement_list> compound_statement
 %type <statement_list> statement_list
@@ -101,7 +102,6 @@ Program *main_program;
 %type <class_list> class_list
 %type <class_declaration> class_declaration
 %type <program> program
-%type <comparison_operator> comparison_operator
 %type <additive_operator> additive_operator
 %type <multiplicative_operator> multiplicative_operator
 
@@ -119,6 +119,7 @@ Program *main_program;
     ObjectInstantiation * object_instantiation;
     PrintStatement * print_statement;
     Expression * expressoin;
+    ComparisonOperator * comparison_operator;
     Statement * statement;
     StatementList * statement_list;
     IfStatement * if_statement;
@@ -140,9 +141,8 @@ Program *main_program;
     ClassList * class_list;
     ClassDeclaration * class_declaration;
     Program * program;
-    Expression::Operator comparison_operator;
-    AdditiveExpression::Operator additive_operator;
-    MultiplicativeExpression::Operator multiplicative_operator;
+    AdditiveOperator * additive_operator;
+    MultiplicativeOperator * multiplicative_operator;
 }
 
 %%
@@ -300,17 +300,17 @@ expression : additive_expression {
 };
 
 comparison_operator : KEYWORD_EQUAL {
-    $$ = Expression::EQUAL;
+    $$ = new ComparisonOperator(ComparisonOperator::EQUAL, line_number);
 } | KEYWORD_LESS_GREATER {
-    $$ = Expression::NOT_EQUAL;
+    $$ = new ComparisonOperator(ComparisonOperator::NOT_EQUAL, line_number);
 } | KEYWORD_LESS {
-    $$ = Expression::LESS;
+    $$ = new ComparisonOperator(ComparisonOperator::LESS, line_number);
 } | KEYWORD_GREATER {
-    $$ = Expression::GREATER;
+    $$ = new ComparisonOperator(ComparisonOperator::GREATER, line_number);
 } | KEYWORD_LESS_EQUAL {
-    $$ = Expression::LESS_EQUAL;
+    $$ = new ComparisonOperator(ComparisonOperator::LESS_EQUAL, line_number);
 } | KEYWORD_GREATER_EQUAL {
-    $$ = Expression::GREATER_EQUAL;
+    $$ = new ComparisonOperator(ComparisonOperator::GREATER_EQUAL, line_number);
 };
 
 additive_expression : multiplicative_expression {
@@ -320,11 +320,11 @@ additive_expression : multiplicative_expression {
 };
 
 additive_operator : KEYWORD_PLUS {
-    $$ = AdditiveExpression::PLUS;
+    $$ = new AdditiveOperator(AdditiveOperator::PLUS, line_number);
 } | KEYWORD_MINUS {
-    $$ = AdditiveExpression::MINUS;
+    $$ = new AdditiveOperator(AdditiveOperator::MINUS, line_number);
 } | KEYWORD_OR {
-    $$ = AdditiveExpression::OR;
+    $$ = new AdditiveOperator(AdditiveOperator::OR, line_number);
 };
 
 multiplicative_expression : negatable_expression {
@@ -334,13 +334,13 @@ multiplicative_expression : negatable_expression {
 };
 
 multiplicative_operator : KEYWORD_STAR {
-    $$ = MultiplicativeExpression::TIMES;
+    $$ = new MultiplicativeOperator(MultiplicativeOperator::TIMES, line_number);
 } | KEYWORD_SLASH {
-    $$ = MultiplicativeExpression::DIVIDE;
+    $$ = new MultiplicativeOperator(MultiplicativeOperator::DIVIDE, line_number);
 } | KEYWORD_MOD {
-    $$ = MultiplicativeExpression::MOD;
+    $$ = new MultiplicativeOperator(MultiplicativeOperator::MOD, line_number);
 } | KEYWORD_AND {
-    $$ = MultiplicativeExpression::AND;
+    $$ = new MultiplicativeOperator(MultiplicativeOperator::AND, line_number);
 };
 
 negatable_expression : sign negatable_expression {

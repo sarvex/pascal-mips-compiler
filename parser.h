@@ -26,7 +26,9 @@ struct IfStatement;
 struct AssignmentStatement;
 struct PrintStatement;
 struct Expression;
+struct ComparisonOperator;
 struct AdditiveExpression;
+struct AdditiveOperator;
 struct ObjectInstantiation;
 struct VariableAccess;
 struct IndexedVariable;
@@ -37,6 +39,7 @@ struct MethodDesignator;
 struct ActualParameterList;
 struct ActualParameter;
 struct MultiplicativeExpression;
+struct MultiplicativeOperator;
 struct NegatableExpression;
 struct PrimaryExpression;
 
@@ -218,35 +221,53 @@ struct ExpressionList {
 };
 
 struct Expression {
-    enum Operator {EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL};
     AdditiveExpression * left;
-    Operator _operator;
+    ComparisonOperator * _operator;
     AdditiveExpression * right;
     Expression(AdditiveExpression * only_expression) : left(only_expression), right(NULL) {}
-    Expression(AdditiveExpression * left, Operator _operator, AdditiveExpression * right)
+    Expression(AdditiveExpression * left, ComparisonOperator * _operator, AdditiveExpression * right)
         : left(left), _operator(_operator), right(right) {}
+};
+
+struct ComparisonOperator {
+    enum Type {EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL};
+    Type type;
+    int line_number;
+    ComparisonOperator(Type type, int line_number) : type(type), line_number(line_number) {}
 };
 
 struct AdditiveExpression {
-    enum Operator {PLUS, MINUS, OR};
     AdditiveExpression * left;
-    Operator _operator;
+    AdditiveOperator * _operator;
     MultiplicativeExpression * right;
     AdditiveExpression(MultiplicativeExpression * only_expression)
         : left(NULL), right(only_expression) {}
-    AdditiveExpression(AdditiveExpression * left, Operator _operator, MultiplicativeExpression * right)
+    AdditiveExpression(AdditiveExpression * left, AdditiveOperator * _operator, MultiplicativeExpression * right)
         : left(left), _operator(_operator), right(right) {}
 };
 
+struct AdditiveOperator {
+    enum Type {PLUS, MINUS, OR};
+    Type type;
+    int line_number;
+    AdditiveOperator(Type type, int line_number) : type(type), line_number(line_number) {}
+};
+
 struct MultiplicativeExpression {
-    enum Operator {TIMES, DIVIDE, MOD, AND};
     MultiplicativeExpression * left;
-    Operator _operator;
+    MultiplicativeOperator * _operator;
     NegatableExpression * right;
     MultiplicativeExpression(NegatableExpression * only_expression)
         : left(NULL), right(only_expression) {}
-    MultiplicativeExpression(MultiplicativeExpression * left, Operator _operator, NegatableExpression * right)
+    MultiplicativeExpression(MultiplicativeExpression * left, MultiplicativeOperator * _operator, NegatableExpression * right)
         : left(left), _operator(_operator), right(right) {}
+};
+
+struct MultiplicativeOperator {
+    enum Type {TIMES, DIVIDE, MOD, AND};
+    Type type;
+    int line_number;
+    MultiplicativeOperator(Type type, int line_number) : type(type), line_number(line_number) {}
 };
 
 struct NegatableExpression {
