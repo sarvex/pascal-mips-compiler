@@ -57,9 +57,9 @@ void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
             break;
         case TypeDenoter::ARRAY:
             // make sure the range is valid
-            if (! (type->array_type->max >= type->array_type->min)) {
-                std::cerr << err_header(type->array_type->line_number) << "invalid array range: [" <<
-                    type->array_type->min << ".." << type->array_type->max << "]" << std::endl;
+            if (! (type->array_type->max->value >= type->array_type->min->value)) {
+                std::cerr << err_header(type->array_type->min->line_number) << "invalid array range: [" <<
+                    type->array_type->min->value << ".." << type->array_type->max->value << "]" << std::endl;
                 m_success = false;
             }
             break;
@@ -101,8 +101,8 @@ bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * ri
     // A = B - OK if A is an ancestor of B or if A and B's fields are respectively compatible
     if (left_type->type == right_type->type) {
         if (left_type->type == TypeDenoter::ARRAY) {
-            bool size_equal = (left_type->array_type->max - left_type->array_type->min) ==
-                (right_type->array_type->max - right_type->array_type->min);
+            bool size_equal = (left_type->array_type->max->value - left_type->array_type->min->value) ==
+                (right_type->array_type->max->value - right_type->array_type->min->value);
             return size_equal && assignment_valid(left_type->array_type->type, right_type->array_type->type);
         } else {
             return true;
@@ -136,7 +136,7 @@ std::string SemanticChecker::type_to_string(TypeDenoter * type)
             ss << type->class_identifier->text;
             break;
         case TypeDenoter::ARRAY:
-            ss << "array[" << type->array_type->min << ".." << type->array_type->max << "] of " <<
+            ss << "array[" << type->array_type->min->value << ".." << type->array_type->max->value << "] of " <<
                 type_to_string(type->array_type->type);
             break;
         default:
@@ -280,12 +280,12 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
             return new TypeDenoter(TypeDenoter::BOOLEAN);
         case PrimaryExpression::STRING:
         {
-            std::string str = primary_expression->literal_string;
+            std::string str = primary_expression->literal_string->value;
             int str_len = (int) str.length();
             if (str_len == 1) {
                 return new TypeDenoter(TypeDenoter::CHAR);
             } else {
-                return new TypeDenoter(new ArrayType(0, 0, str_len-1, new TypeDenoter(TypeDenoter::CHAR)));
+                return new TypeDenoter(new ArrayType(new LiteralInteger(0, 0), new LiteralInteger(str_len-1, 0), new TypeDenoter(TypeDenoter::CHAR)));
             }
         }
         case PrimaryExpression::FUNCTION:
@@ -400,7 +400,7 @@ SemanticChecker::ConstantInteger SemanticChecker::constant_integer(Expression * 
     if (negatable_expression->primary_expression->type != PrimaryExpression::INTEGER)
         return ConstantInteger(false, 0);
 
-    return ConstantInteger(true, negatable_expression->primary_expression->literal_integer);
+    return ConstantInteger(true, negatable_expression->primary_expression->literal_integer->value);
 }
 
 TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_variable)
@@ -425,10 +425,10 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
             // if expression is constant, check bounds
             ConstantInteger const_int = constant_integer(expression);
             if (const_int.is_constant_integer) {
-                if (! (const_int.value >= array_type->array_type->min && const_int.value <= array_type->array_type->max)) {
+                if (! (const_int.value >= array_type->array_type->min->value && const_int.value <= array_type->array_type->max->value)) {
                     std::cerr << err_header(100) << "array index " << const_int.value <<
-                        " is out of the range [" << array_type->array_type->min << ".." <<
-                        array_type->array_type->max << "]" << std::endl;
+                        " is out of the range [" << array_type->array_type->min->value << ".." <<
+                        array_type->array_type->max->value << "]" << std::endl;
                 }
             }
         }
