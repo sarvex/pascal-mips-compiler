@@ -254,6 +254,7 @@ struct NegatableExpression {
     Type type;
     union {
         struct {
+            // 1 or -1
             int sign;
             NegatableExpression * next;
         };
