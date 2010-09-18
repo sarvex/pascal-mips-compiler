@@ -1,7 +1,10 @@
 #include "semantic_checker.h"
+#include "utils.h"
+using Utils::err_header;
 
 #include <map>
 #include <iostream>
+#include <sstream>
 #include <cassert>
 
 SemanticChecker::SemanticChecker(Program * program, SymbolTable * symbol_table) :
@@ -34,23 +37,109 @@ void SemanticChecker::check_statement_list(StatementList * _statement_list)
         check_statement(statement_list->item);
 }
 
+bool SemanticChecker::types_equal(TypeDenoter * type1, TypeDenoter * type2)
+{
+    if (type1->type == type2->type) {
+        if (type1->type == TypeDenoter::ARRAY) {
+            // make sure arrays are same size and of same type
+            bool size_equal = (type1->array_type->max - type1->array_type->min) ==
+                (type2->array_type->max - type2->array_type->min);
+            return size_equal && types_equal(type1->array_type->type, type2->array_type->type);
+        } else if (type1->type == TypeDenoter::CLASS) {
+            return type1->class_identifier->text.compare(type2->class_identifier->text) == 0;
+        } else {
+            return true;
+        }
+    } else {
+        return false;
+    }
+}
+
+bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * right_type)
+{
+    // rules for assignment
+    // X = X - OK, but if it's an array, has to be the same size
+    // integer = char - OK
+    // real = integer/char - OK
+    // A = B - OK if A is an ancestor of B or if A and B's fields are respectively compatible
+    if (left_type->type == right_type->type) {
+        if (left_type->type == TypeDenoter::ARRAY) {
+            bool size_equal = (left_type->array_type->max - left_type->array_type->min) ==
+                (right_type->array_type->max - right_type->array_type->min);
+            return size_equal && assignment_valid(left_type->array_type->type, right_type->array_type->type);
+        } else {
+            std::cerr << type_to_string(left_type) << " = " << type_to_string(right_type) << ": valid" << std::endl;
+            return true;
+        }
+    } else if (left_type->type == TypeDenoter::INTEGER && right_type->type == TypeDenoter::CHAR) {
+        return true;
+    } else if (left_type->type == TypeDenoter::REAL && (right_type->type == TypeDenoter::INTEGER || right_type->type == TypeDenoter::CHAR)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+std::string SemanticChecker::type_to_string(TypeDenoter * type)
+{
+    std::stringstream ss;
+    switch(type->type) {
+        case TypeDenoter::INTEGER:
+            ss << "integer";
+            break;
+        case TypeDenoter::REAL:
+            ss << "real";
+            break;
+        case TypeDenoter::CHAR:
+            ss << "char";
+            break;
+        case TypeDenoter::BOOLEAN:
+            ss << "boolean";
+            break;
+        case TypeDenoter::CLASS:
+            ss << type->class_identifier->text;
+            break;
+        case TypeDenoter::ARRAY:
+            ss << "array[" << type->array_type->min << ".." << type->array_type->max << "] of " <<
+                type_to_string(type->array_type->type);
+            break;
+        default:
+            assert(false);
+    }
+    return ss.str();
+}
+
 void SemanticChecker::check_statement(Statement * statement)
 {
     switch(statement->type) {
         case Statement::ASSIGNMENT:
-            check_variable_access(statement->assignment->variable);
+        {
+            TypeDenoter * left_type = check_variable_access(statement->assignment->variable);
+            TypeDenoter * right_type = check_expression(statement->assignment->expression);
+            if (! assignment_valid(left_type, right_type)) {
+                std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
+                    "cannot assign \"" << type_to_string(right_type) << "\" to \"" <<
+                    type_to_string(left_type) << "\"" << std::endl;
+                m_success = false;
+            }
+            break;
+        }
         case Statement::IF:
             check_expression(statement->if_statement->expression);
             check_statement(statement->if_statement->then_statement);
             if (statement->if_statement->else_statement == NULL)
                 check_statement(statement->if_statement->else_statement);
+            break;
         case Statement::PRINT:
             check_expression(statement->print_statement->expression);
+            break;
         case Statement::WHILE:
             check_expression(statement->while_statement->expression);
             check_statement(statement->while_statement->statement);
+            break;
         case Statement::COMPOUND:
             check_statement_list(statement->compound_statement);
+            break;
         default:
             assert(false);
     }
@@ -97,7 +186,6 @@ TypeDenoter * SemanticChecker::combined_type(TypeDenoter * left_type, TypeDenote
         return new TypeDenoter(TypeDenoter::REAL);
     } else {
         // anything else is invalid
-        std::cerr << "ERROR:" << 100 << ":Cannot combine these types" << std::endl;
         return NULL;
     }
 }
@@ -183,8 +271,8 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
                 return (*class_symbols->variables)[variable_access->identifier->text]->type;
             } else {
                 // undeclared variable
-                std::cerr << "ERROR:" << variable_access->identifier->line_number <<
-                    ":Undeclared varable: " << variable_access->identifier->text << std::endl;
+                std::cerr << err_header(variable_access->identifier->line_number) <<
+                    "Undeclared varable: " << variable_access->identifier->text << std::endl;
                 return NULL;
             }
             break;
@@ -207,8 +295,8 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
     if (class_symbols->function_symbols->count(function_designator->identifier->text)) {
         return (*class_symbols->function_symbols)[function_designator->identifier->text]->function_declaration->type;
     } else {
-        std::cerr << "ERROR:" << function_designator->identifier->line_number <<
-            ":Undeclared function: " << function_designator->identifier->text << std::endl;
+        std::cerr << err_header(function_designator->identifier->line_number) <<
+            "Undeclared function: " << function_designator->identifier->text << std::endl;
         return NULL;
     }
 }
@@ -222,8 +310,8 @@ TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method
     if (class_symbols->function_symbols->count(method_designator->function->identifier->text)) {
         return (*class_symbols->function_symbols)[method_designator->function->identifier->text]->function_declaration->type;
     } else {
-        std::cerr << "ERROR:" << method_designator->function->identifier->line_number <<
-            ":Undeclared method: " << method_designator->function->identifier->text << std::endl;
+        std::cerr << err_header(method_designator->function->identifier->line_number) <<
+            "Undeclared method: " << method_designator->function->identifier->text << std::endl;
         return NULL;
     }
 }
@@ -234,8 +322,8 @@ TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * 
     if (m_symbol_table->count(object_instantiation->class_identifier->text) > 0) {
         return new TypeDenoter(object_instantiation->class_identifier);
     } else {
-        std::cerr << "ERROR:" << object_instantiation->class_identifier->line_number <<
-            ":Undeclared class: " << object_instantiation->class_identifier->text << std::endl;
+        std::cerr << err_header(object_instantiation->class_identifier->line_number) <<
+            "Undeclared class: " << object_instantiation->class_identifier->text << std::endl;
         return NULL;
     }
 }
@@ -250,8 +338,8 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
             break;
         }
         if (index_type->type != TypeDenoter::INTEGER) {
-            std::cerr << "ERROR:" << indexed_variable->variable->identifier->line_number <<
-                ":Array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
+            std::cerr << err_header(indexed_variable->variable->identifier->line_number) <<
+                "Array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
             m_success = false;
             break;
         }
@@ -268,8 +356,8 @@ TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * 
     if (class_symbols->variables->count(attribute_designator->identifier->text) > 0) {
         return (*class_symbols->variables)[attribute_designator->identifier->text]->type;
     } else {
-        std::cerr << "ERROR:" << attribute_designator->identifier->line_number <<
-            ":Undeclared class: " << owner_type->class_identifier->text;
+        std::cerr << err_header(attribute_designator->identifier->line_number) <<
+            "Undeclared class: " << owner_type->class_identifier->text;
         return NULL;
     }
 }

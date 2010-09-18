@@ -43,6 +43,12 @@ class SemanticChecker {
 
         // get the result type of adding/multiplying/etc types
         TypeDenoter * combined_type(TypeDenoter * left_type, TypeDenoter * right_type);
+        // determine if types are exactly equal
+        bool types_equal(TypeDenoter * type1, TypeDenoter * type2);
+        // returns true if you can assign the right_type to the left_type
+        bool assignment_valid(TypeDenoter * left_type, TypeDenoter * right_type);
+        // programmer-friendly display of a type
+        std::string type_to_string(TypeDenoter * type);
 };
 
 #endif

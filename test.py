@@ -63,6 +63,7 @@ def main():
             fails.append({
                 'expected': test['expected'],
                 'output': stderr,
+                'stdout': stdout,
                 'name': test_name,
             })
             if options.failfast:
@@ -80,8 +81,11 @@ def main():
 %(output)s
 ---- Expected output: ----
 %(expected)s
---------
-""" % fail)
+--------""" % fail)
+                if fail['stdout'].strip() != '':
+                    print("---- stdout ----")
+                    print(fail['stdout'])
+                    print("----------------")
                 print("=========================================")
         print("\n%i tests passed, %i tests failed." % (passed, len(fails)))
     else:

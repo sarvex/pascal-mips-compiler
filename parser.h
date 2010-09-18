@@ -167,7 +167,7 @@ struct Statement {
 struct AssignmentStatement {
     VariableAccess * variable;
     Expression * expression;
-    AssignmentStatement(VariableAccess * variable, Expression * epxression)
+    AssignmentStatement(VariableAccess * variable, Expression * expression)
         : variable(variable), expression(expression) {}
 };
 

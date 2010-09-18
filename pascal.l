@@ -4,6 +4,7 @@
 
 #include "y.tab.hpp"
 #include "utils.h"
+using Utils::err_header;
 
 int line_number = 1;
 
@@ -146,7 +147,7 @@ Z [zZ]
 
 . {
     char c = yytext[0];
-    std::cerr << "ERROR:" << line_number << ": illegal character '" << c << "' (0x" << std::hex << (int)c << std::dec << ")" << std::endl;
+    std::cerr << err_header(line_number) << "illegal character '" << c << "' (0x" << std::hex << (int)c << std::dec << ")" << std::endl;
     std::exit(1);
 }
 
@@ -157,12 +158,12 @@ int yywrap() {
 }
 
 void yyerror(const char *error) {
-    std::cerr << "ERROR:" << line_number << ": " << error << " at \"" << yytext << "\"" << std::endl;
+    std::cerr << err_header(line_number) << error << " at \"" << yytext << "\"" << std::endl;
     std::exit(1);
 }
 
 void fatal_unexpected(std::string unexpected_what, std::string inside_what) {
-    std::cerr << "ERROR:" << line_number << ": unexpected " << unexpected_what << " inside " << inside_what << std::endl;
+    std::cerr << err_header(line_number) << "unexpected " << unexpected_what << " inside " << inside_what << std::endl;
     std::exit(1);
 }
 

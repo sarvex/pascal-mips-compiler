@@ -16,3 +16,9 @@ std::string Utils::to_upper(std::string s)
     return s;
 }
 
+std::string Utils::err_header(int line_number)
+{
+    std::stringstream ss;
+    ss << "ERROR: line " << line_number << ": ";
+    return ss.str();
+}
