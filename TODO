@@ -21,6 +21,7 @@ support:
     * statements that are just function calls
     * statements that are just method calls
     * invoking functions/methods with no parameters and ()
+    * nil literals
 report error for:
     arrays as parameter types
     undeclared variable

@@ -156,13 +156,14 @@ program : KEYWORD_PROGRAM TOKEN_IDENTIFIER KEYWORD_SEMICOLON class_list KEYWORD_
     main_program = new Program($2, $4);
 };
 
-class_list : class_list class_declaration {
-    $$ = new ClassList($2, $1);
+class_list : class_declaration class_list {
+    $$ = new ClassList($1, $2);
 } | class_declaration {
     $$ = new ClassList($1, NULL);
 };
 
-class_declaration : KEYWORD_CLASS TOKEN_IDENTIFIER KEYWORD_BEGIN class_block KEYWORD_END {
+class_declaration :
+    KEYWORD_CLASS TOKEN_IDENTIFIER                                  KEYWORD_BEGIN class_block KEYWORD_END {
     $$ = new ClassDeclaration($2, NULL, $4);
 } | KEYWORD_CLASS TOKEN_IDENTIFIER KEYWORD_EXTENDS TOKEN_IDENTIFIER KEYWORD_BEGIN class_block KEYWORD_END {
     $$ = new ClassDeclaration($2, $4, $6);
@@ -246,8 +247,8 @@ compound_statement : KEYWORD_BEGIN statement_list KEYWORD_END {
     $$ = $2;
 };
 
-statement_list : statement_list KEYWORD_SEMICOLON statement {
-    $$ = new StatementList($3, $1);
+statement_list : statement KEYWORD_SEMICOLON statement_list {
+    $$ = new StatementList($1, $3);
 } | statement {
     $$ = new StatementList($1, NULL);
 };
@@ -302,8 +303,8 @@ indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_
     $$ = new IndexedVariable($1, $3);
 };
 
-expression_list : expression_list KEYWORD_COMMA expression {
-    $$ = new ExpressionList($3, $1);
+expression_list : expression KEYWORD_COMMA expression_list {
+    $$ = new ExpressionList($1, $3);
 } | expression {
     $$ = new ExpressionList($1, NULL);
 };
