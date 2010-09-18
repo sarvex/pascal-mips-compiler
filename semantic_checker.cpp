@@ -68,7 +68,6 @@ bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * ri
                 (right_type->array_type->max - right_type->array_type->min);
             return size_equal && assignment_valid(left_type->array_type->type, right_type->array_type->type);
         } else {
-            std::cerr << type_to_string(left_type) << " = " << type_to_string(right_type) << ": valid" << std::endl;
             return true;
         }
     } else if (left_type->type == TypeDenoter::INTEGER && right_type->type == TypeDenoter::CHAR) {
