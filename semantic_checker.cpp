@@ -152,6 +152,8 @@ void SemanticChecker::check_statement(Statement * statement)
         {
             TypeDenoter * left_type = check_variable_access(statement->assignment->variable);
             TypeDenoter * right_type = check_expression(statement->assignment->expression);
+            if (left_type == NULL || right_type == NULL)
+                break; // problem elsewhere
             if (! assignment_valid(left_type, right_type)) {
                 std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
                     "cannot assign \"" << type_to_string(right_type) << "\" to \"" <<
@@ -316,7 +318,7 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             if (function_symbols->variables->count(variable_access->identifier->text) > 0) {
                 // local variable or parameter
                 return (*function_symbols->variables)[variable_access->identifier->text]->type;
-            } else if (class_symbols) {
+            } else if (class_symbols->variables->count(variable_access->identifier->text) > 0) {
                 // class variable
                 return (*class_symbols->variables)[variable_access->identifier->text]->type;
             } else {

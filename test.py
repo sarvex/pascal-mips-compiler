@@ -15,8 +15,9 @@ def absolute(relative_path):
 
 def main():
     parser = optparse.OptionParser()
-    parser.add_option('-f', '--failfast', dest='failfast', help="Stop on first failed test", action="store_true")
+    parser.add_option('-f', '--failfast', help="Stop on first failed test", action="store_true")
     parser.add_option("-q", "--quiet", help="only print dots and summary", action="store_true")
+    parser.add_option("-b", "--backwards", help="run tests in reverse order", action="store_true")
     options, args = parser.parse_args()
 
     if not options.quiet:
@@ -45,7 +46,10 @@ def main():
     fails = []
     compiler_exe = absolute('opc')
     passed = 0
-    for test_name, test in sorted(tests.iteritems()):
+    test_list = sorted(tests.iteritems())
+    if options.backwards:
+        test_list.reverse()
+    for test_name, test in test_list:
         if not test.has_key('source'):
             print("%s missing source" % test_name)
             continue
