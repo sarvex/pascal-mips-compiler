@@ -1,2 +1,1 @@
-ERROR:10:Variable "compilerWorks" already declared at line 8
-Errors detected. Exiting.
+ERROR: line 10: variable "compilerWorks" already declared at line 8

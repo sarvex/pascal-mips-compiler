@@ -19,6 +19,7 @@ SymbolTable * build_symbol_table(Program * program) {
             std::cerr << err_header(class_declaration->identifier->line_number) <<
                 "class \"" << other_class->identifier->text << "\" already declared at line " <<
                 other_class->identifier->line_number << std::endl;
+            success = false;
             continue;
         } else {
             symbol_table->put(class_declaration->identifier->text, new ClassSymbolTable(class_declaration));
@@ -28,8 +29,17 @@ SymbolTable * build_symbol_table(Program * program) {
         InsensitiveMap<VariableData *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
-            for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next)
-                variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
+            for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
+                if (variables->has_key(id_list->item->text)) {
+                    VariableData * other_variable = variables->item(id_list->item->text);
+                    std::cerr << err_header(id_list->item->line_number) << "variable \"" <<
+                        id_list->item->text << "\" already declared at line " <<
+                        other_variable->line_number << std::endl;
+                    success = false;
+                } else {
+                    variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
+                }
+            }
         }
 
         // for each function
