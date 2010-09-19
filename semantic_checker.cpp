@@ -24,13 +24,14 @@ bool SemanticChecker::internal_check()
         m_success = false;
     }
 
+    // check classes
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
         m_class_id = class_declaration->identifier->text;
 
         check_variable_declaration_list(class_declaration->class_block->variable_list);
         
-        // make sure array indicies are integers
+        // check functions
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
             m_function_id = function_declaration->identifier->text;

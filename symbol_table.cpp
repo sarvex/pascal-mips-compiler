@@ -78,6 +78,16 @@ SymbolTable * build_symbol_table(Program * program) {
         ClassDeclaration * class_declaration = class_list->item;
         if (class_declaration->parent_identifier == NULL)
             continue;
+
+        // make sure parent class is defined
+        if (! symbol_table->has_key(class_declaration->parent_identifier->text)) {
+            std::cerr << err_header(class_declaration->identifier->line_number) << "class \"" <<
+            class_declaration->identifier->text << "\" attempted to extend class \"" <<
+            class_declaration->parent_identifier->text << "\" which does not exist" << std::endl;
+            success = false;
+            continue;
+        }
+
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
