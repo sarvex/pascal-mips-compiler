@@ -11,8 +11,8 @@ class InsensitiveMap {
     public:
         InsensitiveMap() : m_map(), m_original_case() {}
 
-        int count(std::string & x) { return m_map.count(Utils::to_lower(x)); }
-        T operator[] (std::string & x) { return m_map[Utils::to_lower(x)]; }
+        bool has_key(std::string x) { return m_map.count(Utils::to_lower(x)) > 0; }
+        T item(std::string x) { return m_map[Utils::to_lower(x)]; }
         void put(std::string key, T value);
         std::string original_case(std::string x) { return m_original_case[Utils::to_lower(x)]; }
 };
