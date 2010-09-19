@@ -8,11 +8,9 @@
 
 class SemanticChecker {
     public:
-        SemanticChecker(Program * program, SymbolTable * symbol_table);
-
         // writes to stderr all the errors that it finds and returns whether
         // the program is semantically correct
-        bool check();
+        static bool check(Program * program, SymbolTable * symbol_table);
 
     private: // variables
         Program * m_program;
@@ -23,7 +21,11 @@ class SemanticChecker {
         std::string m_function_id;
         // true if we have not encountered any errors
         bool m_success;
+
     private: // methods
+        SemanticChecker(Program * program, SymbolTable * symbol_table);
+        bool internal_check();
+
         void check_statement_list(StatementList * _statement_list);
         void check_statement(Statement * statement);
         void check_variable_declaration_list(VariableDeclarationList * variable_list);

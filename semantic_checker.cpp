@@ -7,12 +7,17 @@ using Utils::err_header;
 #include <sstream>
 #include <cassert>
 
+bool SemanticChecker::check(Program * program, SymbolTable * symbol_table)
+{
+    return SemanticChecker(program, symbol_table).internal_check();
+}
+
 SemanticChecker::SemanticChecker(Program * program, SymbolTable * symbol_table) :
     m_program(program),
     m_symbol_table(symbol_table),
     m_success(true) {}
 
-bool SemanticChecker::check()
+bool SemanticChecker::internal_check()
 {
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
