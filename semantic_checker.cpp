@@ -373,21 +373,22 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
     }
 }
 
+FunctionDeclaration * SemanticChecker::class_method(std::string class_name, FunctionDesignator * function_designator)
+{
+    ClassSymbolTable * class_symbols = m_symbol_table->item(class_name);
+    if (class_symbols->function_symbols->has_key(function_designator->identifier->text)) {
+        return class_symbols->function_symbols->item(function_designator->identifier->text)->function_declaration;
+    } else if (class_symbols->class_declaration->parent_identifier == NULL) {
+        return NULL;
+    } else {
+        return class_method(class_symbols->class_declaration->parent_identifier->text, function_designator);
+    }
+}
+
 TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * function_designator)
 {
     // trace the class hierarchy until we find (or don't find) the function to call
-    FunctionDeclaration * function_declaration = NULL;
-    ClassSymbolTable * class_symbols = m_symbol_table->item(m_class_id);
-    while (true) {
-        if (class_symbols->function_symbols->has_key(function_designator->identifier->text)) {
-            function_declaration = class_symbols->function_symbols->item(function_designator->identifier->text)->function_declaration;
-            break;
-        } else if (class_symbols->class_declaration->parent_identifier == NULL) {
-            break;
-        } else {
-            class_symbols = m_symbol_table->item(class_symbols->class_declaration->parent_identifier->text);
-        }
-    }
+    FunctionDeclaration * function_declaration = class_method(m_class_id, function_designator);
     if (function_declaration == NULL) {
         std::cerr << err_header(function_designator->identifier->line_number) <<
             "function \"" << function_designator->identifier->text << "\" not declared" << std::endl;
@@ -425,23 +426,22 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
             }
         }
         
-        return class_symbols->function_symbols->item(function_designator->identifier->text)->function_declaration->type;
+        return function_declaration->type;
     }
 }
 
 TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method_designator)
 {
-    // look it up in the symbol table
     TypeDenoter * owner_type = check_variable_access(method_designator->owner);
     assert(owner_type->type == TypeDenoter::CLASS);
-    ClassSymbolTable * class_symbols = m_symbol_table->item(owner_type->class_identifier->text);
-    if (class_symbols->function_symbols->has_key(method_designator->function->identifier->text)) {
-        return class_symbols->function_symbols->item(method_designator->function->identifier->text)->function_declaration->type;
-    } else {
+    FunctionDeclaration * function_declaration = class_method(owner_type->class_identifier->text, method_designator->function);
+    if (function_declaration == NULL) {
         std::cerr << err_header(method_designator->function->identifier->line_number) <<
             "class \"" << owner_type->class_identifier->text << "\" has no method \"" << method_designator->function->identifier->text << "\"" << std::endl;
         m_success = false;
         return NULL;
+    } else {
+        return function_declaration->type;
     }
 }
 
