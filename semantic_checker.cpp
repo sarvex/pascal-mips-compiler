@@ -346,7 +346,7 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             } else {
                 // undeclared variable
                 std::cerr << err_header(variable_access->identifier->line_number) <<
-                    "Variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
+                    "variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
                 m_success = false;
                 return NULL;
             }
@@ -371,7 +371,7 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
         return (*class_symbols->function_symbols)[function_designator->identifier->text]->function_declaration->type;
     } else {
         std::cerr << err_header(function_designator->identifier->line_number) <<
-            "Undeclared function: " << function_designator->identifier->text << std::endl;
+            "function \"" << function_designator->identifier->text << "\" not declared" << std::endl;
         m_success = false;
         return NULL;
     }

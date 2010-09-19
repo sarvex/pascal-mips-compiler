@@ -1,1 +1,1 @@
-ERROR: line 11: Undeclared varable: undeclaredVariable
+ERROR: line 11: variable "undeclaredVariable" not declared

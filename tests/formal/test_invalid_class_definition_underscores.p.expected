@@ -1,1 +1,1 @@
-'_' (0137): illegal character at line 8
+ERROR: line 8: illegal character '_' (0x5f)
