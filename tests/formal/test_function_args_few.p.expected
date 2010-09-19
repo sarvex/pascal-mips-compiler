@@ -1,2 +1,1 @@
-ERROR:21:Function "test" not declared
-Errors detected. Exiting.
+ERROR: line 20: too few arguments to function "test"

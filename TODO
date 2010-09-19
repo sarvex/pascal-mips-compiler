@@ -38,6 +38,9 @@ report error for:
     invalid array equivalence
     * strings of length zero
     test for invalid/valid array indicies with expressions like 8*8-32
+    too many arguments to function
+    function call with incompatible types
+    function call with barely compatible types
 
 * = bonus
 

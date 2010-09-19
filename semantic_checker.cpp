@@ -373,12 +373,43 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
     }
 }
 
-// this is for functions; use method_designator_type for methods
 TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * function_designator)
 {
     // look it up in the symbol table
     ClassSymbolTable * class_symbols = (*m_symbol_table)[m_class_id];
-    if (class_symbols->function_symbols->count(function_designator->identifier->text)) {
+    if (class_symbols->function_symbols->count(function_designator->identifier->text) > 0) {
+        FunctionDeclaration * function_declaration = (*class_symbols->function_symbols)[function_designator->identifier->text]->function_declaration;
+        // check signature
+        int parameter_index = 0;
+        ExpressionList * actual_parameter_list = function_designator->parameter_list;
+        VariableDeclarationList * formal_parameter_list = function_declaration->parameter_list;
+        for (;actual_parameter_list != NULL || formal_parameter_list != NULL;
+            actual_parameter_list = actual_parameter_list->next,
+            formal_parameter_list = formal_parameter_list->next,
+            ++parameter_index)
+        {
+            if (actual_parameter_list == NULL) {
+                std::cerr << err_header(function_designator->identifier->line_number) <<
+                    "too few arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
+                m_success = false;
+                break;
+            } else if (formal_parameter_list == NULL) {
+                std::cerr << err_header(function_designator->identifier->line_number) <<
+                    "too many arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
+                m_success = false;
+                break;
+            } else {
+                TypeDenoter * formal_type = formal_parameter_list->item->type;
+                TypeDenoter * actual_type = check_expression(actual_parameter_list->item);
+                if (! assignment_valid(formal_type, actual_type)) {
+                    std::cerr << err_header(function_designator->identifier->line_number) <<
+                        "parameter index " << parameter_index << ": cannot convert \"" <<
+                        type_to_string(actual_type) << "\" to \"" << type_to_string(formal_type) << "\"" << std::endl;
+                    m_success = false;
+                }
+            }
+        }
+        
         return (*class_symbols->function_symbols)[function_designator->identifier->text]->function_declaration->type;
     } else {
         std::cerr << err_header(function_designator->identifier->line_number) <<
@@ -398,7 +429,7 @@ TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method
         return (*class_symbols->function_symbols)[method_designator->function->identifier->text]->function_declaration->type;
     } else {
         std::cerr << err_header(method_designator->function->identifier->line_number) <<
-            "Undeclared method: " << method_designator->function->identifier->text << std::endl;
+            "class \"" << owner_type->class_identifier->text << "\" has no method \"" << method_designator->function->identifier->text << "\"" << std::endl;
         m_success = false;
         return NULL;
     }
@@ -411,7 +442,7 @@ TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * 
         return new TypeDenoter(object_instantiation->class_identifier);
     } else {
         std::cerr << err_header(object_instantiation->class_identifier->line_number) <<
-            "Undeclared class: " << object_instantiation->class_identifier->text << std::endl;
+            "class \"" << object_instantiation->class_identifier->text << "\" not declared" << std::endl;
         m_success = false;
         return NULL;
     }
@@ -489,7 +520,7 @@ TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * 
         return (*class_symbols->variables)[attribute_designator->identifier->text]->type;
     } else {
         std::cerr << err_header(attribute_designator->identifier->line_number) <<
-            "Undeclared class: " << owner_type->class_identifier->text;
+            "class \"" << owner_type->class_identifier->text << "\" not declared" << std::endl;
         m_success = false;
         return NULL;
     }
