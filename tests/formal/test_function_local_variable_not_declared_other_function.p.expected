@@ -1,2 +1,1 @@
-ERROR:21:Variable "someVar" not declared
-Errors detected. Exiting.
+ERROR: line 20: variable "someVar" not declared

@@ -18,7 +18,7 @@ class house
 
 BEGIN
    VAR users	 : integer;
-      this	 : room;
+      notThis	 : room;
       livingroom : room;
       garage	 : room;
 END		 
@@ -35,7 +35,7 @@ BEGIN
 FUNCTION testMethodDesignatorComplexThis;
 BEGIN
 
-   renters := my.this.countRenters(8)
+   renters := my.notThis.countRenters(8)
    
 END
 

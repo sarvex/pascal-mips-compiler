@@ -44,6 +44,6 @@ SymbolTable * build_symbol_table(Program * program);
 
 
 
-bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration);
+bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name);
 
 #endif

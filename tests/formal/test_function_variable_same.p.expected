@@ -1,2 +1,1 @@
-ERROR:12:Variable name "testFunctionVariableSame" is reserved for use as a function return value
-Errors detected. Exiting.
+ERROR: line 12: variable name "testFunctionVariableSame" is reserved for use as the function return value

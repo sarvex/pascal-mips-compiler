@@ -54,11 +54,11 @@ SymbolTable * build_symbol_table(Program * program) {
 
             // add function parameters to symbol table
             for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next)
-                success &= add_variables(function_variables, parameter_list->item);
+                success &= add_variables(function_variables, parameter_list->item, function_declaration->identifier->text);
 
             // add function variables to symbol table
             for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next)
-                success &= add_variables(function_variables, variable_list->item);
+                success &= add_variables(function_variables, variable_list->item, function_declaration->identifier->text);
 
         }
     }
@@ -66,15 +66,20 @@ SymbolTable * build_symbol_table(Program * program) {
     return success ? symbol_table : NULL;
 }
 
-bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration) {
+bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name) {
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (! function_variables->has_key(id_list->item->text)) {
             function_variables->put(id_list->item->text, new FunctionVariable(variable_declaration->type, id_list->item->line_number));
         } else {
-            std::cerr << err_header(id_list->item->line_number) <<
-                "variable \"" << id_list->item->text << "\" already declared at line " <<
-                function_variables->item(id_list->item->text)->line_number;
+            if (function_name.compare(id_list->item->text) == 0) {
+                std::cerr << err_header(id_list->item->line_number) <<
+                    "variable name \"" << id_list->item->text << "\" is reserved for use as the function return value" << std::endl;
+            } else {
+                std::cerr << err_header(id_list->item->line_number) <<
+                    "variable \"" << id_list->item->text << "\" already declared at line " <<
+                    function_variables->item(id_list->item->text)->line_number << std::endl;
+            }
             success = false;
         }
     }

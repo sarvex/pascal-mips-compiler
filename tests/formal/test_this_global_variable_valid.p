@@ -5,15 +5,16 @@ class testThisGlobalVariableValid
 
 BEGIN
    VAR
-      this : integer;
+      notThis : integer;
 
 
 FUNCTION testThisGlobalVariableValid;
 VAR someVar : integer;
 BEGIN
-   this.this := 6;
+   this.notThis := 6;
+   notThis := 5;
 
-   PRINT this.this
+   PRINT this.notThis
 END
 
 END

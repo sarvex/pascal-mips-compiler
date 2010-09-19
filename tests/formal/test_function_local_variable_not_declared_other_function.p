@@ -15,7 +15,7 @@ BEGIN
    testFunctionLocalVariableNotDeclaredOtherFunction := 2
 END;
 
-FUNCTION testFunctionLocalVariableNotDeclaredOtherFunction;
+FUNCTION testFunctionLocalVariableNotDeclaredOtherFunction2;
 BEGIN
    someVar := 5
 END
