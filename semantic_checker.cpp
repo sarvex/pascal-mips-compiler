@@ -180,6 +180,8 @@ std::string SemanticChecker::type_to_string(TypeDenoter * type)
 
 void SemanticChecker::check_statement(Statement * statement)
 {
+    if (statement == NULL)
+        return;
     switch(statement->type) {
         case Statement::ASSIGNMENT:
         {
@@ -216,6 +218,12 @@ void SemanticChecker::check_statement(Statement * statement)
             break;
         case Statement::COMPOUND:
             check_statement_list(statement->compound_statement);
+            break;
+        case Statement::METHOD:
+            check_method_designator(statement->method);
+            break;
+        case Statement::FUNCTION:
+            check_function_designator(statement->function);
             break;
         default:
             assert(false);
@@ -438,8 +446,11 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
             } else {
                 TypeDenoter * formal_type = formal_parameter_list->item->type;
                 TypeDenoter * actual_type = check_expression(actual_parameter_list->item);
+                if (formal_type == NULL || actual_type == NULL)
+                    continue;
                 if (! assignment_valid(formal_type, actual_type)) {
                     std::cerr << err_header(function_designator->identifier->line_number) <<
+                        "function \"" << function_designator->identifier->text << "\": " <<
                         "parameter index " << parameter_index << ": cannot convert \"" <<
                         type_to_string(actual_type) << "\" to \"" << type_to_string(formal_type) << "\"" << std::endl;
                     m_success = false;
