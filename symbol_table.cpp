@@ -3,8 +3,6 @@
 #include "symbol_table.h"
 #include "utils.h"
 
-bool add_variables(std::map<std::string, VariableDeclaration *> * function_variables, VariableDeclaration * variable_declaration);
-
 SymbolTable * build_symbol_table(Program * program) {
     SymbolTable * symbol_table = new SymbolTable();
     bool success = true;
@@ -31,7 +29,11 @@ SymbolTable * build_symbol_table(Program * program) {
 
             // add the function to symbol table
             (*function_symbols)[function_declaration->identifier->text] = new FunctionSymbolTable(function_declaration);
-            std::map<std::string, VariableDeclaration *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
+            std::map<std::string, FunctionVariable *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
+
+            // add the function name to function symbol table
+            (*function_variables)[function_declaration->identifier->text] = 
+                new FunctionVariable(function_declaration->type, function_declaration->identifier->line_number);
 
             // add function variables to symbol table
             for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next)
@@ -40,32 +42,24 @@ SymbolTable * build_symbol_table(Program * program) {
             // add function parameters to symbol table
             for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next)
                 success &= add_variables(function_variables, parameter_list->item);
+
         }
     }
 
     return success ? symbol_table : NULL;
 }
 
-bool add_variables(std::map<std::string, VariableDeclaration *> * function_variables, VariableDeclaration * variable_declaration) {
+bool add_variables(std::map<std::string, FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration) {
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (function_variables->count(id_list->item->text) == 0) {
-            (*function_variables)[id_list->item->text] = variable_declaration;
+            (*function_variables)[id_list->item->text] = new FunctionVariable(variable_declaration->type, id_list->item->line_number);
         } else {
-            std::cerr << Utils::err_header(id_list->item->line_number) << "variable \"" << id_list->item->text << "\" already declared at line ";
-            // figure out which line the previous declaration was on
-            VariableDeclaration * other_declaration = (*function_variables)[id_list->item->text];
-            for (IdentifierList * other_id_list = other_declaration->id_list; other_id_list != NULL; other_id_list = other_id_list->next) {
-                if (other_id_list->item->text != id_list->item->text)
-                    continue;
-                // there it is. print the line number.
-                std::cerr << other_id_list->item->line_number << std::endl;
-                success = false;
-                goto continue_id_loop;
-            }
-            assert(false);
+            std::cerr << Utils::err_header(id_list->item->line_number) <<
+                "variable \"" << id_list->item->text << "\" already declared at line " <<
+                (*function_variables)[id_list->item->text]->line_number;
+            success = false;
         }
-        continue_id_loop:;
     }
     return success;
 }
