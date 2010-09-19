@@ -41,6 +41,7 @@ report error for:
     too many arguments to function
     function call with incompatible types
     function call with barely compatible types
+    test for method duplication - defined in parent and in child
 
 * = bonus
 

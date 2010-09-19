@@ -25,11 +25,11 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // add each class variable to symbol table
-        InsensitiveMap<VariableDeclaration *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
+        InsensitiveMap<VariableData *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next)
-                variables->put(id_list->item->text, variable_declaration);
+                variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
         }
 
         // for each function
@@ -46,11 +46,11 @@ SymbolTable * build_symbol_table(Program * program) {
                 continue;
             }
             function_symbols->put(function_declaration->identifier->text, new FunctionSymbolTable(function_declaration));
-            InsensitiveMap<FunctionVariable *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
+            InsensitiveMap<VariableData *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
 
             // add the function name to function symbol table
             function_variables->put(function_declaration->identifier->text,
-                new FunctionVariable(function_declaration->type, function_declaration->identifier->line_number));
+                new VariableData(function_declaration->type, function_declaration->identifier->line_number));
 
             // add function parameters to symbol table
             for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next)
@@ -63,14 +63,45 @@ SymbolTable * build_symbol_table(Program * program) {
         }
     }
 
+    // check for duplicate declared variables because of inheritance
+    for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
+        ClassDeclaration * class_declaration = class_list->item;
+        if (class_declaration->parent_identifier == NULL)
+            continue;
+        for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
+            VariableDeclaration * variable_declaration = variable_list->item;
+            for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
+                VariableData * other_field = get_field(symbol_table, class_declaration->parent_identifier->text, id_list->item->text);
+                if (other_field != NULL) {
+                    std::cerr << err_header(id_list->item->line_number) << "variable \"" <<
+                        id_list->item->text << "\" already declared at line " <<
+                        other_field->line_number << std::endl;
+                    success = false;
+                }
+            }
+        }
+
+    }
+
     return success ? symbol_table : NULL;
 }
 
-bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name) {
+VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name) {
+    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    if (class_symbols->variables->has_key(field_name)) {
+        return class_symbols->variables->item(field_name);
+    } else if (class_symbols->class_declaration->parent_identifier == NULL) {
+        return NULL;
+    } else {
+        return get_field(symbol_table, class_symbols->class_declaration->parent_identifier->text, field_name);
+    }
+}
+
+bool add_variables(InsensitiveMap<VariableData *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name) {
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (! function_variables->has_key(id_list->item->text)) {
-            function_variables->put(id_list->item->text, new FunctionVariable(variable_declaration->type, id_list->item->line_number));
+            function_variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
         } else {
             if (function_name.compare(id_list->item->text) == 0) {
                 std::cerr << err_header(id_list->item->line_number) <<
