@@ -35,6 +35,7 @@ CC_COMPILE = $(CC) $(CC_FLAGS) -c -o $@ -MMD -MP -MF $@.d
 LINK = g++
 LINK_FLAGS =
 
+# rulz
 $(OBJECTS):
 	$(CC_COMPILE) $(notdir $(basename $@))
 

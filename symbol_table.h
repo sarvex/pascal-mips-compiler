@@ -3,7 +3,7 @@
 
 #include "parser.h"
 
-#include <map>
+#include "insensitive_map.h"
 #include <string>
 
 struct FunctionVariable {
@@ -18,32 +18,32 @@ struct FunctionVariable {
 struct FunctionSymbolTable {
     FunctionDeclaration * function_declaration;
     // function variables, maps variable name to variable declaration
-    std::map<std::string, FunctionVariable *> * variables;
+    InsensitiveMap<FunctionVariable *> * variables;
 
     FunctionSymbolTable(FunctionDeclaration * function_declaration) :
         function_declaration(function_declaration),
-        variables(new std::map<std::string, FunctionVariable *>) {}
+        variables(new InsensitiveMap<FunctionVariable *>) {}
 };
 
 struct ClassSymbolTable {
     ClassDeclaration * class_declaration;
     // class variables, maps variable name to variable declaration
-    std::map<std::string, VariableDeclaration *> * variables;
+    InsensitiveMap<VariableDeclaration *> * variables;
     // maps function name to function symbol table
-    std::map<std::string, FunctionSymbolTable *> * function_symbols;
+    InsensitiveMap<FunctionSymbolTable *> * function_symbols;
 
     ClassSymbolTable(ClassDeclaration * class_declaration) :
         class_declaration(class_declaration),
-        variables(new std::map<std::string, VariableDeclaration *>),
-        function_symbols(new std::map<std::string, FunctionSymbolTable *>) {};
+        variables(new InsensitiveMap<VariableDeclaration *>),
+        function_symbols(new InsensitiveMap<FunctionSymbolTable *>) {};
 };
 // maps class name to symbol table
-typedef std::map<std::string, ClassSymbolTable *> SymbolTable;
+typedef InsensitiveMap<ClassSymbolTable *> SymbolTable;
 
 SymbolTable * build_symbol_table(Program * program);
 
 
 
-bool add_variables(std::map<std::string, FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration);
+bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration);
 
 #endif

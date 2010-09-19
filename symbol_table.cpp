@@ -25,7 +25,7 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // add each class variable to symbol table
-        std::map<std::string, VariableDeclaration *> * variables = (*symbol_table)[class_declaration->identifier->text]->variables;
+        InsensitiveMap<VariableDeclaration *> * variables = (*symbol_table)[class_declaration->identifier->text]->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next)
@@ -33,13 +33,13 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // for each function
-        std::map<std::string, FunctionSymbolTable *> * function_symbols = (*symbol_table)[class_declaration->identifier->text]->function_symbols;
+        InsensitiveMap<FunctionSymbolTable *> * function_symbols = (*symbol_table)[class_declaration->identifier->text]->function_symbols;
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
 
             // add the function to symbol table
             (*function_symbols)[function_declaration->identifier->text] = new FunctionSymbolTable(function_declaration);
-            std::map<std::string, FunctionVariable *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
+            InsensitiveMap<FunctionVariable *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
 
             // add the function name to function symbol table
             (*function_variables)[function_declaration->identifier->text] = 
@@ -59,7 +59,7 @@ SymbolTable * build_symbol_table(Program * program) {
     return success ? symbol_table : NULL;
 }
 
-bool add_variables(std::map<std::string, FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration) {
+bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, VariableDeclaration * variable_declaration) {
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (function_variables->count(id_list->item->text) == 0) {
