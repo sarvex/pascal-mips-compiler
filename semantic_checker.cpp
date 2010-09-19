@@ -384,6 +384,8 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             return check_indexed_variable(variable_access->indexed_variable);
         case VariableAccess::ATTRIBUTE:
             return check_attribute_designator(variable_access->attribute);
+        case VariableAccess::THIS:
+            return new TypeDenoter(m_symbol_table->item(m_class_id)->class_declaration->identifier);
         default:
             assert(false);
             return NULL;
@@ -576,13 +578,14 @@ TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * 
 {
     TypeDenoter * owner_type = check_variable_access(attribute_designator->owner);
     assert(owner_type->type == TypeDenoter::CLASS);
-    ClassSymbolTable * class_symbols = m_symbol_table->item(owner_type->class_identifier->text);
-    if (class_symbols->variables->has_key(attribute_designator->identifier->text)) {
-        return class_symbols->variables->item(attribute_designator->identifier->text)->type;
-    } else {
+    TypeDenoter * variable_type = class_variable_type(owner_type->class_identifier->text, attribute_designator->identifier);
+    if (variable_type == NULL) {
         std::cerr << err_header(attribute_designator->identifier->line_number) <<
-            "class \"" << owner_type->class_identifier->text << "\" not declared" << std::endl;
+            "class \"" << owner_type->class_identifier->text << "\" has no attribute \"" <<
+            attribute_designator->identifier->text << "\"" << std::endl;
         m_success = false;
         return NULL;
+    } else {
+        return variable_type;
     }
 }

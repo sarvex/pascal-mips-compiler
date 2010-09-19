@@ -203,7 +203,7 @@ struct WhileStatement {
 };
 
 struct VariableAccess {
-    enum Type {IDENTIFIER, INDEXED_VARIABLE, ATTRIBUTE};
+    enum Type {IDENTIFIER, INDEXED_VARIABLE, ATTRIBUTE, THIS};
     Type type;
     union {
         Identifier * identifier;
@@ -214,6 +214,8 @@ struct VariableAccess {
     VariableAccess(IndexedVariable * indexed_variable)
         : type(INDEXED_VARIABLE), indexed_variable(indexed_variable) {}
     VariableAccess(AttributeDesignator * attribute) : type(ATTRIBUTE), attribute(attribute) {}
+    // only valid for THIS
+    VariableAccess(Type type) : type(type) {}
 };
 
 struct IndexedVariable {

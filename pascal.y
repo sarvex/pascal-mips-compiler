@@ -268,6 +268,8 @@ statement : function_designator {
     $$ = new Statement($1);
 } | compound_statement {
     $$ = new Statement($1);
+} | TOKEN_IDENTIFIER {
+    $$ = new Statement(new FunctionDesignator($1, NULL));
 } | {
     $$ = NULL;
 };
@@ -298,6 +300,8 @@ variable_access : TOKEN_IDENTIFIER {
     $$ = new VariableAccess($1);
 } | attribute_designator {
     $$ = new VariableAccess($1);
+} | KEYWORD_THIS {
+    $$ = new VariableAccess(VariableAccess::THIS);
 };
 
 indexed_variable : variable_access KEYWORD_LEFT_BRACKET expression_list KEYWORD_RIGHT_BRACKET {
