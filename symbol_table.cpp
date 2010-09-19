@@ -3,6 +3,8 @@
 #include "symbol_table.h"
 #include "utils.h"
 
+bool add_variables(std::map<std::string, VariableDeclaration *> * function_variables, VariableDeclaration * variable_declaration);
+
 SymbolTable * build_symbol_table(Program * program) {
     SymbolTable * symbol_table = new SymbolTable();
     bool success = true;
@@ -18,9 +20,8 @@ SymbolTable * build_symbol_table(Program * program) {
         std::map<std::string, VariableDeclaration *> * variables = (*symbol_table)[class_declaration->identifier->text]->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
-            for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
+            for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next)
                 (*variables)[id_list->item->text] = variable_declaration;
-            }
         }
 
         // for each function
@@ -33,38 +34,39 @@ SymbolTable * build_symbol_table(Program * program) {
             std::map<std::string, VariableDeclaration *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
 
             // add function variables to symbol table
-            for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
-                VariableDeclaration * variable_declaration = variable_list->item;
-                for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
-                    if (function_variables->count(id_list->item->text) == 0) {
-                        (*function_variables)[id_list->item->text] = variable_declaration;
-                    } else {
-                        std::cerr << Utils::err_header(id_list->item->line_number) << "variable \"" << id_list->item->text << "\" already declared at line ";
-                        // figure out which line the previous declaration was on
-                        VariableDeclaration * other_declaration = (*function_variables)[id_list->item->text];
-                        for (IdentifierList * other_id_list = other_declaration->id_list; other_id_list != NULL; other_id_list = other_id_list->next) {
-                            if (other_id_list->item->text != id_list->item->text)
-                                continue;
-                            // there it is. print the line number.
-                            std::cerr << other_id_list->item->line_number << std::endl;
-                            success = false;
-                            goto continue_id_loop;
-                        }
-                        assert(false);
-                    }
-                    continue_id_loop:;
-                }
-            }
+            for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next)
+                success &= add_variables(function_variables, variable_list->item);
 
             // add function parameters to symbol table
-            for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next) {
-                VariableDeclaration * parameter = parameter_list->item;
-                for (IdentifierList * id_list = parameter->id_list; id_list != NULL; id_list = id_list->next) {
-                    (*function_variables)[id_list->item->text] = parameter;
-                }
-            }
+            for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next)
+                success &= add_variables(function_variables, parameter_list->item);
         }
     }
 
     return success ? symbol_table : NULL;
 }
+
+bool add_variables(std::map<std::string, VariableDeclaration *> * function_variables, VariableDeclaration * variable_declaration) {
+    bool success = true;
+    for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
+        if (function_variables->count(id_list->item->text) == 0) {
+            (*function_variables)[id_list->item->text] = variable_declaration;
+        } else {
+            std::cerr << Utils::err_header(id_list->item->line_number) << "variable \"" << id_list->item->text << "\" already declared at line ";
+            // figure out which line the previous declaration was on
+            VariableDeclaration * other_declaration = (*function_variables)[id_list->item->text];
+            for (IdentifierList * other_id_list = other_declaration->id_list; other_id_list != NULL; other_id_list = other_id_list->next) {
+                if (other_id_list->item->text != id_list->item->text)
+                    continue;
+                // there it is. print the line number.
+                std::cerr << other_id_list->item->line_number << std::endl;
+                success = false;
+                goto continue_id_loop;
+            }
+            assert(false);
+        }
+        continue_id_loop:;
+    }
+    return success;
+}
+
