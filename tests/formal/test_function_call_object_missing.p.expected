@@ -1,2 +1,1 @@
-ERROR:31:Function "setCompilerWorks" not declared
-Errors detected. Exiting.
+ERROR: line 30: class "myCustomClass" has no method "setCompilerWorks"
