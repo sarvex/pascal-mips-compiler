@@ -13,9 +13,9 @@ int main(int argc, char ** argv) {
     SymbolTable * symbol_table = build_symbol_table(program);
     if (symbol_table == NULL)
         return -1;
-    SemanticChecker * checker = new SemanticChecker(program, symbol_table);
 
-    if (! checker->check())
+    bool semantic_success = SemanticChecker::check(program, symbol_table);
+    if (!semantic_success)
         return -1;
 
     return 0;
