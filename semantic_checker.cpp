@@ -469,10 +469,29 @@ LiteralInteger * SemanticChecker::constant_integer(Expression * expression)
     return negatable_expression->primary_expression->literal_integer;
 }
 
+Identifier * SemanticChecker::variable_access_identifier(VariableAccess * variable_access)
+{
+    switch (variable_access->type) {
+        case VariableAccess::IDENTIFIER:
+            return variable_access->identifier;
+        case VariableAccess::INDEXED_VARIABLE:
+            return variable_access_identifier(variable_access->indexed_variable->variable);
+        case VariableAccess::ATTRIBUTE:
+            return variable_access->attribute->identifier;
+        default:
+            assert(false);
+    }
+}
+
 TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_variable)
 {
     TypeDenoter * array_type = check_variable_access(indexed_variable->variable);
-    assert(array_type->type == TypeDenoter::ARRAY);
+    if (array_type->type != TypeDenoter::ARRAY) {
+        Identifier * id = variable_access_identifier(indexed_variable->variable);
+        std::cerr << err_header(id->line_number) << "indexed variable \"" << id->text << "\" is not an array" << std::endl;
+        m_success = false;
+        return NULL;
+    }
 
     // the type that we keep iterating to get inner arrays
     TypeDenoter * array_type_iterator = array_type;

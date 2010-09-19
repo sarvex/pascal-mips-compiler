@@ -1,2 +1,1 @@
-ERROR:15:Indexed variable "moreTests" is not an array
-Errors detected. Exiting.
+ERROR: line 14: indexed variable "moreTests" is not an array

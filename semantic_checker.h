@@ -56,6 +56,7 @@ class SemanticChecker {
         // returns whether the expression is a constant integer and its value if it is
         LiteralInteger * constant_integer(Expression * expression);
         bool is_ancestor(TypeDenoter * child, TypeDenoter * ancestor);
+        Identifier * variable_access_identifier(VariableAccess * variable_access);
 };
 
 #endif
