@@ -215,10 +215,10 @@ function_declaration_part : function_declaration_list {
     $$ = NULL;
 };
 
-function_declaration_list : function_declaration_list KEYWORD_SEMICOLON function_declaration {
-    $$ = new FunctionDeclarationList($3, $1);
-} | function_declaration_list function_declaration {
-    $$ = new FunctionDeclarationList($2, $1);
+function_declaration_list : function_declaration KEYWORD_SEMICOLON function_declaration_list {
+    $$ = new FunctionDeclarationList($1, $3);
+} | function_declaration function_declaration_list {
+    $$ = new FunctionDeclarationList($1, $2);
 } | function_declaration {
     $$ = new FunctionDeclarationList($1, NULL);
 };

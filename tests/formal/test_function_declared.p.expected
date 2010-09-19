@@ -1,2 +1,1 @@
-ERROR:21:Function "setCompilerWorks" already declared at line 16
-Errors detected. Exiting.
+ERROR: line 18: function "setCompilerWorks" already declared at line 13

@@ -38,6 +38,13 @@ SymbolTable * build_symbol_table(Program * program) {
             FunctionDeclaration * function_declaration = function_list->item;
 
             // add the function to symbol table
+            if (function_symbols->has_key(function_declaration->identifier->text)) {
+                std::cerr << err_header(function_declaration->identifier->line_number) <<
+                    "function \"" << function_declaration->identifier->text << "\" already declared at line " <<
+                    function_symbols->item(function_declaration->identifier->text)->function_declaration->identifier->line_number << std::endl;
+                success = false;
+                continue;
+            }
             function_symbols->put(function_declaration->identifier->text, new FunctionSymbolTable(function_declaration));
             InsensitiveMap<FunctionVariable *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
 
