@@ -21,7 +21,7 @@ SymbolTable * build_symbol_table(Program * program) {
                 other_class->identifier->line_number << std::endl;
             continue;
         } else {
-            (*symbol_table)[class_declaration->identifier->text] = new ClassSymbolTable(class_declaration);
+            symbol_table->put(class_declaration->identifier->text, new ClassSymbolTable(class_declaration));
         }
 
         // add each class variable to symbol table
@@ -29,7 +29,7 @@ SymbolTable * build_symbol_table(Program * program) {
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next)
-                (*variables)[id_list->item->text] = variable_declaration;
+                variables->put(id_list->item->text, variable_declaration);
         }
 
         // for each function
@@ -38,12 +38,12 @@ SymbolTable * build_symbol_table(Program * program) {
             FunctionDeclaration * function_declaration = function_list->item;
 
             // add the function to symbol table
-            (*function_symbols)[function_declaration->identifier->text] = new FunctionSymbolTable(function_declaration);
+            function_symbols->put(function_declaration->identifier->text, new FunctionSymbolTable(function_declaration));
             InsensitiveMap<FunctionVariable *> * function_variables = (*function_symbols)[function_declaration->identifier->text]->variables;
 
             // add the function name to function symbol table
-            (*function_variables)[function_declaration->identifier->text] = 
-                new FunctionVariable(function_declaration->type, function_declaration->identifier->line_number);
+            function_variables->put(function_declaration->identifier->text,
+                new FunctionVariable(function_declaration->type, function_declaration->identifier->line_number));
 
             // add function variables to symbol table
             for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next)
@@ -63,7 +63,7 @@ bool add_variables(InsensitiveMap<FunctionVariable *> * function_variables, Vari
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (function_variables->count(id_list->item->text) == 0) {
-            (*function_variables)[id_list->item->text] = new FunctionVariable(variable_declaration->type, id_list->item->line_number);
+            function_variables->put(id_list->item->text, new FunctionVariable(variable_declaration->type, id_list->item->line_number));
         } else {
             std::cerr << err_header(id_list->item->line_number) <<
                 "variable \"" << id_list->item->text << "\" already declared at line " <<
