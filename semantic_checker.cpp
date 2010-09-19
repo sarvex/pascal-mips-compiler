@@ -19,6 +19,11 @@ SemanticChecker::SemanticChecker(Program * program, SymbolTable * symbol_table) 
 
 bool SemanticChecker::internal_check()
 {
+    if (!  m_symbol_table->has_key(m_program->identifier->text)) {
+        std::cerr << err_header(m_program->identifier->line_number) << "missing program class" << std::endl;
+        m_success = false;
+    }
+
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
         m_class_id = class_declaration->identifier->text;

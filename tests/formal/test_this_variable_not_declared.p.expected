@@ -1,4 +1,3 @@
-ERROR:14:Variable "someVar" not declared
-ERROR:16:Variable "someVar" not declared
-ERROR:19:Variable "someVar" not declared
-Errors detected. Exiting.
+ERROR: line 14: variable "someVar" not declared
+ERROR: line 16: variable "someVar" not declared
+ERROR: line 18: variable "someVar" not declared
