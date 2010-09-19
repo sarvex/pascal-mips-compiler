@@ -1,7 +1,9 @@
-#include <cassert>
-
 #include "symbol_table.h"
+
 #include "utils.h"
+using Utils::err_header;
+
+#include <cassert>
 
 SymbolTable * build_symbol_table(Program * program) {
     SymbolTable * symbol_table = new SymbolTable();
@@ -12,7 +14,15 @@ SymbolTable * build_symbol_table(Program * program) {
         ClassDeclaration * class_declaration = class_list->item;
 
         // add the class to symbol table
-        (*symbol_table)[class_declaration->identifier->text] = new ClassSymbolTable(class_declaration);
+        if (symbol_table->count(class_declaration->identifier->text) > 0) {
+            ClassDeclaration * other_class = (*symbol_table)[class_declaration->identifier->text]->class_declaration;
+            std::cerr << err_header(class_declaration->identifier->line_number) <<
+                "class \"" << other_class->identifier->text << "\" already declared at line " <<
+                other_class->identifier->line_number << std::endl;
+            continue;
+        } else {
+            (*symbol_table)[class_declaration->identifier->text] = new ClassSymbolTable(class_declaration);
+        }
 
         // add each class variable to symbol table
         std::map<std::string, VariableDeclaration *> * variables = (*symbol_table)[class_declaration->identifier->text]->variables;
@@ -55,7 +65,7 @@ bool add_variables(std::map<std::string, FunctionVariable *> * function_variable
         if (function_variables->count(id_list->item->text) == 0) {
             (*function_variables)[id_list->item->text] = new FunctionVariable(variable_declaration->type, id_list->item->line_number);
         } else {
-            std::cerr << Utils::err_header(id_list->item->line_number) <<
+            std::cerr << err_header(id_list->item->line_number) <<
                 "variable \"" << id_list->item->text << "\" already declared at line " <<
                 (*function_variables)[id_list->item->text]->line_number;
             success = false;

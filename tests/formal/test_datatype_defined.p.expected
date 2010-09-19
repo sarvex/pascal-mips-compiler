@@ -1,2 +1,1 @@
-ERROR:16:Class "myCustomClass" already declared at line 4
-Errors detected. Exiting.
+ERROR: line 15: class "myCustomClass" already declared at line 3
