@@ -1,3 +1,2 @@
-ERROR:13:Variable "numberOfHours" not declared
-ERROR:15:Variable "numberOfLines" not declared
-Errors detected. Exiting.
+ERROR: line 13: variable "numberOfHours" not declared
+ERROR: line 14: variable "numberOfLines" not declared

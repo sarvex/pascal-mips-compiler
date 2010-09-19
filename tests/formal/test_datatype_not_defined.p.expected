@@ -1,2 +1,1 @@
-ERROR:7:Data type "myType" is not defined
-Errors detected. Exiting.
+ERROR: line 7: class "myType" is not defined

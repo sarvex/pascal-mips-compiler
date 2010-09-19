@@ -54,6 +54,12 @@ void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
         case TypeDenoter::BOOLEAN:
             break;
         case TypeDenoter::CLASS:
+            // make sure the class is declared
+            if ((*m_symbol_table).count(type->class_identifier->text) == 0) {
+                std::cerr << err_header(type->class_identifier->line_number) <<
+                    "class \"" << type->class_identifier->text << "\" is not defined" << std::endl;
+                m_success = false;
+            }
             break;
         case TypeDenoter::ARRAY:
             // make sure the range is valid
