@@ -217,6 +217,8 @@ function_declaration_part : function_declaration_list {
 
 function_declaration_list : function_declaration_list KEYWORD_SEMICOLON function_declaration {
     $$ = new FunctionDeclarationList($3, $1);
+} | function_declaration_list function_declaration {
+    $$ = new FunctionDeclarationList($2, $1);
 } | function_declaration {
     $$ = new FunctionDeclarationList($1, NULL);
 };
