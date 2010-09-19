@@ -351,15 +351,18 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             if (function_symbols->variables->has_key(variable_access->identifier->text)) {
                 // local variable or parameter
                 return function_symbols->variables->item(variable_access->identifier->text)->type;
-            } else if (class_symbols->variables->has_key(variable_access->identifier->text)) {
-                // class variable
-                return class_symbols->variables->item(variable_access->identifier->text)->type;
             } else {
-                // undeclared variable
-                std::cerr << err_header(variable_access->identifier->line_number) <<
-                    "variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
-                m_success = false;
-                return NULL;
+                TypeDenoter * type = class_variable_type(m_class_id, variable_access->identifier);
+                if (type == NULL) {
+                    // undeclared variable
+                    std::cerr << err_header(variable_access->identifier->line_number) <<
+                        "variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
+                    m_success = false;
+                    return NULL;
+                } else {
+                    // class variable
+                    return type;
+                }
             }
             break;
         }
@@ -370,6 +373,18 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
         default:
             assert(false);
             return NULL;
+    }
+}
+
+TypeDenoter * SemanticChecker::class_variable_type(std::string class_name, Identifier * variable)
+{
+    ClassSymbolTable * class_symbols = m_symbol_table->item(class_name);
+    if (class_symbols->variables->has_key(variable->text)) {
+        return class_symbols->variables->item(variable->text)->type;
+    } else if (class_symbols->class_declaration->parent_identifier == NULL) {
+        return NULL;
+    } else {
+        return class_variable_type(class_symbols->class_declaration->parent_identifier->text, variable);
     }
 }
 

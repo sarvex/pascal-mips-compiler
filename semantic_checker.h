@@ -58,6 +58,7 @@ class SemanticChecker {
         bool is_ancestor(TypeDenoter * child, TypeDenoter * ancestor);
         Identifier * variable_access_identifier(VariableAccess * variable_access);
         FunctionDeclaration * class_method(std::string class_name, FunctionDesignator * function_designator);
+        TypeDenoter * class_variable_type(std::string class_name, Identifier * variable);
 };
 
 #endif
