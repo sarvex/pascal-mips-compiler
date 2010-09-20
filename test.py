@@ -25,7 +25,7 @@ def main():
 
     tests = {}
     for f in superwalk("tests/"):
-        if f.startswith("_"):
+        if f.find("/_") != -1:
             continue
         if f.endswith('.p.expected'):
             test_name = f[:-len('.p.expected')]
