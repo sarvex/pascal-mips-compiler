@@ -1,9 +1,6 @@
 Project 1 Release:
  * test object instantiation & new keyword
  * test strings
- * test too many arguments to function
- * test function call with incompatible types
- * test function call with barely compatible types
  * test structural equivalence - passing to functions and assigning
 
 Bonus:
