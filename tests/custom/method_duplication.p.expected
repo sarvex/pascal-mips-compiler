@@ -1,0 +1,2 @@
+ERROR: line 17: variable "a1" already declared at line 26
+ERROR: line 18: method "f1" already declared at line 27

@@ -86,7 +86,7 @@ SymbolTable * build_symbol_table(Program * program) {
         }
     }
 
-    // check for duplicate declared variables because of inheritance
+    // check for duplicate declared variables and methods because of inheritance
     for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
         if (class_declaration->parent_identifier == NULL)
@@ -101,6 +101,7 @@ SymbolTable * build_symbol_table(Program * program) {
             continue;
         }
 
+        // variables
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
@@ -114,10 +115,35 @@ SymbolTable * build_symbol_table(Program * program) {
             }
         }
 
+        // methods
+        for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
+            FunctionDeclaration * function_declaration = function_list->item;
+            FunctionDeclaration * other_function = get_method(symbol_table, class_declaration->parent_identifier->text, function_declaration->identifier->text);
+            if (other_function != NULL) {
+                std::cerr << err_header(function_declaration->identifier->line_number) << "method \"" <<
+                    other_function->identifier->text << "\" already declared at line " <<
+                    other_function->identifier->line_number << std::endl;
+                success = false;
+            }
+        }
     }
 
     return success ? symbol_table : NULL;
 }
+
+FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_name, std::string method_name) {
+    if (! symbol_table->has_key(class_name))
+        return NULL;
+    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    if (class_symbols->function_symbols->has_key(method_name)) {
+        return class_symbols->function_symbols->item(method_name)->function_declaration;
+    } else if (class_symbols->class_declaration->parent_identifier == NULL) {
+        return NULL;
+    } else {
+        return get_method(symbol_table, class_symbols->class_declaration->parent_identifier->text, method_name);
+    }
+}
+
 
 VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name) {
     if (! symbol_table->has_key(class_name))

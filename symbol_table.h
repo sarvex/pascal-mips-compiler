@@ -46,6 +46,7 @@ SymbolTable * build_symbol_table(Program * program);
 
 bool add_variables(InsensitiveMap<VariableData *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name);
 VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name);
+FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_name, std::string method_name);
 VariableDeclarationList * reverse_variable_declaration_list(VariableDeclarationList * variable_declaration_list, VariableDeclarationList * prev = NULL);
 
 #endif
