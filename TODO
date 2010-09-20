@@ -1,6 +1,5 @@
 Project 1 Release:
 support:
-    arithmetic expressions with proper order of operations
     functions with return values
     control flow statements
     the "this" keyword

@@ -185,7 +185,7 @@ void SemanticChecker::check_statement(Statement * statement)
     switch(statement->type) {
         case Statement::ASSIGNMENT:
         {
-            TypeDenoter * left_type = check_variable_access(statement->assignment->variable);
+            TypeDenoter * left_type = check_variable_access(statement->assignment->variable, true);
             TypeDenoter * right_type = check_expression(statement->assignment->expression);
             if (left_type == NULL || right_type == NULL)
                 break; // problem elsewhere
@@ -353,7 +353,7 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
     }
 }
 
-TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_access)
+TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_access, bool allow_function_return_value)
 {
     switch (variable_access->type) {
         case VariableAccess::IDENTIFIER:
@@ -364,6 +364,15 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
             FunctionSymbolTable * function_symbols = class_symbols->function_symbols->item(m_function_id);
             if (function_symbols->variables->has_key(variable_access->identifier->text)) {
                 // local variable or parameter
+                if (! allow_function_return_value) {
+                    // if it's the function return value, we need explicit permission
+                    if (Utils::insensitive_equals(function_symbols->function_declaration->identifier->text, variable_access->identifier->text)) {
+                        std::cerr << err_header(variable_access->identifier->line_number) << 
+                            "cannot read from \"" << variable_access->identifier->text <<
+                            "\" because it is reserved for use as the function return value" << std::endl;
+                        m_success = false;
+                    }
+                }
                 return function_symbols->variables->item(variable_access->identifier->text)->type;
             } else {
                 TypeDenoter * type = class_variable_type(m_class_id, variable_access->identifier);

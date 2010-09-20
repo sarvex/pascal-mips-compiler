@@ -22,3 +22,8 @@ std::string Utils::err_header(int line_number)
     ss << "ERROR: line " << line_number << ": ";
     return ss.str();
 }
+
+bool Utils::insensitive_equals(std::string s1, std::string s2)
+{
+    return to_lower(s1).compare(to_lower(s2)) == 0;
+}

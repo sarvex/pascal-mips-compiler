@@ -38,7 +38,7 @@ class SemanticChecker {
         TypeDenoter * check_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
         TypeDenoter * check_negatable_expression(NegatableExpression * negatable_expression);
         TypeDenoter * check_primary_expression(PrimaryExpression * primary_expression);
-        TypeDenoter * check_variable_access(VariableAccess * variable_access);
+        TypeDenoter * check_variable_access(VariableAccess * variable_access, bool allow_function_return_value = false);
         TypeDenoter * check_function_designator(FunctionDesignator * function_designator);
         TypeDenoter * check_method_designator(MethodDesignator * method_designator);
         TypeDenoter * check_object_instantiation(ObjectInstantiation * object_instantiation);
