@@ -4,6 +4,9 @@
 #include <string>
 
 
+// data structure for AST
+
+
 struct Program;
 struct Identifier;
 struct ClassList;

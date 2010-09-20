@@ -24,7 +24,9 @@ def main():
         print("Loading test suite...")
 
     tests = {}
-    for f in superwalk('tests/formal'):
+    for f in superwalk("tests/"):
+        if f.startswith("_"):
+            continue
         if f.endswith('.p.expected'):
             test_name = f[:-len('.p.expected')]
             ext = '.p.expected'
