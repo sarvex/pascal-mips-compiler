@@ -224,7 +224,7 @@ void SemanticChecker::check_statement(Statement * statement)
         case Statement::IF:
             check_expression(statement->if_statement->expression);
             check_statement(statement->if_statement->then_statement);
-            if (statement->if_statement->else_statement == NULL)
+            if (statement->if_statement->else_statement != NULL)
                 check_statement(statement->if_statement->else_statement);
             break;
         case Statement::PRINT:
