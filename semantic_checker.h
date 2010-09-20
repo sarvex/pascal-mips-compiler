@@ -60,6 +60,7 @@ class SemanticChecker {
         FunctionDeclaration * class_method(std::string class_name, FunctionDesignator * function_designator);
         TypeDenoter * class_variable_type(std::string class_name, Identifier * variable);
         void check_type(TypeDenoter * type);
+        bool structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type);
 };
 
 #endif

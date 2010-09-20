@@ -148,6 +148,26 @@ bool SemanticChecker::is_ancestor(TypeDenoter * child, TypeDenoter * ancestor)
     }
 }
 
+bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type) 
+{
+    assert(left_type->type == TypeDenoter::CLASS);
+    assert(right_type->type == TypeDenoter::CLASS);
+    VariableTable * left_fields = m_symbol_table->item(left_type->class_identifier->text)->variables;
+    VariableTable * right_fields = m_symbol_table->item(right_type->class_identifier->text)->variables;
+    for (int i=0; i < left_fields->count() || i < right_fields->count(); ++i) {
+        // if we get past the end of one of them, they have differing numbers of fields.
+        if (i >= left_fields->count())
+            return false;
+        if (i >= right_fields->count())
+            return false;
+        // each field has to be assignment compatible
+        if (! assignment_valid(left_fields->item(i)->type, right_fields->item(i)->type))
+            return false;
+    }
+
+    return true;
+}
+
 bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * right_type)
 {
     // rules for assignment
@@ -161,7 +181,8 @@ bool SemanticChecker::assignment_valid(TypeDenoter * left_type, TypeDenoter * ri
                 (right_type->array_type->max->value - right_type->array_type->min->value);
             return size_equal && assignment_valid(left_type->array_type->type, right_type->array_type->type);
         } else if (left_type->type == TypeDenoter::CLASS) {
-            return is_ancestor(left_type, right_type);
+            return is_ancestor(left_type, right_type) ||
+                structurally_equivalent(left_type, right_type);
         } else {
             return true;
         }

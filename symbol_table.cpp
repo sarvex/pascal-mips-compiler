@@ -39,7 +39,7 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // add each class variable to symbol table
-        InsensitiveMap<VariableData *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
+        OrderedInsensitiveMap<VariableData *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
@@ -56,7 +56,7 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // for each function
-        InsensitiveMap<FunctionSymbolTable *> * function_symbols = symbol_table->item(class_declaration->identifier->text)->function_symbols;
+        OrderedInsensitiveMap<FunctionSymbolTable *> * function_symbols = symbol_table->item(class_declaration->identifier->text)->function_symbols;
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
 
@@ -69,7 +69,7 @@ SymbolTable * build_symbol_table(Program * program) {
                 continue;
             }
             function_symbols->put(function_declaration->identifier->text, new FunctionSymbolTable(function_declaration));
-            InsensitiveMap<VariableData *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
+            OrderedInsensitiveMap<VariableData *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
 
             // add the function name to function symbol table
             function_variables->put(function_declaration->identifier->text,
@@ -158,7 +158,7 @@ VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std
     }
 }
 
-bool add_variables(InsensitiveMap<VariableData *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name) {
+bool add_variables(OrderedInsensitiveMap<VariableData *> * function_variables, VariableDeclaration * variable_declaration, std::string function_name) {
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (! function_variables->has_key(id_list->item->text)) {
