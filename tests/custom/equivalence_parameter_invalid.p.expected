@@ -1,0 +1,2 @@
+ERROR: line 9: function "other": parameter index 0: cannot convert "B" to "A"
+ERROR: line 9: function "other": parameter index 1: cannot convert "D" to "C"
