@@ -120,6 +120,8 @@ SymbolTable * build_symbol_table(Program * program) {
 }
 
 VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name) {
+    if (! symbol_table->has_key(class_name))
+        return NULL;
     ClassSymbolTable * class_symbols = symbol_table->item(class_name);
     if (class_symbols->variables->has_key(field_name)) {
         return class_symbols->variables->item(field_name);
