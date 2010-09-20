@@ -258,6 +258,8 @@ statement : function_designator {
     $$ = new Statement($1);
 } | method_designator {
     $$ = new Statement($1);
+} | attribute_designator {
+    $$ = new Statement($1);
 } | assignment_statement {
     $$ = new Statement($1);
 } | if_statement {

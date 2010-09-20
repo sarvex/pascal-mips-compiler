@@ -7,7 +7,7 @@ class Main begin
         a1 := new A;
         a1.f;
         b1 := new B;
-        b1.g;
+        b1.h;
     end
 end
 

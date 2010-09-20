@@ -16,4 +16,3 @@ ERROR: line 30: variable "b" not declared
 ERROR: line 33: variable "b" not declared
 ERROR: line 34: variable "b" not declared
 ERROR: line 36: variable "b" not declared
-

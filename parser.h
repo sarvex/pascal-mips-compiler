@@ -155,11 +155,13 @@ struct StatementList {
 };
 
 struct Statement {
-    enum Type {FUNCTION, METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND};
+    enum Type {FUNCTION, METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND, ATTRIBUTE};
     Type type;
     union {
         FunctionDesignator * function;
         MethodDesignator * method;
+        // hack to have methods with no parentheses
+        AttributeDesignator * attribute;
         AssignmentStatement * assignment;
         IfStatement * if_statement;
         PrintStatement * print_statement;
@@ -168,6 +170,7 @@ struct Statement {
     };
     Statement(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     Statement(MethodDesignator * method) : type(METHOD), method(method) {}
+    Statement(AttributeDesignator * attribute) : type(ATTRIBUTE), attribute(attribute) {}
     Statement(AssignmentStatement * assignment) : type(ASSIGNMENT), assignment(assignment) {}
     Statement(IfStatement * if_statement) : type(IF), if_statement(if_statement) {}
     Statement(PrintStatement * print_statement) : type(PRINT), print_statement(print_statement) {}

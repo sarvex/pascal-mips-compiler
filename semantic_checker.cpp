@@ -243,6 +243,10 @@ void SemanticChecker::check_statement(Statement * statement)
         case Statement::FUNCTION:
             check_function_designator(statement->function);
             break;
+        case Statement::ATTRIBUTE:
+            // actually this is a method call
+            check_method_designator(new MethodDesignator(statement->attribute->owner, new FunctionDesignator(statement->attribute->identifier, NULL)));
+            break;
         default:
             assert(false);
     }
