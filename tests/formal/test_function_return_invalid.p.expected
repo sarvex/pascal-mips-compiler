@@ -1,0 +1,1 @@
+ERROR: line 10: cannot read from "testFunctionReturnInvalid" because it is reserved for use as the function return value

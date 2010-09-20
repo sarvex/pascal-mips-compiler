@@ -26,6 +26,7 @@ namespace Utils
     // string processing
     std::string to_lower(std::string s);
     std::string to_upper(std::string s);
+    bool insensitive_equals(std::string s1, std::string s2);
 
     // error message header
     std::string err_header(int line_number);
