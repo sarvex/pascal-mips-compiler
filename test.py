@@ -59,6 +59,15 @@ def main():
 
         compiler = subprocess.Popen([compiler_exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = compiler.communicate(test['source'])
+        if compiler.returncode not in [0, 1]:
+            sys.stdout.write('E')
+            fails.append({
+                'expected': test['expected'],
+                'output': stderr,
+                'stdout': stdout,
+                'name': test_name,
+                'crash': True,
+            })
         if stderr == test['expected']:
             sys.stdout.write('.')
             passed += 1
@@ -69,6 +78,7 @@ def main():
                 'output': stderr,
                 'stdout': stdout,
                 'name': test_name,
+                'crash': False,
             })
             if options.failfast:
                 break
@@ -86,6 +96,8 @@ def main():
 ---- Expected output: ----
 %(expected)s
 --------""" % fail)
+                if fail['crash']:
+                    print("The program crashed.")
                 if fail['stdout'].strip() != '':
                     print("---- stdout ----")
                     print(fail['stdout'])
