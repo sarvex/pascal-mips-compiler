@@ -9,6 +9,19 @@ SymbolTable * build_symbol_table(Program * program) {
     SymbolTable * symbol_table = new SymbolTable();
     bool success = true;
 
+    // reverse all VariableDeclarationLists
+    for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
+        ClassDeclaration * class_declaration = class_list->item;
+        class_declaration->class_block->variable_list = reverse_variable_declaration_list(class_declaration->class_block->variable_list);
+
+        for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
+            FunctionDeclaration * function_declaration = function_list->item;
+
+            function_declaration->parameter_list = reverse_variable_declaration_list(function_declaration->parameter_list);
+            function_declaration->block->variable_list = reverse_variable_declaration_list(function_declaration->block->variable_list);
+        }
+    }
+
     // collect all the classes that are declared
     for (ClassList * class_list = program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
@@ -135,5 +148,18 @@ bool add_variables(InsensitiveMap<VariableData *> * function_variables, Variable
         }
     }
     return success;
+}
+
+VariableDeclarationList * reverse_variable_declaration_list(VariableDeclarationList * variable_declaration_list, VariableDeclarationList * prev)
+{
+    if (variable_declaration_list == NULL)
+        return NULL;
+    VariableDeclarationList * ret;
+    if (variable_declaration_list->next != NULL)
+        ret = reverse_variable_declaration_list(variable_declaration_list->next, variable_declaration_list);
+    else
+        ret = variable_declaration_list;
+    variable_declaration_list->next = prev;
+    return ret;
 }
 

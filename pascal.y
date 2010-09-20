@@ -184,8 +184,8 @@ variable_declaration_list : variable_declaration_list KEYWORD_SEMICOLON variable
     $$ = new VariableDeclarationList($1, NULL);
 };
 
-identifier_list : identifier_list KEYWORD_COMMA TOKEN_IDENTIFIER {
-    $$ = new IdentifierList($3, $1);
+identifier_list : TOKEN_IDENTIFIER KEYWORD_COMMA identifier_list {
+    $$ = new IdentifierList($1, $3);
 } | TOKEN_IDENTIFIER {
     $$ = new IdentifierList($1, NULL);
 };
