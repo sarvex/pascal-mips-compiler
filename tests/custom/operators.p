@@ -4,7 +4,6 @@ clAss maIne begin
         intField1,  intField2  : integer;
         realField1, realField2 : real;
         boolField1, boolField2 : boolean;
-        charField1, charField2 : char;
 
     function MainE; begin
         intFIELD1 := 4;
