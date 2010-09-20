@@ -1,6 +1,4 @@
 Project 1 Release:
- * test deeply nested control statements and expressions
- * test forward references for classes
  * test object instantiation & new keyword
  * test leaving off the else
  * test functions with the same name in different classes
