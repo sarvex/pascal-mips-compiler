@@ -1,7 +1,7 @@
 program Main;
 class Main begin
-    function MainE;
-        var b : boolean;
+    function Main;
+        var a : boolean;
     begin
         b := true;
         if b then
@@ -31,7 +31,7 @@ class Main begin
             end
         end else begin
             if b then begin
-                a := false
+                b := false
             end else begin
                 b := true
             end

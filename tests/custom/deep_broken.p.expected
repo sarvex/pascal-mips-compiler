@@ -1,1 +1,19 @@
-ERROR: line 34: variable "a" not declared
+ERROR: line 6: variable "b" not declared
+ERROR: line 7: variable "b" not declared
+ERROR: line 8: variable "b" not declared
+ERROR: line 9: variable "b" not declared
+ERROR: line 10: variable "b" not declared
+ERROR: line 11: variable "b" not declared
+ERROR: line 12: variable "b" not declared
+ERROR: line 13: variable "b" not declared
+ERROR: line 14: variable "b" not declared
+ERROR: line 15: variable "b" not declared
+ERROR: line 20: variable "b" not declared
+ERROR: line 26: variable "b" not declared
+ERROR: line 27: variable "b" not declared
+ERROR: line 28: variable "b" not declared
+ERROR: line 30: variable "b" not declared
+ERROR: line 33: variable "b" not declared
+ERROR: line 34: variable "b" not declared
+ERROR: line 36: variable "b" not declared
+
