@@ -50,5 +50,7 @@ bool add_variables(OrderedInsensitiveMap<VariableData *> * function_variables, V
 VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name);
 FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_name, std::string method_name);
 VariableDeclarationList * reverse_variable_declaration_list(VariableDeclarationList * variable_declaration_list, VariableDeclarationList * prev = NULL);
+bool inheritance_loop(SymbolTable * symbol_table, std::string original_class);
+bool inheritance_loop(SymbolTable * symbol_table, std::string original_class, std::string current_class);
 
 #endif

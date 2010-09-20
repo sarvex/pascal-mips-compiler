@@ -92,11 +92,18 @@ SymbolTable * build_symbol_table(Program * program) {
         if (class_declaration->parent_identifier == NULL)
             continue;
 
+        // check for inheritance loop
+        if (inheritance_loop(symbol_table, class_declaration->identifier->text)) {
+            std::cerr << err_header(class_declaration->identifier->line_number) <<
+                "inheritance loop detected" << std::endl;
+            continue;
+        }
+
         // make sure parent class is defined
         if (! symbol_table->has_key(class_declaration->parent_identifier->text)) {
             std::cerr << err_header(class_declaration->identifier->line_number) << "class \"" <<
-            class_declaration->identifier->text << "\" attempted to extend class \"" <<
-            class_declaration->parent_identifier->text << "\" which does not exist" << std::endl;
+                class_declaration->identifier->text << "\" attempted to extend class \"" <<
+                class_declaration->parent_identifier->text << "\" which does not exist" << std::endl;
             success = false;
             continue;
         }
@@ -129,6 +136,22 @@ SymbolTable * build_symbol_table(Program * program) {
     }
 
     return success ? symbol_table : NULL;
+}
+
+bool inheritance_loop(SymbolTable * symbol_table, std::string class_name) {
+    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    return inheritance_loop(symbol_table, class_name, class_symbols->class_declaration->parent_identifier->text);
+}
+
+bool inheritance_loop(SymbolTable * symbol_table, std::string original_class, std::string current_class) {
+    if (! symbol_table->has_key(current_class))
+        return false;
+    if (Utils::insensitive_equals(original_class, current_class))
+        return true;
+    ClassSymbolTable * class_symbols = symbol_table->item(current_class);
+    if (class_symbols->class_declaration->parent_identifier == NULL)
+        return false;
+    return inheritance_loop(symbol_table, original_class, class_symbols->class_declaration->parent_identifier->text);
 }
 
 FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_name, std::string method_name) {

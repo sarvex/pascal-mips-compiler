@@ -1,7 +1,6 @@
 Project 1 Release:
  * test object instantiation & new keyword
  * test strings
- * test structural equivalence - passing to functions and assigning
 
 Bonus:
  * evaluate constant expressions before semantic checking
