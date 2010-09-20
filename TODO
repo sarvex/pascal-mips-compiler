@@ -1,7 +1,5 @@
 Project 1 Release:
  * test object instantiation & new keyword
- * test leaving off the else
- * test functions with the same name in different classes
  * test strings
  * test statements that are just method calls
  * test too many arguments to function
