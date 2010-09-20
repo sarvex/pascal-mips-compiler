@@ -55,6 +55,9 @@ bool SemanticChecker::internal_check()
             m_function_id = function_declaration->identifier->text;
 
             check_variable_declaration_list(function_declaration->parameter_list);
+            check_variable_declaration_list(function_declaration->block->variable_list);
+            if (function_declaration->type != NULL)
+                check_type(function_declaration->type);
 
             StatementList * statement_list = function_declaration->block->statement_list;
             check_statement_list(statement_list);
@@ -72,7 +75,11 @@ void SemanticChecker::check_variable_declaration_list(VariableDeclarationList * 
 
 void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
 {
-    TypeDenoter * type = variable->type;
+    check_type(variable->type);
+}
+
+void SemanticChecker::check_type(TypeDenoter * type)
+{
     switch(type->type) {
         case TypeDenoter::INTEGER:
             break;
