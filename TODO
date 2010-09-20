@@ -1,47 +1,26 @@
 Project 1 Release:
-support:
-    functions with return values
-    control flow statements
-    the "this" keyword
-    forward references for classes
-    object instantiation
-    attribute designators
-    method designators
-    * leaving off the else
-    functions with the same name in different classes
-    * strings
-    case insensitivity
-    print statement
-    * print statement with trailing comma (meaning no newline)
-    evaluate constant expressions before semantic checking
-    returning values from functions by assigning to the function name:
-        tests/formal/test_class_preuse_function_valid.p
-    * functions with parameters but no return type
-    * statements that are just function calls
-    * statements that are just method calls
-    * invoking functions/methods with no parameters and ()
-    * nil literals
-report error for:
-    arrays as parameter types
-    undeclared variable
-    undeclared functions
-    undeclared methods
-    undefined type
-    assignment type mismatch
-    non-integer array indices
-    redeclaration of functions
-    redeclaration of variables
-    colliding variable names with function parameters
-    invalid array bounds
-    wrong number of parameters in function calls
-    invalid array equivalence
-    * strings of length zero
-    test for invalid/valid array indicies with expressions like 8*8-32
-    too many arguments to function
-    function call with incompatible types
-    function call with barely compatible types
-    test for method duplication - defined in parent and in child
-    test for classes extending each other
+ * test deeply nested control statements and expressions
+ * test forward references for classes
+ * test object instantiation & new keyword
+ * test leaving off the else
+ * test functions with the same name in different classes
+ * test strings
+ * test statements that are just method calls
+ * test too many arguments to function
+ * test function call with incompatible types
+ * test function call with barely compatible types
+ * test for method duplication - defined in parent and in child
+ * test for classes extending each other
+ * test for main class missing constructor
+ * test for main class constructor with more than zero parameters
+ * test structural equivalence - passing to functions and assigning
 
-* = bonus
+Bonus:
+ * evaluate constant expressions before semantic checking
+ * test for invalid/valid array indicies with expressions like 8*8-32
+ * print statement with trailing comma (meaning no newline)
+ * functions with parameters but no return type
+ * invoking functions/methods with no parameters and ()
+ * nil literals
+ * test strings of length zero
 
