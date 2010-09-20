@@ -1,1 +1,2 @@
+ERROR: line 3: main class "testArrayBoundsDeclareInvalid" must have a parameterless constructor
 ERROR: line 8: invalid array range: [7..2]

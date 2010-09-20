@@ -1,1 +1,2 @@
+ERROR: line 10: constructor for main class "testFunctionLocalVariableNotDeclaredOtherFunction" must have no parameters
 ERROR: line 20: variable "someVar" not declared

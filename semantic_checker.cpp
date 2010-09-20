@@ -19,7 +19,25 @@ SemanticChecker::SemanticChecker(Program * program, SymbolTable * symbol_table) 
 
 bool SemanticChecker::internal_check()
 {
-    if (!  m_symbol_table->has_key(m_program->identifier->text)) {
+    // check the main class and constructor
+    if (m_symbol_table->has_key(m_program->identifier->text)) {
+        ClassSymbolTable * class_symbols = m_symbol_table->item(m_program->identifier->text);
+        if (class_symbols->function_symbols->has_key(m_program->identifier->text)) {
+            // make sure it has no parameters
+            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->item(m_program->identifier->text);
+            if (function_symbols->function_declaration->parameter_list != NULL) {
+                std::cerr << err_header(function_symbols->function_declaration->identifier->line_number) <<
+                    "constructor for main class \"" << class_symbols->class_declaration->identifier->text <<
+                    "\" must have no parameters" << std::endl;
+                m_success = false;
+            }
+        } else {
+            std::cerr << err_header(class_symbols->class_declaration->identifier->line_number) <<
+                "main class \"" << class_symbols->class_declaration->identifier->text <<
+                "\" must have a parameterless constructor" << std::endl;
+            m_success = false;
+        }
+    } else {
         std::cerr << err_header(m_program->identifier->line_number) << "missing program class" << std::endl;
         m_success = false;
     }

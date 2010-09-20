@@ -6,6 +6,10 @@ BEGIN
 
    VAR works  : boolean;
       objectB : classBB;
+function testClassPreUsevalid;
+begin
+
+end
 END	      
 
 

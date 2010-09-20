@@ -4,8 +4,7 @@
 #include <string>
 
 
-// data structure for AST
-
+// data structure for Abstract Syntax Tree
 
 struct Program;
 struct Identifier;
