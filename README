@@ -7,109 +7,198 @@
                 ||----w |
                 ||     ||
 
- _________________________________________________________________________________
-/       #                                 #     #                                 \
-|       #   ####    ####   #    #         #  #  #   ####   #       ######  ###### |
-|       #  #    #  #       #    #         #  #  #  #    #  #       #       #      |
-|       #  #    #   ####   ######         #  #  #  #    #  #       #####   #####  |
-| #     #  #    #       #  #    #         #  #  #  #    #  #       #       #      |
-| #     #  #    #  #    #  #    #         #  #  #  #    #  #       #       #      |
-|  #####    ####    ####   #    #          ## ##    ####   ######  #       ###### |
-\                                                                                 /
- ---------------------------------------------------------------------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
+ 1. Project Information
+ 2. Building, running, and testing instructions
+ 3. What cases are handled
+ 4. What the parse tree looks like
 
 
- _________________________________________________________________________________
-/    #                                                    #    #                  \
-|   # #    #    #  #####   #####   ######  #    #         #   #    ######  #      |
-|  #   #   ##   #  #    #  #    #  #       #    #         #  #     #       #      |
-| #     #  # #  #  #    #  #    #  #####   #    #         ###      #####   #      |
-| #######  #  # #  #    #  #####   #       # ## #         #  #     #       #      |
-| #     #  #   ##  #    #  #   #   #       ##  ##         #   #    #       #      |
-| #     #  #    #  #####   #    #  ######  #    #         #    #   ######  ###### |
-\                                                                                 /
- ---------------------------------------------------------------------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
+ 1. Project Information
 
+    Authors:
 
- _________________________
-/                         \
-|  #       ######   #   # |
-|  #       #         # #  |
-|  #       #####      #   |
-|  #       #          #   |
-|  #       #          #   |
-|  ######  ######     #   |
-\                         /
- -------------------------
-        \   ^__^
-         \  (xx)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
+        Josh Wolfe
+        Andrew Kelley
 
+    Description:
 
-The parse tree looks something like this:
+        Semantically checks a useless pascal-like language.
 
-Program
-    ClassList[]
-        ClassDeclaration
-            ClassBlock
-                VariableDeclarationList[]
-                    VariableDeclaration
-                        IdentifierList[]
-                        TypeDenoter
-                            ArrayType
-                FunctionDeclarationList[]
-                    FunctionDeclaration
-                        VariableDeclarationList[]
-                        FunctionBlock
+    Comment policy:
+
+        Instead of comments everywhere, use descriptive variable names and
+        functions.
+
+ 2. Building and running instructions
+
+    To compile the project, cd to the project directory and run:
+        
+        make
+
+    To run the test suite, ensure that you have Python 2.6 or later and run:
+        
+        make test
+
+    You can run the program manually like this:
+
+        ./opc tests/test_name.p
+
+ 3. What cases are handled
+    
+    array assignment invalid
+    array assignment valid
+    array bounds declare invalid
+    array bounds invalid
+    array bounds valid
+    array dim2
+    array dim4
+    array index boolean
+    array index boolean variable
+    array index class
+    array multi bounds invalid
+    array multi bounds valid
+    attribute designator complex
+    attribute designator multi
+    attribute designator multi this
+    attribute designator simple
+    boolean assignment invalid
+    boolean assignment valid
+    class assignment base type invalid
+    class assignment base type valid
+    class equivalence invalid order
+    class equivalence invalid types
+    class equivalence valid
+    class preuse assignment valid
+    class preuse function valid
+    class preuse invalid
+    class preuse valid
+    datatype defined
+    datatype not defined
+    expression complex2
+    expression complex
+    expression simple
+    function args few
+    function call arg array
+    function call arg object
+    function call base
+    function call class byref
+    function call class noargs
+    function call class
+    function call multi
+    function call object extend
+    function call object missing
+    function call object
+    function declared
+    function list
+    function local variable declared base class
+    function local variable declared
+    function local variable list
+    function local variable not declared other function
+    function local variable not declared
+    function not declared complex
+    function not declared
+    function return invalid complex
+    function return invalid
+    function return valid
+    function variable same
+    if then else
+    indexed variable complex
+    indexed variable not array
+    invalid class definition undeclared vars
+    invalid class definition underscores
+    many nots
+    many signs
+    method designator complex
+    method designator complex this
+    missing base class
+    missing program class
+    object instantiation
+    this global variable invalid
+    this global variable valid
+    this variable disambiguation extend
+    this variable disambiguation
+    this variable not declared
+    type mismatch array integer
+    type mismatch integer
+    valid class definition
+    variable declared base class
+    variable declared global extend
+    variable declared global
+    variable declared
+    variable invalid name tf
+    variable not declared complex
+    variable not declared
+    while do
+
+    arg casting
+    broken syntax
+    deep broken
+    deep
+    equivalence parameter invalid
+    equivalence parameter
+    extend loop
+    forward references broken
+    forward references
+    main construcor too many args
+    method duplication
+    min syntax
+    operators
+    same name different class
+    too many args
+    wrong arg type
+
+ 4. What the parse tree looks like
+
+    Program
+        ClassList[]
+            ClassDeclaration
+                ClassBlock
+                    VariableDeclarationList[]
+                        VariableDeclaration
+                            IdentifierList[]
+                            TypeDenoter
+                                ArrayType
+                    FunctionDeclarationList[]
+                        FunctionDeclaration
                             VariableDeclarationList[]
-                            StatementList[]
-                                Statement
-                                    AssignmentStatement
-                                        VariableAccess
-                                            IndexedVariable
-                                                VariableAccess
-                                                ExpressionList[]
-                                                    Expression
-                                                        AdditiveExpression
-                                                            MultiplicativeExpression
-                                                                NegatableExpression[]
-                                                                    PrimaryExpression
-                                                                        VariableAccess
-                                                                        FunctionDesignator
-                                                                            ActualParameterList[]
-                                                                                ActualParameter
-                                                                                    Expression
-                                                                                    Expression
-                                                                                    Expression
-                                                                        MethodDesignator
+                            FunctionBlock
+                                VariableDeclarationList[]
+                                StatementList[]
+                                    Statement
+                                        AssignmentStatement
+                                            VariableAccess
+                                                IndexedVariable
+                                                    VariableAccess
+                                                    ExpressionList[]
+                                                        Expression
+                                                            AdditiveExpression
+                                                                MultiplicativeExpression
+                                                                    NegatableExpression[]
+                                                                        PrimaryExpression
                                                                             VariableAccess
                                                                             FunctionDesignator
-                                                                        Expression
-                                                                        PrimaryExpression
-                                                                MultiplicativeExpression
+                                                                                ActualParameterList[]
+                                                                                    ActualParameter
+                                                                                        Expression
+                                                                                        Expression
+                                                                                        Expression
+                                                                            MethodDesignator
+                                                                                VariableAccess
+                                                                                FunctionDesignator
+                                                                            Expression
+                                                                            PrimaryExpression
+                                                                    MultiplicativeExpression
+                                                                AdditiveExpression
                                                             AdditiveExpression
-                                                        AdditiveExpression
-                                            AttributeDesignator
-                                        Expression
-                                    IfStatement
-                                        Expression
-                                        Statement
-                                        Statement
-                                    PrintStatement
-                                        Expression
-                                    WhileStatement
-                                        Expression
-                                        Statement
-                                    StatementList[]
+                                                AttributeDesignator
+                                            Expression
+                                        IfStatement
+                                            Expression
+                                            Statement
+                                            Statement
+                                        PrintStatement
+                                            Expression
+                                        WhileStatement
+                                            Expression
+                                            Statement
+                                        StatementList[]
