@@ -1,0 +1,3 @@
+ERROR: line 12: inheritance loop detected
+ERROR: line 28: inheritance loop detected
+ERROR: line 35: inheritance loop detected

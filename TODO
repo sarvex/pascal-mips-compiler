@@ -4,9 +4,6 @@ Project 1 Release:
  * test too many arguments to function
  * test function call with incompatible types
  * test function call with barely compatible types
- * test for classes extending each other
- * test for main class missing constructor
- * test for main class constructor with more than zero parameters
  * test structural equivalence - passing to functions and assigning
 
 Bonus:
