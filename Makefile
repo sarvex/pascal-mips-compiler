@@ -34,6 +34,7 @@ CC_FLAGS = -ggdb -Wall -I. -I$(OUTPUT)
 CC_COMPILE = $(CC) $(CC_FLAGS) -c -o $@ -MMD -MP -MF $@.d
 LINK = g++
 LINK_FLAGS =
+TEST = python test.py
 
 # rulz
 $(OBJECTS):
@@ -54,6 +55,9 @@ $(YACC_OBJECT):
 all: $(BINARY)
 $(BINARY): $(ALL_OBJECTS)
 	$(LINK) $(LINK_FLAGS) $(ALL_OBJECTS) -o $(BINARY)
+
+test: all
+	$(TEST)
 
 clean:
 	rm -rf $(OUTPUT) $(BINARY)
