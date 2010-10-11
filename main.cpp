@@ -2,7 +2,7 @@
 #include "parser.h"
 #include "symbol_table.h"
 #include "semantic_checker.h"
-#include "control_flow_graph.h"
+#include "code_generation.h"
 
 int main(int argc, char ** argv) {
     char * filename = NULL;
@@ -11,6 +11,7 @@ int main(int argc, char ** argv) {
     }
 
     Program * program = parse_input(filename);
+
     SymbolTable * symbol_table = build_symbol_table(program);
     if (symbol_table == NULL)
         return 1;
@@ -19,9 +20,7 @@ int main(int argc, char ** argv) {
     if (!semantic_success)
         return 1;
 
-    std::vector<ControlFlowGraph *> * controlFlowGraphs = build_control_flow_graphs(program);
-    if (controlFlowGraphs == NULL)
-        return 1;
+    generate_code(program);
 
     return 0;
 }
