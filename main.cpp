@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "symbol_table.h"
 #include "semantic_checker.h"
+#include "control_flow_graph.h"
 
 int main(int argc, char ** argv) {
     char * filename = NULL;
@@ -16,6 +17,10 @@ int main(int argc, char ** argv) {
 
     bool semantic_success = SemanticChecker::check(program, symbol_table);
     if (!semantic_success)
+        return 1;
+
+    std::vector<ControlFlowGraph *> * controlFlowGraphs = build_control_flow_graphs(program);
+    if (controlFlowGraphs == NULL)
         return 1;
 
     return 0;
