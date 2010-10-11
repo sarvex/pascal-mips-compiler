@@ -12,6 +12,7 @@ struct Instruction {
         UNARY,
         IMMEDIATE_BOOLEAN,
         IMMEDIATE_INT,
+        IMMEDIATE_REAL,
         IF,
         GOTO,
         RETURN,
@@ -68,6 +69,13 @@ struct ImmediateInteger : public Instruction {
     int constant;
 
     ImmediateInteger(int dest, int constant) : Instruction(IMMEDIATE_INT), dest(dest), constant(constant) {}
+};
+
+struct ImmediateReal : public Instruction {
+    int dest;
+    float constant;
+
+    ImmediateReal(int dest, float constant) : Instruction(IMMEDIATE_REAL), dest(dest), constant(constant) {}
 };
 
 struct IfInstruction : public Instruction {
@@ -208,6 +216,12 @@ void CodeGenerator::pretty_print() {
             {
                 ImmediateInteger * immediate_int_instruction = (ImmediateInteger *) instruction;
                 std::cout << "$" << immediate_int_instruction->dest << " = " << immediate_int_instruction->constant << std::endl;
+                break;
+            }
+            case Instruction::IMMEDIATE_REAL:
+            {
+                ImmediateReal * immediate_real_instruction = (ImmediateReal *) instruction;
+                std::cout << "$" << immediate_real_instruction->dest << " = " << immediate_real_instruction->constant << std::endl;
                 break;
             }
             case Instruction::IF:
@@ -398,6 +412,13 @@ int CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression
             m_instructions.push_back(new ImmediateBoolean(dest, constant));
             return dest;
         }
+        case PrimaryExpression::REAL:
+        {
+            int dest = next_available_register();
+            float constant = primary_expression->literal_real->value;
+            m_instructions.push_back(new ImmediateReal(dest, constant));
+            return dest;
+        }
         case PrimaryExpression::PARENS:
             return gen_expression(primary_expression->parens_expression);
         case PrimaryExpression::NOT:
@@ -408,7 +429,6 @@ int CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression
             return dest;
         }
             /*
-        case PrimaryExpression::REAL:
         case PrimaryExpression::STRING:
         case PrimaryExpression::FUNCTION:
         case PrimaryExpression::METHOD:
