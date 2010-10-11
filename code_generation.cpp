@@ -288,14 +288,21 @@ void CodeGenerator::gen_statement(Statement * statement) {
             m_instructions.push_back(new PrintInstruction(value));
             break;
         }
-            /*
         case Statement::WHILE:
-            check_expression(statement->while_statement->expression);
-            check_statement(statement->while_statement->statement);
+        {
+            int while_start = m_instructions.size();
+            int condition = gen_expression(statement->while_statement->expression);
+            IfInstruction * if_instruction = new IfInstruction(condition, -1);
+            m_instructions.push_back(if_instruction);
+            gen_statement(statement->while_statement->statement);
+            m_instructions.push_back(new GotoInstruction(while_start));
+            if_instruction->goto_index = m_instructions.size();
             break;
+        }
         case Statement::COMPOUND:
-            check_statement_list(statement->compound_statement);
+            gen_statement_list(statement->compound_statement);
             break;
+            /*
         case Statement::METHOD:
             check_method_designator(statement->method);
             break;
