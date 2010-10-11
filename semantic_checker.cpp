@@ -21,10 +21,10 @@ bool SemanticChecker::internal_check()
 {
     // check the main class and constructor
     if (m_symbol_table->has_key(m_program->identifier->text)) {
-        ClassSymbolTable * class_symbols = m_symbol_table->item(m_program->identifier->text);
+        ClassSymbolTable * class_symbols = m_symbol_table->get(m_program->identifier->text);
         if (class_symbols->function_symbols->has_key(m_program->identifier->text)) {
             // make sure it has no parameters
-            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->item(m_program->identifier->text);
+            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->get(m_program->identifier->text);
             if (function_symbols->function_declaration->parameter_list != NULL) {
                 std::cerr << err_header(function_symbols->function_declaration->identifier->line_number) <<
                     "constructor for main class \"" << class_symbols->class_declaration->identifier->text <<
@@ -48,7 +48,7 @@ bool SemanticChecker::internal_check()
         m_class_id = class_declaration->identifier->text;
 
         check_variable_declaration_list(class_declaration->class_block->variable_list);
-        
+
         // check functions
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
@@ -141,19 +141,19 @@ bool SemanticChecker::is_ancestor(TypeDenoter * child, TypeDenoter * ancestor)
     if (child->class_identifier->text.compare(ancestor->class_identifier->text) == 0) {
         return true;
     } else {
-        ClassDeclaration * child_declaration = m_symbol_table->item(child->class_identifier->text)->class_declaration;
+        ClassDeclaration * child_declaration = m_symbol_table->get(child->class_identifier->text)->class_declaration;
         if (child_declaration->parent_identifier == NULL)
             return false;
         return is_ancestor(new TypeDenoter(child_declaration->parent_identifier), ancestor);
     }
 }
 
-bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type) 
+bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type)
 {
     assert(left_type->type == TypeDenoter::CLASS);
     assert(right_type->type == TypeDenoter::CLASS);
-    VariableTable * left_fields = m_symbol_table->item(left_type->class_identifier->text)->variables;
-    VariableTable * right_fields = m_symbol_table->item(right_type->class_identifier->text)->variables;
+    VariableTable * left_fields = m_symbol_table->get(left_type->class_identifier->text)->variables;
+    VariableTable * right_fields = m_symbol_table->get(right_type->class_identifier->text)->variables;
     for (int i=0; i < left_fields->count() || i < right_fields->count(); ++i) {
         // if we get past the end of one of them, they have differing numbers of fields.
         if (i >= left_fields->count())
@@ -161,7 +161,7 @@ bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenot
         if (i >= right_fields->count())
             return false;
         // each field has to be assignment compatible
-        if (! assignment_valid(left_fields->item(i)->type, right_fields->item(i)->type))
+        if (! assignment_valid(left_fields->get(i)->type, right_fields->get(i)->type))
             return false;
     }
 
@@ -410,20 +410,20 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
         {
             // it's the type of the declaration
             // figure out what variable this is referencing
-            ClassSymbolTable * class_symbols = m_symbol_table->item(m_class_id);
-            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->item(m_function_id);
+            ClassSymbolTable * class_symbols = m_symbol_table->get(m_class_id);
+            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->get(m_function_id);
             if (function_symbols->variables->has_key(variable_access->identifier->text)) {
                 // local variable or parameter
                 if (! allow_function_return_value) {
                     // if it's the function return value, we need explicit permission
                     if (Utils::insensitive_equals(function_symbols->function_declaration->identifier->text, variable_access->identifier->text)) {
-                        std::cerr << err_header(variable_access->identifier->line_number) << 
+                        std::cerr << err_header(variable_access->identifier->line_number) <<
                             "cannot read from \"" << variable_access->identifier->text <<
                             "\" because it is reserved for use as the function return value" << std::endl;
                         m_success = false;
                     }
                 }
-                return function_symbols->variables->item(variable_access->identifier->text)->type;
+                return function_symbols->variables->get(variable_access->identifier->text)->type;
             } else {
                 TypeDenoter * type = class_variable_type(m_class_id, variable_access->identifier);
                 if (type == NULL) {
@@ -444,7 +444,7 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
         case VariableAccess::ATTRIBUTE:
             return check_attribute_designator(variable_access->attribute);
         case VariableAccess::THIS:
-            return new TypeDenoter(m_symbol_table->item(m_class_id)->class_declaration->identifier);
+            return new TypeDenoter(m_symbol_table->get(m_class_id)->class_declaration->identifier);
         default:
             assert(false);
             return NULL;
@@ -453,9 +453,9 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
 
 TypeDenoter * SemanticChecker::class_variable_type(std::string class_name, Identifier * variable)
 {
-    ClassSymbolTable * class_symbols = m_symbol_table->item(class_name);
+    ClassSymbolTable * class_symbols = m_symbol_table->get(class_name);
     if (class_symbols->variables->has_key(variable->text)) {
-        return class_symbols->variables->item(variable->text)->type;
+        return class_symbols->variables->get(variable->text)->type;
     } else if (class_symbols->class_declaration->parent_identifier == NULL) {
         return NULL;
     } else {
@@ -465,9 +465,9 @@ TypeDenoter * SemanticChecker::class_variable_type(std::string class_name, Ident
 
 FunctionDeclaration * SemanticChecker::class_method(std::string class_name, FunctionDesignator * function_designator)
 {
-    ClassSymbolTable * class_symbols = m_symbol_table->item(class_name);
+    ClassSymbolTable * class_symbols = m_symbol_table->get(class_name);
     if (class_symbols->function_symbols->has_key(function_designator->identifier->text)) {
-        return class_symbols->function_symbols->item(function_designator->identifier->text)->function_declaration;
+        return class_symbols->function_symbols->get(function_designator->identifier->text)->function_declaration;
     } else if (class_symbols->class_declaration->parent_identifier == NULL) {
         return NULL;
     } else {
@@ -518,7 +518,7 @@ TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * fu
                 }
             }
         }
-        
+
         return function_declaration->type;
     }
 }

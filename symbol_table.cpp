@@ -28,7 +28,7 @@ SymbolTable * build_symbol_table(Program * program) {
 
         // add the class to symbol table
         if (symbol_table->has_key(class_declaration->identifier->text)) {
-            ClassDeclaration * other_class = symbol_table->item(class_declaration->identifier->text)->class_declaration;
+            ClassDeclaration * other_class = symbol_table->get(class_declaration->identifier->text)->class_declaration;
             std::cerr << err_header(class_declaration->identifier->line_number) <<
                 "class \"" << other_class->identifier->text << "\" already declared at line " <<
                 other_class->identifier->line_number << std::endl;
@@ -39,12 +39,12 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // add each class variable to symbol table
-        OrderedInsensitiveMap<VariableData *> * variables = symbol_table->item(class_declaration->identifier->text)->variables;
+        OrderedInsensitiveMap<VariableData *> * variables = symbol_table->get(class_declaration->identifier->text)->variables;
         for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
             VariableDeclaration * variable_declaration = variable_list->item;
             for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
                 if (variables->has_key(id_list->item->text)) {
-                    VariableData * other_variable = variables->item(id_list->item->text);
+                    VariableData * other_variable = variables->get(id_list->item->text);
                     std::cerr << err_header(id_list->item->line_number) << "variable \"" <<
                         id_list->item->text << "\" already declared at line " <<
                         other_variable->line_number << std::endl;
@@ -56,7 +56,7 @@ SymbolTable * build_symbol_table(Program * program) {
         }
 
         // for each function
-        OrderedInsensitiveMap<FunctionSymbolTable *> * function_symbols = symbol_table->item(class_declaration->identifier->text)->function_symbols;
+        OrderedInsensitiveMap<FunctionSymbolTable *> * function_symbols = symbol_table->get(class_declaration->identifier->text)->function_symbols;
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
 
@@ -64,12 +64,12 @@ SymbolTable * build_symbol_table(Program * program) {
             if (function_symbols->has_key(function_declaration->identifier->text)) {
                 std::cerr << err_header(function_declaration->identifier->line_number) <<
                     "function \"" << function_declaration->identifier->text << "\" already declared at line " <<
-                    function_symbols->item(function_declaration->identifier->text)->function_declaration->identifier->line_number << std::endl;
+                    function_symbols->get(function_declaration->identifier->text)->function_declaration->identifier->line_number << std::endl;
                 success = false;
                 continue;
             }
             function_symbols->put(function_declaration->identifier->text, new FunctionSymbolTable(function_declaration));
-            OrderedInsensitiveMap<VariableData *> * function_variables = function_symbols->item(function_declaration->identifier->text)->variables;
+            OrderedInsensitiveMap<VariableData *> * function_variables = function_symbols->get(function_declaration->identifier->text)->variables;
 
             // add the function name to function symbol table
             function_variables->put(function_declaration->identifier->text,
@@ -139,7 +139,7 @@ SymbolTable * build_symbol_table(Program * program) {
 }
 
 bool inheritance_loop(SymbolTable * symbol_table, std::string class_name) {
-    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    ClassSymbolTable * class_symbols = symbol_table->get(class_name);
     return inheritance_loop(symbol_table, class_name, class_symbols->class_declaration->parent_identifier->text);
 }
 
@@ -148,7 +148,7 @@ bool inheritance_loop(SymbolTable * symbol_table, std::string original_class, st
         return false;
     if (Utils::insensitive_equals(original_class, current_class))
         return true;
-    ClassSymbolTable * class_symbols = symbol_table->item(current_class);
+    ClassSymbolTable * class_symbols = symbol_table->get(current_class);
     if (class_symbols->class_declaration->parent_identifier == NULL)
         return false;
     return inheritance_loop(symbol_table, original_class, class_symbols->class_declaration->parent_identifier->text);
@@ -157,9 +157,9 @@ bool inheritance_loop(SymbolTable * symbol_table, std::string original_class, st
 FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_name, std::string method_name) {
     if (! symbol_table->has_key(class_name))
         return NULL;
-    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    ClassSymbolTable * class_symbols = symbol_table->get(class_name);
     if (class_symbols->function_symbols->has_key(method_name)) {
-        return class_symbols->function_symbols->item(method_name)->function_declaration;
+        return class_symbols->function_symbols->get(method_name)->function_declaration;
     } else if (class_symbols->class_declaration->parent_identifier == NULL) {
         return NULL;
     } else {
@@ -171,9 +171,9 @@ FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_n
 VariableData * get_field(SymbolTable * symbol_table, std::string class_name, std::string field_name) {
     if (! symbol_table->has_key(class_name))
         return NULL;
-    ClassSymbolTable * class_symbols = symbol_table->item(class_name);
+    ClassSymbolTable * class_symbols = symbol_table->get(class_name);
     if (class_symbols->variables->has_key(field_name)) {
-        return class_symbols->variables->item(field_name);
+        return class_symbols->variables->get(field_name);
     } else if (class_symbols->class_declaration->parent_identifier == NULL) {
         return NULL;
     } else {
@@ -193,7 +193,7 @@ bool add_variables(OrderedInsensitiveMap<VariableData *> * function_variables, V
             } else {
                 std::cerr << err_header(id_list->item->line_number) <<
                     "variable \"" << id_list->item->text << "\" already declared at line " <<
-                    function_variables->item(id_list->item->text)->line_number << std::endl;
+                    function_variables->get(id_list->item->text)->line_number << std::endl;
             }
             success = false;
         }

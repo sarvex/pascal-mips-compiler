@@ -16,8 +16,8 @@ class OrderedInsensitiveMap {
 
         int count() { return m_vector.size(); }
         bool has_key(std::string x) { return m_map.count(Utils::to_lower(x)) > 0; }
-        T item(std::string x) { return m_map[Utils::to_lower(x)]; }
-        T item(int i) { return m_vector[i]; }
+        T get(std::string x) { return m_map[Utils::to_lower(x)]; }
+        T get(int i) { return m_vector[i]; }
         void put(std::string key, T value);
 };
 
