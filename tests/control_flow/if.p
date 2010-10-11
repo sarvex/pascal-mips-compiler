@@ -8,6 +8,8 @@ class Main begin
         b := 2;
         if a < b then
             z := true
+        else
+            print b
     end
 end
 .

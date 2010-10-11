@@ -15,6 +15,7 @@ struct Instruction {
         IF,
         GOTO,
         RETURN,
+        PRINT,
     };
     Type type;
 
@@ -84,6 +85,11 @@ struct GotoInstruction : public Instruction {
 
 struct ReturnInstruction : public Instruction {
     ReturnInstruction() : Instruction(RETURN) {}
+};
+
+struct PrintInstruction : public Instruction {
+    int value;
+    PrintInstruction(int value) : Instruction(PRINT), value(value) {}
 };
 
 class CodeGenerator {
@@ -221,6 +227,11 @@ void CodeGenerator::pretty_print() {
                 std::cout << "return" << std::endl;
                 break;
             }
+            case Instruction::PRINT:
+            {
+                PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+                std::cout << "print $" << print_instruction->value << std::endl;
+            }
         }
     }
 }
@@ -271,10 +282,13 @@ void CodeGenerator::gen_statement(Statement * statement) {
 
             break;
         }
-        /*
         case Statement::PRINT:
-            check_expression(statement->print_statement->expression);
+        {
+            int value = gen_expression(statement->print_statement->expression);
+            m_instructions.push_back(new PrintInstruction(value));
             break;
+        }
+            /*
         case Statement::WHILE:
             check_expression(statement->while_statement->expression);
             check_statement(statement->while_statement->statement);
