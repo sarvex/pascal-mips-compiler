@@ -12,6 +12,9 @@ struct Instruction {
         UNARY,
         IMMEDIATE_BOOLEAN,
         IMMEDIATE_INT,
+        IF,
+        GOTO,
+        RETURN,
     };
     Type type;
 
@@ -66,6 +69,22 @@ struct ImmediateInteger : public Instruction {
     ImmediateInteger(int dest, int constant) : Instruction(IMMEDIATE_INT), dest(dest), constant(constant) {}
 };
 
+struct IfInstruction : public Instruction {
+    int condition;
+    int goto_index;
+
+    IfInstruction(int condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
+};
+
+struct GotoInstruction : public Instruction {
+    int goto_index;
+
+    GotoInstruction(int goto_index) : Instruction(GOTO), goto_index(goto_index) {}
+};
+
+struct ReturnInstruction : public Instruction {
+    ReturnInstruction() : Instruction(RETURN) {}
+};
 
 class CodeGenerator {
 public:
@@ -114,6 +133,7 @@ void generate_code(Program * program) {
 
 void CodeGenerator::pretty_print() {
     for (unsigned int i=0; i<m_instructions.size(); ++i) {
+        std::cout << i << "\t";
         Instruction * instruction = m_instructions[i];
         switch (instruction->type) {
             case Instruction::COPY:
@@ -174,7 +194,7 @@ void CodeGenerator::pretty_print() {
             }
             case Instruction::IMMEDIATE_BOOLEAN:
             {
-                ImmediateBoolean * immediate_bool_instruction = (ImmediateBoolean *) instruction; 
+                ImmediateBoolean * immediate_bool_instruction = (ImmediateBoolean *) instruction;
                 std::cout << "$" << immediate_bool_instruction->dest << " = " << (immediate_bool_instruction->constant ? "true" : "false") << std::endl;
                 break;
             }
@@ -182,6 +202,23 @@ void CodeGenerator::pretty_print() {
             {
                 ImmediateInteger * immediate_int_instruction = (ImmediateInteger *) instruction;
                 std::cout << "$" << immediate_int_instruction->dest << " = " << immediate_int_instruction->constant << std::endl;
+                break;
+            }
+            case Instruction::IF:
+            {
+                IfInstruction * if_instruction = (IfInstruction *) instruction;
+                std::cout << "if !$" << if_instruction->condition << " goto " << if_instruction->goto_index << std::endl;
+                break;
+            }
+            case Instruction::GOTO:
+            {
+                GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
+                std::cout << "goto " << goto_instruction->goto_index << std::endl;
+                break;
+            }
+            case Instruction::RETURN:
+            {
+                std::cout << "return" << std::endl;
                 break;
             }
         }
@@ -195,6 +232,8 @@ void CodeGenerator::generate(FunctionDeclaration * function_declaration) {
     }
 
     gen_statement_list(function_declaration->block->statement_list);
+
+    m_instructions.push_back(new ReturnInstruction());
 }
 
 void CodeGenerator::gen_statement_list(StatementList * statement_list) {
@@ -212,13 +251,27 @@ void CodeGenerator::gen_statement(Statement * statement) {
             gen_assignment(statement->assignment->variable, value_register);
             break;
         }
-        /*
         case Statement::IF:
-            check_expression(statement->if_statement->expression);
-            check_statement(statement->if_statement->then_statement);
-            if (statement->if_statement->else_statement != NULL)
-                check_statement(statement->if_statement->else_statement);
+        {
+            int condition = gen_expression(statement->if_statement->expression);
+
+            IfInstruction * if_instruction = new IfInstruction(condition, -1);
+            m_instructions.push_back(if_instruction);
+
+            gen_statement(statement->if_statement->then_statement);
+            if (statement->if_statement->else_statement != NULL) {
+                GotoInstruction * goto_instruction = new GotoInstruction(-1);
+                m_instructions.push_back(goto_instruction);
+                if_instruction->goto_index = m_instructions.size();
+                gen_statement(statement->if_statement->else_statement);
+                goto_instruction->goto_index = m_instructions.size();
+            } else {
+                if_instruction->goto_index = m_instructions.size();
+            }
+
             break;
+        }
+        /*
         case Statement::PRINT:
             check_expression(statement->print_statement->expression);
             break;
