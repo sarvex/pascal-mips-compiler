@@ -105,7 +105,13 @@ struct PrintInstruction : public Instruction {
 struct BasicBlock {
     int start;
     int end;
+    std::vector<BasicBlock *> children;
+    std::vector<BasicBlock *> parents;
     BasicBlock(int start, int end) : start(start), end(end) {}
+    void add_child(BasicBlock * child) {
+        this->children.push_back(child);
+        child->parents.push_back(this);
+    }
 };
 
 class CodeGenerator {
@@ -537,11 +543,52 @@ void CodeGenerator::build_basic_blocks() {
     }
 
     // construct blocks
+    std::map<int, BasicBlock *> index_to_block;
     int start_index = 0; // first block starts at 0
     for (std::set<int>::iterator iter = block_break_indexes.begin(); iter != block_break_indexes.end(); iter++) {
         int end_index = *iter;
-        m_basic_blocks.push_back(new BasicBlock(start_index, end_index));
+        BasicBlock * block = new BasicBlock(start_index, end_index);
+        m_basic_blocks.push_back(block);
+        index_to_block[start_index] = block;
+
         start_index = end_index;
+    }
+
+    // connect blocks together
+    for (unsigned int i = 0; i < m_basic_blocks.size(); i++) {
+        BasicBlock * block = m_basic_blocks[i];
+        int last_index = block->end- 1;
+        Instruction * instruction = m_instructions[last_index];
+        switch (instruction->type) {
+            case Instruction::IF:
+            {
+                // two children
+                IfInstruction * if_instruction = (IfInstruction *) instruction;
+                BasicBlock * child1 = index_to_block[if_instruction->goto_index];
+                block->add_child(child1);
+                BasicBlock * child2 = m_basic_blocks[i + 1];
+                block->add_child(child2);
+                break;
+            }
+            case Instruction::GOTO:
+            {
+                // one distant child
+                GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
+                BasicBlock * child1 = index_to_block[goto_instruction->goto_index];
+                block->add_child(child1);
+                break;
+            }
+            case Instruction::RETURN:
+                // no children
+                break;
+            default:
+            {
+                // next block is only child
+                BasicBlock * child = m_basic_blocks[i + 1];
+                block->add_child(child);
+                break;
+            }
+        }
     }
 }
 
