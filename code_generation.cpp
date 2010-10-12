@@ -105,13 +105,10 @@ struct PrintInstruction : public Instruction {
 struct BasicBlock {
     int start;
     int end;
-    std::vector<BasicBlock *> children;
-    std::vector<BasicBlock *> parents;
+    // parent and child indexes in m_basic_blocks
+    std::set<int> children;
+    std::set<int> parents;
     BasicBlock(int start, int end) : start(start), end(end) {}
-    void add_child(BasicBlock * child) {
-        this->children.push_back(child);
-        child->parents.push_back(this);
-    }
 };
 
 class CodeGenerator {
@@ -123,6 +120,7 @@ public:
     void print_disassembly();
     void print_disassembly(int i);
     void print_basic_blocks();
+    void print_control_flow_graph();
 
 private:
     std::vector<Instruction *> m_instructions;
@@ -144,6 +142,7 @@ private:
     int gen_variable_access(VariableAccess * variable);
 
     void gen_assignment(VariableAccess * variable, int value_register);
+    void link_parent_and_child(int parent_index, int child_index);
 };
 
 void generate_code(Program * program) {
@@ -166,6 +165,11 @@ void generate_code(Program * program) {
             std::cout << "Basic Blocks" << std::endl;
             std::cout << "--------------------------" << std::endl;
             generator.print_basic_blocks();
+            std::cout << "--------------------------" << std::endl;
+
+            std::cout << "Control Flow Graph" << std::endl;
+            std::cout << "--------------------------" << std::endl;
+            generator.print_control_flow_graph();
             std::cout << "--------------------------" << std::endl;
         }
     }
@@ -284,6 +288,27 @@ void CodeGenerator::print_basic_blocks() {
             print_disassembly(i);
     }
 }
+
+void CodeGenerator::print_control_flow_graph() {
+    for (unsigned int parent = 0; parent < m_basic_blocks.size(); parent++) {
+        BasicBlock * parent_block = m_basic_blocks[parent];
+        for (unsigned int child = 0; child < m_basic_blocks.size(); child++) {
+            if (parent == child) {
+                // for self, print the number (ugly if more than 1 digit)
+                std::cout << parent;
+            } else if (parent_block->children.count(child)) {
+                // child is a child of parent
+                std::cout << (child < parent ? "^" : "v");
+            } else {
+                // nothing to see here
+                std::cout << " ";
+            }
+            std::cout << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
 
 void CodeGenerator::generate(FunctionDeclaration * function_declaration) {
     for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
@@ -512,6 +537,10 @@ void CodeGenerator::gen_assignment(VariableAccess * variable, int value_register
     }
 }
 
+void CodeGenerator::link_parent_and_child(int parent_index, int child_index) {
+    m_basic_blocks[parent_index]->children.insert(child_index);
+    m_basic_blocks[child_index]->parents.insert(parent_index);
+}
 
 void CodeGenerator::build_basic_blocks() {
     // identify breaks between blocks
@@ -543,13 +572,13 @@ void CodeGenerator::build_basic_blocks() {
     }
 
     // construct blocks
-    std::map<int, BasicBlock *> index_to_block;
+    std::map<int, int> instruction_index_to_block_index;
     int start_index = 0; // first block starts at 0
     for (std::set<int>::iterator iter = block_break_indexes.begin(); iter != block_break_indexes.end(); iter++) {
         int end_index = *iter;
         BasicBlock * block = new BasicBlock(start_index, end_index);
+        instruction_index_to_block_index[start_index] = m_basic_blocks.size();
         m_basic_blocks.push_back(block);
-        index_to_block[start_index] = block;
 
         start_index = end_index;
     }
@@ -564,18 +593,18 @@ void CodeGenerator::build_basic_blocks() {
             {
                 // two children
                 IfInstruction * if_instruction = (IfInstruction *) instruction;
-                BasicBlock * child1 = index_to_block[if_instruction->goto_index];
-                block->add_child(child1);
-                BasicBlock * child2 = m_basic_blocks[i + 1];
-                block->add_child(child2);
+                int child1 = instruction_index_to_block_index[if_instruction->goto_index];
+                link_parent_and_child(i, child1);
+                int child2 = i + 1;
+                link_parent_and_child(i, child2);
                 break;
             }
             case Instruction::GOTO:
             {
                 // one distant child
                 GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
-                BasicBlock * child1 = index_to_block[goto_instruction->goto_index];
-                block->add_child(child1);
+                int child = instruction_index_to_block_index[goto_instruction->goto_index];
+                link_parent_and_child(i, child);
                 break;
             }
             case Instruction::RETURN:
@@ -584,8 +613,8 @@ void CodeGenerator::build_basic_blocks() {
             default:
             {
                 // next block is only child
-                BasicBlock * child = m_basic_blocks[i + 1];
-                block->add_child(child);
+                int child = i + 1;
+                link_parent_and_child(i, child);
                 break;
             }
         }
