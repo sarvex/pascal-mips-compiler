@@ -117,7 +117,6 @@ public:
     void generate(FunctionDeclaration * function_declaration);
     void build_basic_blocks();
 
-    void print_disassembly();
     void print_disassembly(int i);
     void print_basic_blocks();
     void print_control_flow_graph();
@@ -150,19 +149,15 @@ void generate_code(Program * program) {
         ClassDeclaration * class_declaration = class_list_node->item;
         for (FunctionDeclarationList * function_list_node = class_declaration->class_block->function_list; function_list_node != NULL; function_list_node = function_list_node->next) {
             FunctionDeclaration * function_declaration = function_list_node->item;
-            CodeGenerator generator;
-            generator.generate(function_declaration);
 
             std::cout << "Method " << class_declaration->identifier->text << "." << function_declaration->identifier->text << std::endl;
             std::cout << "--------------------------" << std::endl;
-            std::cout << "3 Address Codes" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_disassembly();
-            std::cout << "--------------------------" << std::endl;
 
+            CodeGenerator generator;
+            generator.generate(function_declaration);
             generator.build_basic_blocks();
 
-            std::cout << "Basic Blocks" << std::endl;
+            std::cout << "Disassembly" << std::endl;
             std::cout << "--------------------------" << std::endl;
             generator.print_basic_blocks();
             std::cout << "--------------------------" << std::endl;
@@ -175,10 +170,6 @@ void generate_code(Program * program) {
     }
 }
 
-void CodeGenerator::print_disassembly() {
-    for (unsigned int i = 0; i < m_instructions.size(); i++)
-        print_disassembly(i);
-}
 void CodeGenerator::print_disassembly(int i) {
     std::cout << i << ":\t";
     Instruction * instruction = m_instructions[i];
