@@ -2,6 +2,7 @@
 #include "insensitive_map.h"
 
 #include <vector>
+#include <set>
 #include <cassert>
 #include <iostream>
 
@@ -100,17 +101,28 @@ struct PrintInstruction : public Instruction {
     PrintInstruction(int value) : Instruction(PRINT), value(value) {}
 };
 
+
+struct BasicBlock {
+    int start;
+    int end;
+    BasicBlock(int start, int end) : start(start), end(end) {}
+};
+
 class CodeGenerator {
 public:
     CodeGenerator() : m_register_count(0) {}
     void generate(FunctionDeclaration * function_declaration);
+    void build_basic_blocks();
 
-    void pretty_print();
+    void print_disassembly();
+    void print_disassembly(int i);
+    void print_basic_blocks();
 
 private:
     std::vector<Instruction *> m_instructions;
     OrderedInsensitiveMap<int> m_variable_numbers;
     int m_register_count;
+    std::vector<BasicBlock *> m_basic_blocks;
 
 private:
     int current_index() { return m_instructions.size(); }
@@ -136,117 +148,134 @@ void generate_code(Program * program) {
             CodeGenerator generator;
             generator.generate(function_declaration);
 
-            std::cout << "3 Address Code for " << function_declaration->identifier->text << std::endl;
+            std::cout << "Method " << class_declaration->identifier->text << "." << function_declaration->identifier->text << std::endl;
             std::cout << "--------------------------" << std::endl;
-            generator.pretty_print();
+            std::cout << "3 Address Codes" << std::endl;
             std::cout << "--------------------------" << std::endl;
-            std::cout << std::endl;
+            generator.print_disassembly();
+            std::cout << "--------------------------" << std::endl;
+
+            generator.build_basic_blocks();
+
+            std::cout << "Basic Blocks" << std::endl;
+            std::cout << "--------------------------" << std::endl;
+            generator.print_basic_blocks();
+            std::cout << "--------------------------" << std::endl;
         }
     }
 }
 
-void CodeGenerator::pretty_print() {
-    for (unsigned int i=0; i<m_instructions.size(); ++i) {
-        std::cout << i << "\t";
-        Instruction * instruction = m_instructions[i];
-        switch (instruction->type) {
-            case Instruction::COPY:
-            {
-                CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-                std::cout << "$" << copy_instruction->dest << " = $" << copy_instruction->source << std::endl;
-                break;
-            }
-            case Instruction::OPERATOR:
-            {
-                OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-                std::cout << "$" << operator_instruction->dest << " = $" << operator_instruction->left << " ";
-                switch (operator_instruction->_operator) {
-                    case OperatorInstruction::EQUAL:
-                        std::cout << "=="; break;
-                    case OperatorInstruction::NOT_EQUAL:
-                        std::cout << "!="; break;
-                    case OperatorInstruction::LESS:
-                        std::cout << "<"; break;
-                    case OperatorInstruction::GREATER:
-                        std::cout << ">"; break;
-                    case OperatorInstruction::LESS_EQUAL:
-                        std::cout << "<="; break;
-                    case OperatorInstruction::GREATER_EQUAL:
-                        std::cout << ">="; break;
-                    case OperatorInstruction::PLUS:
-                        std::cout << "+"; break;
-                    case OperatorInstruction::MINUS:
-                        std::cout << "-"; break;
-                    case OperatorInstruction::OR:
-                        std::cout << "||"; break;
-                    case OperatorInstruction::TIMES:
-                        std::cout << "*"; break;
-                    case OperatorInstruction::DIVIDE:
-                        std::cout << "/"; break;
-                    case OperatorInstruction::MOD:
-                        std::cout << "%"; break;
-                    case OperatorInstruction::AND:
-                        std::cout << "&&"; break;
-                    default:
-                        assert(false);
-                }
-                std::cout << " $" << operator_instruction->right << std::endl;
-                break;
-            }
-            case Instruction::UNARY:
-            {
-                UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-                std::cout << "$" << unary_instruction->dest << " = ";
-                if (unary_instruction->_operator == UnaryInstruction::NEGATE)
-                    std::cout << "-";
-                else if (unary_instruction->_operator == UnaryInstruction::NOT)
-                    std::cout << "!";
-                else
-                    assert(false);
-                std::cout << "$" << unary_instruction->source << std::endl;
-                break;
-            }
-            case Instruction::IMMEDIATE_BOOLEAN:
-            {
-                ImmediateBoolean * immediate_bool_instruction = (ImmediateBoolean *) instruction;
-                std::cout << "$" << immediate_bool_instruction->dest << " = " << (immediate_bool_instruction->constant ? "true" : "false") << std::endl;
-                break;
-            }
-            case Instruction::IMMEDIATE_INT:
-            {
-                ImmediateInteger * immediate_int_instruction = (ImmediateInteger *) instruction;
-                std::cout << "$" << immediate_int_instruction->dest << " = " << immediate_int_instruction->constant << std::endl;
-                break;
-            }
-            case Instruction::IMMEDIATE_REAL:
-            {
-                ImmediateReal * immediate_real_instruction = (ImmediateReal *) instruction;
-                std::cout << "$" << immediate_real_instruction->dest << " = " << immediate_real_instruction->constant << std::endl;
-                break;
-            }
-            case Instruction::IF:
-            {
-                IfInstruction * if_instruction = (IfInstruction *) instruction;
-                std::cout << "if !$" << if_instruction->condition << " goto " << if_instruction->goto_index << std::endl;
-                break;
-            }
-            case Instruction::GOTO:
-            {
-                GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
-                std::cout << "goto " << goto_instruction->goto_index << std::endl;
-                break;
-            }
-            case Instruction::RETURN:
-            {
-                std::cout << "return" << std::endl;
-                break;
-            }
-            case Instruction::PRINT:
-            {
-                PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-                std::cout << "print $" << print_instruction->value << std::endl;
-            }
+void CodeGenerator::print_disassembly() {
+    for (unsigned int i = 0; i < m_instructions.size(); i++)
+        print_disassembly(i);
+}
+void CodeGenerator::print_disassembly(int i) {
+    std::cout << i << ":\t";
+    Instruction * instruction = m_instructions[i];
+    switch (instruction->type) {
+        case Instruction::COPY:
+        {
+            CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+            std::cout << "$" << copy_instruction->dest << " = $" << copy_instruction->source;
+            break;
         }
+        case Instruction::OPERATOR:
+        {
+            OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
+            std::cout << "$" << operator_instruction->dest << " = $" << operator_instruction->left << " ";
+            switch (operator_instruction->_operator) {
+                case OperatorInstruction::EQUAL:
+                    std::cout << "=="; break;
+                case OperatorInstruction::NOT_EQUAL:
+                    std::cout << "!="; break;
+                case OperatorInstruction::LESS:
+                    std::cout << "<"; break;
+                case OperatorInstruction::GREATER:
+                    std::cout << ">"; break;
+                case OperatorInstruction::LESS_EQUAL:
+                    std::cout << "<="; break;
+                case OperatorInstruction::GREATER_EQUAL:
+                    std::cout << ">="; break;
+                case OperatorInstruction::PLUS:
+                    std::cout << "+"; break;
+                case OperatorInstruction::MINUS:
+                    std::cout << "-"; break;
+                case OperatorInstruction::OR:
+                    std::cout << "||"; break;
+                case OperatorInstruction::TIMES:
+                    std::cout << "*"; break;
+                case OperatorInstruction::DIVIDE:
+                    std::cout << "/"; break;
+                case OperatorInstruction::MOD:
+                    std::cout << "%"; break;
+                case OperatorInstruction::AND:
+                    std::cout << "&&"; break;
+                default:
+                    assert(false);
+            }
+            std::cout << " $" << operator_instruction->right;
+            break;
+        }
+        case Instruction::UNARY:
+        {
+            UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
+            std::cout << "$" << unary_instruction->dest << " = ";
+            if (unary_instruction->_operator == UnaryInstruction::NEGATE)
+                std::cout << "-";
+            else if (unary_instruction->_operator == UnaryInstruction::NOT)
+                std::cout << "!";
+            else
+                assert(false);
+            std::cout << "$" << unary_instruction->source;
+            break;
+        }
+        case Instruction::IMMEDIATE_BOOLEAN:
+        {
+            ImmediateBoolean * immediate_bool_instruction = (ImmediateBoolean *) instruction;
+            std::cout << "$" << immediate_bool_instruction->dest << " = " << (immediate_bool_instruction->constant ? "true" : "false");
+            break;
+        }
+        case Instruction::IMMEDIATE_INT:
+        {
+            ImmediateInteger * immediate_int_instruction = (ImmediateInteger *) instruction;
+            std::cout << "$" << immediate_int_instruction->dest << " = " << immediate_int_instruction->constant;
+            break;
+        }
+        case Instruction::IMMEDIATE_REAL:
+        {
+            ImmediateReal * immediate_real_instruction = (ImmediateReal *) instruction;
+            std::cout << "$" << immediate_real_instruction->dest << " = " << immediate_real_instruction->constant;
+            break;
+        }
+        case Instruction::IF:
+        {
+            IfInstruction * if_instruction = (IfInstruction *) instruction;
+            std::cout << "if !$" << if_instruction->condition << " goto " << if_instruction->goto_index;
+            break;
+        }
+        case Instruction::GOTO:
+        {
+            GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
+            std::cout << "goto " << goto_instruction->goto_index;
+            break;
+        }
+        case Instruction::RETURN:
+            std::cout << "return";
+            break;
+        case Instruction::PRINT:
+            PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+            std::cout << "print $" << print_instruction->value;
+            break;
+    }
+    std::cout << ";" << std::endl;
+}
+
+void CodeGenerator::print_basic_blocks() {
+    for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
+        std::cout << "block_" << b << ":" << std::endl;
+        BasicBlock * block = m_basic_blocks[b];
+        for (int i = block->start; i < block->end; i++)
+            print_disassembly(i);
     }
 }
 
@@ -474,6 +503,45 @@ void CodeGenerator::gen_assignment(VariableAccess * variable, int value_register
         */
         default:
             assert(false);
+    }
+}
+
+
+void CodeGenerator::build_basic_blocks() {
+    // identify breaks between blocks
+    std::set<int> block_break_indexes;
+    // 0 is a break, but leave it out for easier iteration later.
+    for (unsigned int i = 0; i < m_instructions.size(); i++) {
+        Instruction * instruction = m_instructions[i];
+        switch (instruction->type) {
+            case Instruction::IF:
+            {
+                IfInstruction * if_instruction = (IfInstruction *) instruction;
+                block_break_indexes.insert(if_instruction->goto_index);
+                block_break_indexes.insert(i + 1);
+                break;
+            }
+            case Instruction::GOTO:
+            {
+                GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
+                block_break_indexes.insert(goto_instruction->goto_index);
+                block_break_indexes.insert(i + 1);
+                break;
+            }
+            case Instruction::RETURN:
+                // throw one in at the end for easier iteration later.
+                block_break_indexes.insert(i + 1);
+            default:
+                break;
+        }
+    }
+
+    // construct blocks
+    int start_index = 0; // first block starts at 0
+    for (std::set<int>::iterator iter = block_break_indexes.begin(); iter != block_break_indexes.end(); iter++) {
+        int end_index = *iter;
+        m_basic_blocks.push_back(new BasicBlock(start_index, end_index));
+        start_index = end_index;
     }
 }
 
