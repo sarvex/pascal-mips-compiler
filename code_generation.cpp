@@ -5,111 +5,8 @@
 #include <set>
 #include <cassert>
 #include <iostream>
+#include <list>
 
-struct Instruction {
-    enum Type {
-        COPY,
-        OPERATOR,
-        UNARY,
-        IMMEDIATE_BOOLEAN,
-        IMMEDIATE_INT,
-        IMMEDIATE_REAL,
-        IF,
-        GOTO,
-        RETURN,
-        PRINT,
-    };
-    Type type;
-
-    Instruction(Type type) : type(type) {}
-};
-
-struct CopyInstruction : public Instruction {
-    int dest; // register number
-    int source; // register number
-    CopyInstruction(int dest, int source) : Instruction(COPY), dest(dest), source(source) {}
-};
-
-struct OperatorInstruction : public Instruction {
-    enum Operator {
-        EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
-        PLUS, MINUS, OR,
-        TIMES, DIVIDE, MOD, AND,
-    };
-
-    int dest;
-    int left;
-    Operator _operator;
-    int right;
-
-    OperatorInstruction(int dest, int left, Operator _operator, int right) : Instruction(OPERATOR), dest(dest), left(left), _operator(_operator), right(right) {}
-};
-
-struct UnaryInstruction : public Instruction {
-    enum Operator {
-        NOT,
-        NEGATE,
-    };
-
-    int dest;
-    Operator _operator;
-    int source;
-
-    UnaryInstruction(int dest, Operator _operator, int source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
-};
-
-struct ImmediateBoolean : public Instruction {
-    int dest;
-    bool constant;
-
-    ImmediateBoolean(int dest, bool constant) : Instruction(IMMEDIATE_BOOLEAN), dest(dest), constant(constant) {}
-};
-
-struct ImmediateInteger : public Instruction {
-    int dest;
-    int constant;
-
-    ImmediateInteger(int dest, int constant) : Instruction(IMMEDIATE_INT), dest(dest), constant(constant) {}
-};
-
-struct ImmediateReal : public Instruction {
-    int dest;
-    float constant;
-
-    ImmediateReal(int dest, float constant) : Instruction(IMMEDIATE_REAL), dest(dest), constant(constant) {}
-};
-
-struct IfInstruction : public Instruction {
-    int condition;
-    int goto_index;
-
-    IfInstruction(int condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
-};
-
-struct GotoInstruction : public Instruction {
-    int goto_index;
-
-    GotoInstruction(int goto_index) : Instruction(GOTO), goto_index(goto_index) {}
-};
-
-struct ReturnInstruction : public Instruction {
-    ReturnInstruction() : Instruction(RETURN) {}
-};
-
-struct PrintInstruction : public Instruction {
-    int value;
-    PrintInstruction(int value) : Instruction(PRINT), value(value) {}
-};
-
-
-struct BasicBlock {
-    int start;
-    int end;
-    // parent and child indexes in m_basic_blocks
-    std::set<int> children;
-    std::set<int> parents;
-    BasicBlock(int start, int end) : start(start), end(end) {}
-};
 
 class CodeGenerator {
 public:
@@ -117,18 +14,125 @@ public:
     void generate(FunctionDeclaration * function_declaration);
     void build_basic_blocks();
 
-    void print_disassembly(int i);
     void print_basic_blocks();
     void print_control_flow_graph();
 
 private:
+    struct Instruction {
+        enum Type {
+            COPY,
+            OPERATOR,
+            UNARY,
+            IMMEDIATE_BOOLEAN,
+            IMMEDIATE_INT,
+            IMMEDIATE_REAL,
+            IF,
+            GOTO,
+            RETURN,
+            PRINT,
+        };
+        Type type;
+
+        Instruction(Type type) : type(type) {}
+    };
+
+    struct CopyInstruction : public Instruction {
+        int dest; // register number
+        int source; // register number
+        CopyInstruction(int dest, int source) : Instruction(COPY), dest(dest), source(source) {}
+    };
+
+    struct OperatorInstruction : public Instruction {
+        enum Operator {
+            EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
+            PLUS, MINUS, OR,
+            TIMES, DIVIDE, MOD, AND,
+        };
+
+        int dest;
+        int left;
+        Operator _operator;
+        int right;
+
+        OperatorInstruction(int dest, int left, Operator _operator, int right) : Instruction(OPERATOR), dest(dest), left(left), _operator(_operator), right(right) {}
+    };
+
+    struct UnaryInstruction : public Instruction {
+        enum Operator {
+            NOT,
+            NEGATE,
+        };
+
+        int dest;
+        Operator _operator;
+        int source;
+
+        UnaryInstruction(int dest, Operator _operator, int source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
+    };
+
+    struct ImmediateBoolean : public Instruction {
+        int dest;
+        bool constant;
+
+        ImmediateBoolean(int dest, bool constant) : Instruction(IMMEDIATE_BOOLEAN), dest(dest), constant(constant) {}
+    };
+
+    struct ImmediateInteger : public Instruction {
+        int dest;
+        int constant;
+
+        ImmediateInteger(int dest, int constant) : Instruction(IMMEDIATE_INT), dest(dest), constant(constant) {}
+    };
+
+    struct ImmediateReal : public Instruction {
+        int dest;
+        float constant;
+
+        ImmediateReal(int dest, float constant) : Instruction(IMMEDIATE_REAL), dest(dest), constant(constant) {}
+    };
+
+    struct IfInstruction : public Instruction {
+        int condition;
+        int goto_index;
+
+        IfInstruction(int condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
+    };
+
+    struct GotoInstruction : public Instruction {
+        int goto_index;
+
+        GotoInstruction(int goto_index) : Instruction(GOTO), goto_index(goto_index) {}
+    };
+
+    struct ReturnInstruction : public Instruction {
+        ReturnInstruction() : Instruction(RETURN) {}
+    };
+
+    struct PrintInstruction : public Instruction {
+        int value;
+        PrintInstruction(int value) : Instruction(PRINT), value(value) {}
+    };
+
+    struct BasicBlock {
+        // indexes in m_instructions
+        int start;
+        int end;
+        // indexes in m_basic_blocks
+        int jump_child;
+        int fallthrough_child;
+        std::set<int> parents;
+        std::list<Instruction *> instructions;
+        BasicBlock(int start, int end) : start(start), end(end) {}
+    };
+
+    typedef std::list<Instruction *> InstructionList;
+
     std::vector<Instruction *> m_instructions;
     OrderedInsensitiveMap<int> m_variable_numbers;
     int m_register_count;
     std::vector<BasicBlock *> m_basic_blocks;
 
 private:
-    int current_index() { return m_instructions.size(); }
     int next_available_register() { return m_register_count++; }
 
     void gen_statement_list(StatementList * statement_list);
@@ -141,7 +145,9 @@ private:
     int gen_variable_access(VariableAccess * variable);
 
     void gen_assignment(VariableAccess * variable, int value_register);
-    void link_parent_and_child(int parent_index, int child_index);
+    void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
+
+    void print_disassembly(int address, Instruction * instruction);
 };
 
 void generate_code(Program * program) {
@@ -170,9 +176,8 @@ void generate_code(Program * program) {
     }
 }
 
-void CodeGenerator::print_disassembly(int i) {
-    std::cout << i << ":\t";
-    Instruction * instruction = m_instructions[i];
+void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
+    std::cout << address << ":\t";
     switch (instruction->type) {
         case Instruction::COPY:
         {
@@ -275,19 +280,20 @@ void CodeGenerator::print_basic_blocks() {
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
         std::cout << "block_" << b << ":" << std::endl;
         BasicBlock * block = m_basic_blocks[b];
-        for (int i = block->start; i < block->end; i++)
-            print_disassembly(i);
+        int i = block->start;
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i)
+            print_disassembly(i, *it);
     }
 }
 
 void CodeGenerator::print_control_flow_graph() {
-    for (unsigned int parent = 0; parent < m_basic_blocks.size(); parent++) {
+    for (int parent = 0; parent < (int)m_basic_blocks.size(); parent++) {
         BasicBlock * parent_block = m_basic_blocks[parent];
-        for (unsigned int child = 0; child < m_basic_blocks.size(); child++) {
+        for (int child = 0; child < (int)m_basic_blocks.size(); child++) {
             if (parent == child) {
                 // for self, print the number (ugly if more than 1 digit)
                 std::cout << parent;
-            } else if (parent_block->children.count(child)) {
+            } else if (parent_block->jump_child == child || parent_block->fallthrough_child == child) {
                 // child is a child of parent
                 std::cout << (child < parent ? "^" : "v");
             } else {
@@ -528,9 +534,14 @@ void CodeGenerator::gen_assignment(VariableAccess * variable, int value_register
     }
 }
 
-void CodeGenerator::link_parent_and_child(int parent_index, int child_index) {
-    m_basic_blocks[parent_index]->children.insert(child_index);
-    m_basic_blocks[child_index]->parents.insert(parent_index);
+void CodeGenerator::link_parent_and_child(int parent_index, int jump_child, int fallthrough_child) {
+    m_basic_blocks[parent_index]->jump_child = jump_child;
+    m_basic_blocks[parent_index]->fallthrough_child = fallthrough_child;
+
+    if (jump_child >= 0)
+        m_basic_blocks[jump_child]->parents.insert(parent_index);
+    if (fallthrough_child >= 0)
+        m_basic_blocks[fallthrough_child]->parents.insert(parent_index);
 }
 
 void CodeGenerator::build_basic_blocks() {
@@ -570,9 +581,15 @@ void CodeGenerator::build_basic_blocks() {
         BasicBlock * block = new BasicBlock(start_index, end_index);
         instruction_index_to_block_index[start_index] = m_basic_blocks.size();
         m_basic_blocks.push_back(block);
+        
+        // build linked list of instructions
+        for (int i = start_index; i < end_index; ++i)
+            block->instructions.push_back(m_instructions[i]);
 
         start_index = end_index;
     }
+
+    m_instructions.clear();
 
     // connect blocks together
     for (unsigned int i = 0; i < m_basic_blocks.size(); i++) {
@@ -584,28 +601,28 @@ void CodeGenerator::build_basic_blocks() {
             {
                 // two children
                 IfInstruction * if_instruction = (IfInstruction *) instruction;
-                int child1 = instruction_index_to_block_index[if_instruction->goto_index];
-                link_parent_and_child(i, child1);
-                int child2 = i + 1;
-                link_parent_and_child(i, child2);
+                int jump_child = instruction_index_to_block_index[if_instruction->goto_index];
+                int fallthrough_child = i + 1;
+                link_parent_and_child(i, jump_child, fallthrough_child);
                 break;
             }
             case Instruction::GOTO:
             {
                 // one distant child
                 GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
-                int child = instruction_index_to_block_index[goto_instruction->goto_index];
-                link_parent_and_child(i, child);
+                int jump_child = instruction_index_to_block_index[goto_instruction->goto_index];
+                link_parent_and_child(i, jump_child, -1);
                 break;
             }
             case Instruction::RETURN:
-                // no children
+                // no children :(
+                link_parent_and_child(i, -1, -1);
                 break;
             default:
             {
                 // next block is only child
-                int child = i + 1;
-                link_parent_and_child(i, child);
+                int fallthrough_child = i + 1;
+                link_parent_and_child(i, -1, fallthrough_child);
                 break;
             }
         }
