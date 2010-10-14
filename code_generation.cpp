@@ -51,6 +51,7 @@ private:
             float _float;
         };
 
+        // don't use this, stupid face
         Variant(){}
         Variant(int _int, Type type) : type(type), _int(_int) {}
         Variant(bool _bool) : type(CONST_BOOL), _bool(_bool) {}
@@ -148,6 +149,7 @@ private:
         std::list<Instruction *> instructions;
 
         std::vector<Variant> value_numbers;
+        std::map<int, int> value_number_to_register;
 
         BasicBlock(int start, int end) : start(start), end(end) {}
     };
@@ -648,6 +650,36 @@ void CodeGenerator::build_basic_blocks() {
 void CodeGenerator::value_numbering() {
     for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
         BasicBlock * block = m_basic_blocks[i];
+        for (int register_index = 0; register_index < m_register_count; ++register_index) {
+            block->value_numbers.push_back(Variant(register_index, Variant::VALUE_NUMBER));
+        }
 
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+            Instruction * instruction = *it;
+            switch (instruction->type) {
+                case Instruction::COPY:
+                    get_value_number(block, instruction->source);
+                    break;
+                case Instruction::OPERATOR:
+                    break;
+                case Instruction::UNARY:
+                    break;
+                case Instruction::IF:
+                    break;
+                case Instruction::GOTO:
+                    break;
+                case Instruction::RETURN:
+                    break;
+                case Instruction::PRINT:
+                    break;
+            }
+        }
     }
+}
+
+CodeGenerator::Variant CodeGenerator::get_value_number(BasicBlock * block, Variant register_or_const) {
+    if (register_or_const.type == Variant::REGISTER)
+        return block->value_numbers[register_or_const._int]
+    else
+        return register_or_const;
 }
