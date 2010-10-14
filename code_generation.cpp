@@ -6,6 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include <list>
+#include <sstream>
 
 
 class CodeGenerator {
@@ -23,9 +24,6 @@ private:
             COPY,
             OPERATOR,
             UNARY,
-            IMMEDIATE_BOOLEAN,
-            IMMEDIATE_INT,
-            IMMEDIATE_REAL,
             IF,
             GOTO,
             RETURN,
@@ -36,12 +34,53 @@ private:
         Instruction(Type type) : type(type) {}
     };
 
-    struct CopyInstruction : public Instruction {
-        int dest; // register number
-        int source; // register number
-        CopyInstruction(int dest, int source) : Instruction(COPY), dest(dest), source(source) {}
+    struct RegisterOrConstant {
+        enum Type {
+            REGISTER,
+            CONST_INT,
+            CONST_BOOL,
+            CONST_REAL,
+        };
+        Type type;
+        union {
+            int register_number;
+            int const_int;
+            bool const_bool;
+            float const_real;
+        };
+
+        RegisterOrConstant(int register_number) : type(REGISTER), register_number(register_number) {}
+        RegisterOrConstant(int const_int, bool) : type(CONST_INT), const_int(const_int) {}
+        RegisterOrConstant(bool const_bool) : type(CONST_BOOL), const_bool(const_bool) {}
+        RegisterOrConstant(float const_real) : type(CONST_REAL), const_real(const_real) {}
+
+        std::string str() {
+            std::stringstream ss;
+            switch (type) {
+                case REGISTER:
+                    ss << "$" << register_number;
+                    break;
+                case CONST_INT:
+                    ss << const_int;
+                    break;
+                case CONST_BOOL:
+                    ss << (const_bool ? "true" : "false");
+                    break;
+                case CONST_REAL:
+                    ss << const_real;
+                    break;
+            }
+            return ss.str();
+        }
     };
 
+
+    struct CopyInstruction : public Instruction {
+        int dest; // register number
+        RegisterOrConstant source; // register number
+        CopyInstruction(int dest, RegisterOrConstant source) : Instruction(COPY), dest(dest), source(source) {}
+    };
+    
     struct OperatorInstruction : public Instruction {
         enum Operator {
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
@@ -50,11 +89,12 @@ private:
         };
 
         int dest;
-        int left;
+        RegisterOrConstant left;
         Operator _operator;
-        int right;
+        RegisterOrConstant right;
 
-        OperatorInstruction(int dest, int left, Operator _operator, int right) : Instruction(OPERATOR), dest(dest), left(left), _operator(_operator), right(right) {}
+        OperatorInstruction(int dest, RegisterOrConstant left, Operator _operator, RegisterOrConstant right) :
+            Instruction(OPERATOR), dest(dest), left(left), _operator(_operator), right(right) {}
     };
 
     struct UnaryInstruction : public Instruction {
@@ -65,37 +105,16 @@ private:
 
         int dest;
         Operator _operator;
-        int source;
+        RegisterOrConstant source;
 
-        UnaryInstruction(int dest, Operator _operator, int source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
-    };
-
-    struct ImmediateBoolean : public Instruction {
-        int dest;
-        bool constant;
-
-        ImmediateBoolean(int dest, bool constant) : Instruction(IMMEDIATE_BOOLEAN), dest(dest), constant(constant) {}
-    };
-
-    struct ImmediateInteger : public Instruction {
-        int dest;
-        int constant;
-
-        ImmediateInteger(int dest, int constant) : Instruction(IMMEDIATE_INT), dest(dest), constant(constant) {}
-    };
-
-    struct ImmediateReal : public Instruction {
-        int dest;
-        float constant;
-
-        ImmediateReal(int dest, float constant) : Instruction(IMMEDIATE_REAL), dest(dest), constant(constant) {}
+        UnaryInstruction(int dest, Operator _operator, RegisterOrConstant source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
     };
 
     struct IfInstruction : public Instruction {
-        int condition;
+        RegisterOrConstant condition;
         int goto_index;
 
-        IfInstruction(int condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
+        IfInstruction(RegisterOrConstant condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
     };
 
     struct GotoInstruction : public Instruction {
@@ -109,8 +128,8 @@ private:
     };
 
     struct PrintInstruction : public Instruction {
-        int value;
-        PrintInstruction(int value) : Instruction(PRINT), value(value) {}
+        RegisterOrConstant value;
+        PrintInstruction(RegisterOrConstant value) : Instruction(PRINT), value(value) {}
     };
 
     struct BasicBlock {
@@ -137,14 +156,14 @@ private:
 
     void gen_statement_list(StatementList * statement_list);
     void gen_statement(Statement * statement);
-    int gen_expression(Expression * expression);
-    int gen_additive_expression(AdditiveExpression * additive_expression);
-    int gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
-    int gen_negatable_expression(NegatableExpression * negatable_expression);
-    int gen_primary_expression(PrimaryExpression * primary_expression);
-    int gen_variable_access(VariableAccess * variable);
+    RegisterOrConstant gen_expression(Expression * expression);
+    RegisterOrConstant gen_additive_expression(AdditiveExpression * additive_expression);
+    RegisterOrConstant gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
+    RegisterOrConstant gen_negatable_expression(NegatableExpression * negatable_expression);
+    RegisterOrConstant gen_primary_expression(PrimaryExpression * primary_expression);
+    RegisterOrConstant gen_variable_access(VariableAccess * variable);
 
-    void gen_assignment(VariableAccess * variable, int value_register);
+    void gen_assignment(VariableAccess * variable, RegisterOrConstant source);
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
 
     void print_disassembly(int address, Instruction * instruction);
@@ -182,13 +201,13 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
         case Instruction::COPY:
         {
             CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-            std::cout << "$" << copy_instruction->dest << " = $" << copy_instruction->source;
+            std::cout << "$" << copy_instruction->dest << " = " << copy_instruction->source.str();
             break;
         }
         case Instruction::OPERATOR:
         {
             OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-            std::cout << "$" << operator_instruction->dest << " = $" << operator_instruction->left << " ";
+            std::cout << "$" << operator_instruction->dest << " = " << operator_instruction->left.str() << " ";
             switch (operator_instruction->_operator) {
                 case OperatorInstruction::EQUAL:
                     std::cout << "=="; break;
@@ -219,7 +238,7 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
                 default:
                     assert(false);
             }
-            std::cout << " $" << operator_instruction->right;
+            std::cout << " " << operator_instruction->right.str();
             break;
         }
         case Instruction::UNARY:
@@ -232,31 +251,13 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
                 std::cout << "!";
             else
                 assert(false);
-            std::cout << "$" << unary_instruction->source;
-            break;
-        }
-        case Instruction::IMMEDIATE_BOOLEAN:
-        {
-            ImmediateBoolean * immediate_bool_instruction = (ImmediateBoolean *) instruction;
-            std::cout << "$" << immediate_bool_instruction->dest << " = " << (immediate_bool_instruction->constant ? "true" : "false");
-            break;
-        }
-        case Instruction::IMMEDIATE_INT:
-        {
-            ImmediateInteger * immediate_int_instruction = (ImmediateInteger *) instruction;
-            std::cout << "$" << immediate_int_instruction->dest << " = " << immediate_int_instruction->constant;
-            break;
-        }
-        case Instruction::IMMEDIATE_REAL:
-        {
-            ImmediateReal * immediate_real_instruction = (ImmediateReal *) instruction;
-            std::cout << "$" << immediate_real_instruction->dest << " = " << immediate_real_instruction->constant;
+            std::cout << unary_instruction->source.str();
             break;
         }
         case Instruction::IF:
         {
             IfInstruction * if_instruction = (IfInstruction *) instruction;
-            std::cout << "if !$" << if_instruction->condition << " goto " << if_instruction->goto_index;
+            std::cout << "if !" << if_instruction->condition.str() << " goto " << if_instruction->goto_index;
             break;
         }
         case Instruction::GOTO:
@@ -270,7 +271,7 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
             break;
         case Instruction::PRINT:
             PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-            std::cout << "print $" << print_instruction->value;
+            std::cout << "print " << print_instruction->value.str();
             break;
     }
     std::cout << ";" << std::endl;
@@ -329,13 +330,13 @@ void CodeGenerator::gen_statement(Statement * statement) {
     switch (statement->type) {
         case Statement::ASSIGNMENT:
         {
-            int value_register = gen_expression(statement->assignment->expression);
-            gen_assignment(statement->assignment->variable, value_register);
+            RegisterOrConstant source = gen_expression(statement->assignment->expression);
+            gen_assignment(statement->assignment->variable, source);
             break;
         }
         case Statement::IF:
         {
-            int condition = gen_expression(statement->if_statement->expression);
+            RegisterOrConstant condition = gen_expression(statement->if_statement->expression);
 
             IfInstruction * if_instruction = new IfInstruction(condition, -1);
             m_instructions.push_back(if_instruction);
@@ -355,14 +356,14 @@ void CodeGenerator::gen_statement(Statement * statement) {
         }
         case Statement::PRINT:
         {
-            int value = gen_expression(statement->print_statement->expression);
+            RegisterOrConstant value = gen_expression(statement->print_statement->expression);
             m_instructions.push_back(new PrintInstruction(value));
             break;
         }
         case Statement::WHILE:
         {
             int while_start = m_instructions.size();
-            int condition = gen_expression(statement->while_statement->expression);
+            RegisterOrConstant condition = gen_expression(statement->while_statement->expression);
             IfInstruction * if_instruction = new IfInstruction(condition, -1);
             m_instructions.push_back(if_instruction);
             gen_statement(statement->while_statement->statement);
@@ -392,66 +393,66 @@ void CodeGenerator::gen_statement(Statement * statement) {
 }
 
 
-int CodeGenerator::gen_expression(Expression * expression) {
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_expression(Expression * expression) {
     if (expression->right == NULL) {
         // it's just the type of the first additive expression
         return gen_additive_expression(expression->left);
     } else {
         // we're looking at a compare operator
-        int left = gen_additive_expression(expression->left);
-        int right = gen_additive_expression(expression->right);
+        RegisterOrConstant left = gen_additive_expression(expression->left);
+        RegisterOrConstant right = gen_additive_expression(expression->right);
         int dest = next_available_register();
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(expression->_operator->type + OperatorInstruction::EQUAL); // LOL HAX!
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
-        return dest;
+        return RegisterOrConstant(dest);
     }
 }
 
-int CodeGenerator::gen_additive_expression(AdditiveExpression * additive_expression) {
-    int right = gen_multiplicitive_expression(additive_expression->right);
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_additive_expression(AdditiveExpression * additive_expression) {
+    RegisterOrConstant right = gen_multiplicitive_expression(additive_expression->right);
 
     if (additive_expression->left == NULL) {
         // pass the right through
         return right;
     } else {
-        int left = gen_additive_expression(additive_expression->left);
+        RegisterOrConstant left = gen_additive_expression(additive_expression->left);
         int dest = next_available_register();
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(additive_expression->_operator->type + OperatorInstruction::PLUS);
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
-        return dest;
+        return RegisterOrConstant(dest);
     }
 }
 
-int CodeGenerator::gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression) {
-    int right = gen_negatable_expression(multiplicative_expression->right);
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression) {
+    RegisterOrConstant right = gen_negatable_expression(multiplicative_expression->right);
 
     if (multiplicative_expression->left == NULL) {
         // pass the right through
         return right;
     } else {
-        int left = gen_multiplicitive_expression(multiplicative_expression->left);
+        RegisterOrConstant left = gen_multiplicitive_expression(multiplicative_expression->left);
         int dest = next_available_register();
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(multiplicative_expression->_operator->type + OperatorInstruction::TIMES);
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
-        return dest;
+        return RegisterOrConstant(dest);
     }
 }
 
-int CodeGenerator::gen_negatable_expression(NegatableExpression * negatable_expression) {
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_negatable_expression(NegatableExpression * negatable_expression) {
     if (negatable_expression->type == NegatableExpression::PRIMARY) {
         return gen_primary_expression(negatable_expression->primary_expression);
     } else if (negatable_expression->type == NegatableExpression::SIGN) {
-        int source = gen_negatable_expression(negatable_expression->next);
+        RegisterOrConstant source = gen_negatable_expression(negatable_expression->next);
         int dest = next_available_register();
         m_instructions.push_back(new UnaryInstruction(dest, UnaryInstruction::NEGATE, source));
-        return dest;
+        return RegisterOrConstant(dest);
     } else {
         assert(false);
         return -1;
     }
 }
 
-int CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
     switch (primary_expression->type) {
         case PrimaryExpression::VARIABLE:
             return gen_variable_access(primary_expression->variable);
@@ -459,31 +460,31 @@ int CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression
         {
             int dest = next_available_register();
             int constant = primary_expression->literal_integer->value;
-            m_instructions.push_back(new ImmediateInteger(dest, constant));
-            return dest;
+            m_instructions.push_back(new CopyInstruction(dest, RegisterOrConstant(constant, true)));
+            return RegisterOrConstant(dest);
         }
         case PrimaryExpression::BOOLEAN:
         {
             int dest = next_available_register();
             bool constant = primary_expression->literal_boolean->value;
-            m_instructions.push_back(new ImmediateBoolean(dest, constant));
-            return dest;
+            m_instructions.push_back(new CopyInstruction(dest, RegisterOrConstant(constant)));
+            return RegisterOrConstant(dest);
         }
         case PrimaryExpression::REAL:
         {
             int dest = next_available_register();
             float constant = primary_expression->literal_real->value;
-            m_instructions.push_back(new ImmediateReal(dest, constant));
-            return dest;
+            m_instructions.push_back(new CopyInstruction(dest, RegisterOrConstant(constant)));
+            return RegisterOrConstant(dest);
         }
         case PrimaryExpression::PARENS:
             return gen_expression(primary_expression->parens_expression);
         case PrimaryExpression::NOT:
         {
             int dest = next_available_register();
-            int source = gen_primary_expression(primary_expression->not_expression);
+            RegisterOrConstant source = gen_primary_expression(primary_expression->not_expression);
             m_instructions.push_back(new UnaryInstruction(dest, UnaryInstruction::NOT, source));
-            return dest;
+            return RegisterOrConstant(dest);
         }
             /*
         case PrimaryExpression::STRING:
@@ -497,7 +498,7 @@ int CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression
     }
 }
 
-int CodeGenerator::gen_variable_access(VariableAccess * variable) {
+CodeGenerator::RegisterOrConstant CodeGenerator::gen_variable_access(VariableAccess * variable) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
             return m_variable_numbers.get(variable->identifier->text);
@@ -514,11 +515,11 @@ int CodeGenerator::gen_variable_access(VariableAccess * variable) {
     }
 }
 
-void CodeGenerator::gen_assignment(VariableAccess * variable, int value_register) {
+void CodeGenerator::gen_assignment(VariableAccess * variable, RegisterOrConstant source) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
         {
-            m_instructions.push_back(new CopyInstruction(m_variable_numbers.get(variable->identifier->text), value_register));
+            m_instructions.push_back(new CopyInstruction(m_variable_numbers.get(variable->identifier->text), source));
             break;
         }
         /*
