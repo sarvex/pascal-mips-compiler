@@ -19,6 +19,7 @@ Project 2 Release:
    a / a = 1
    a << 0 = a
    min(a,a) = a
+ * correct line numbers when printing for jumps
 
 
 Bonus:

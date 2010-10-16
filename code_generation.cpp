@@ -1,5 +1,6 @@
 #include "code_generation.h"
 #include "insensitive_map.h"
+#include "two_way_map.h"
 
 #include <vector>
 #include <set>
@@ -78,6 +79,25 @@ private:
             }
             return ss.str();
         }
+
+        bool operator< (Variant right) const {
+            if (type != right.type) {
+                return type < right.type;
+            } else {
+                switch (type) {
+                case REGISTER: // int
+                case VALUE_NUMBER: // int
+                case CONST_INT: // int
+                    return _int < right._int;
+                case CONST_BOOL: // bool
+                    return _bool < right._bool;
+                case CONST_REAL: // float
+                    return _float < right._float;
+                }
+            }
+            assert(false);
+            return false;
+        }
     };
 
 
@@ -86,7 +106,7 @@ private:
         Variant source; // register number
         CopyInstruction(Variant dest, Variant source) : Instruction(COPY), dest(dest), source(source) {}
     };
-    
+
     struct OperatorInstruction : public Instruction {
         enum Operator {
             EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL,
@@ -148,8 +168,7 @@ private:
         std::set<int> parents;
         std::list<Instruction *> instructions;
 
-        std::vector<Variant> value_numbers;
-        std::map<int, int> value_number_to_register;
+        TwoWayMap<int, Variant> value_numbers;
 
         BasicBlock(int start, int end) : start(start), end(end) {}
     };
@@ -177,6 +196,9 @@ private:
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
 
     void print_disassembly(int address, Instruction * instruction);
+
+    Variant get_value_number(BasicBlock * block, Variant register_or_const);
+    Variant inline_value(BasicBlock * block, Variant register_or_const);
 };
 
 void generate_code(Program * program) {
@@ -599,7 +621,7 @@ void CodeGenerator::build_basic_blocks() {
         BasicBlock * block = new BasicBlock(start_index, end_index);
         instruction_index_to_block_index[start_index] = m_basic_blocks.size();
         m_basic_blocks.push_back(block);
-        
+
         // build linked list of instructions
         for (int i = start_index; i < end_index; ++i)
             block->instructions.push_back(m_instructions[i]);
@@ -651,17 +673,25 @@ void CodeGenerator::value_numbering() {
     for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
         BasicBlock * block = m_basic_blocks[i];
         for (int register_index = 0; register_index < m_register_count; ++register_index) {
-            block->value_numbers.push_back(Variant(register_index, Variant::VALUE_NUMBER));
+            block->value_numbers.associate(register_index, Variant(register_index, Variant::VALUE_NUMBER));
         }
 
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
             Instruction * instruction = *it;
             switch (instruction->type) {
                 case Instruction::COPY:
-                    get_value_number(block, instruction->source);
+                {
+                    CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+                    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
                     break;
+                }
                 case Instruction::OPERATOR:
+                {
+                    OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
+                    operator_instruction->left = inline_value(block, operator_instruction->left);
+                    operator_instruction->right = inline_value(block, operator_instruction->right);
                     break;
+                }
                 case Instruction::UNARY:
                     break;
                 case Instruction::IF:
@@ -677,9 +707,24 @@ void CodeGenerator::value_numbering() {
     }
 }
 
+CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {
+    if (register_or_const.type == Variant::REGISTER) {
+        Variant value = block->value_numbers.get(register_or_const._int);
+        if (value.type == Variant::VALUE_NUMBER) {
+            std::set<int> * registers = block->value_numbers.keys(value);
+            int lowest = *(registers->begin());
+            return Variant(lowest, Variant::REGISTER);
+        } else {
+            return value;
+        }
+    } else {
+        return register_or_const;
+    }
+}
+
 CodeGenerator::Variant CodeGenerator::get_value_number(BasicBlock * block, Variant register_or_const) {
     if (register_or_const.type == Variant::REGISTER)
-        return block->value_numbers[register_or_const._int]
+        return block->value_numbers.get(register_or_const._int);
     else
         return register_or_const;
 }
