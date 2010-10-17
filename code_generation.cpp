@@ -17,6 +17,7 @@ public:
     void generate(FunctionDeclaration * function_declaration);
     void build_basic_blocks();
     void value_numbering();
+    void calculate_mangle_sets();
 
     void print_basic_blocks();
     void print_control_flow_graph();
@@ -211,11 +212,13 @@ private:
         int fallthrough_child;
         std::set<int> parents;
         std::list<Instruction *> instructions;
+        std::set<int> mangled_registers;
+        bool visited;
 
         // maps registers to value number/ constant
         TwoWayMap<int, Variant> value_numbers;
 
-        BasicBlock(int start, int end) : start(start), end(end) {}
+        BasicBlock(int start, int end) : start(start), end(end), visited(false) {}
     };
 
     typedef std::list<Instruction *> InstructionList;
@@ -267,6 +270,9 @@ private:
     std::string hash_operand(BasicBlock * block, Variant operand);
     Variant typed_constant(Variant _register, int constant);
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
+    void calculate_mangle_set(int block_index);
+    void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
+    bool check_child(int block_index, int later_parent_index);
 };
 
 CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
@@ -297,6 +303,7 @@ void generate_code(Program * program) {
             generator.print_control_flow_graph();
             std::cout << "--------------------------" << std::endl;
 
+            generator.calculate_mangle_sets();
             generator.value_numbering();
 
             std::cout << "3 Address Code After Value Numbering" << std::endl;
@@ -836,6 +843,70 @@ void CodeGenerator::value_numbering() {
     }
 }
 
+void CodeGenerator::calculate_mangle_sets() {
+    for (int i = 0; i < (int)m_basic_blocks.size(); i++)
+        calculate_mangle_set(i);
+}
+
+void CodeGenerator::calculate_mangle_set(int block_index) {
+    BasicBlock * block = m_basic_blocks[block_index];
+    for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); it++) {
+        int parent_index = *it;
+        // only consider blocks that have parents later in the program.
+        // these blocks are usually the beginings of loops
+        if (parent_index > block_index) {
+            // search for every path from this block to the later parent (which is the entire
+            // scope of the loop) and record which registers are mangled along the way.
+            check_child(block_index, parent_index);
+        }
+    }
+}
+
+bool CodeGenerator::check_child(int block_index, int later_parent_index) {
+    BasicBlock * block = m_basic_blocks[block_index];
+
+    // prevent infinite recursion
+    if (block->visited)
+        return false;
+    block->visited = true;
+    bool leads_to_victory = false;
+    if (block->jump_child != -1)
+        leads_to_victory |= check_child(block->jump_child, later_parent_index);
+    if (block->fallthrough_child != -1)
+        leads_to_victory |= check_child(block->fallthrough_child, later_parent_index);
+    leads_to_victory |= block_index == later_parent_index;
+    block->visited = false;
+
+    if (leads_to_victory) {
+        // this block is on the path to victory.
+        // record the mangled registers and store them in the later parent.
+        record_mangled_registers(block, m_basic_blocks[later_parent_index]);
+    }
+    return leads_to_victory;
+}
+
+void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls) {
+    std::set<int> * mangled_registers = & block_that_gets_the_resutls->mangled_registers;
+    for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+        Instruction * instruction = *it;
+        switch (instruction->type) {
+        case Instruction::COPY:
+            mangled_registers->insert(((CopyInstruction *)instruction)->dest._int);
+            break;
+        case Instruction::OPERATOR:
+            mangled_registers->insert(((OperatorInstruction *)instruction)->dest._int);
+            break;
+        case Instruction::UNARY:
+            mangled_registers->insert(((UnaryInstruction *)instruction)->dest._int);
+            break;
+        case Instruction::IF:
+        case Instruction::GOTO:
+        case Instruction::RETURN:
+        case Instruction::PRINT:
+            break;
+        }
+    }
+}
 
 CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
     if (instruction->source.type == Variant::REGISTER)
@@ -1020,7 +1091,6 @@ bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant)
 }
 
 CodeGenerator::Variant CodeGenerator::typed_constant(Variant _register, int constant) {
-    Variant variant_constant;
     switch (m_register_type[_register._int]) {
         case REAL:
             return Variant((float) constant);
