@@ -2,23 +2,6 @@ Project 2 Release:
  * basic block value numbering
  * extended block value numbering
  * simple constant evaluation (only if siblings of expression tree)
- * constant folding
-   a + 0 = a
-   a * 1 = a
-   a ** 1 = a
-   a and a = a
-   a - 0 = a
-   a * 0 = 0
-   a ** 2 = a * a
-   a or a = a
-   a - a = 0
-   a / 1 = a
-   a >> 0 = a
-   max(a,a) = a
-   2 * a = a + a
-   a / a = 1
-   a << 0 = a
-   min(a,a) = a
  * correct line numbers when printing for jumps
 
 

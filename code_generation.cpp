@@ -199,6 +199,12 @@ private:
 
     Variant get_value_number(BasicBlock * block, Variant register_or_const);
     Variant inline_value(BasicBlock * block, Variant register_or_const);
+    Instruction * constant_folded(OperatorInstruction * instruction);
+
+    CopyInstruction * make_copy(OperatorInstruction * operator_instruction);
+    bool operands_same(OperatorInstruction * instruction);
+    bool constant_is(OperatorInstruction * instruction, int constant);
+    CopyInstruction * make_immediate(OperatorInstruction * operator_instruction, int constant);
 };
 
 void generate_code(Program * program) {
@@ -690,6 +696,25 @@ void CodeGenerator::value_numbering() {
                     OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
                     operator_instruction->left = inline_value(block, operator_instruction->left);
                     operator_instruction->right = inline_value(block, operator_instruction->right);
+
+                    // normalize parameter order
+                    // constant on the right and lower register first
+                    bool swap = false;
+                    if (operator_instruction->left.type != Variant::REGISTER) {
+                        // left is constant, swap
+                        swap = true;
+                    } else if (operator_instruction->right.type == Variant::REGISTER) {
+                        // right is not constant. order by lower register first
+                        swap = operator_instruction->left._int > operator_instruction->right._int;
+                    }
+                    if (swap) {
+                        Variant tmp = operator_instruction->left;
+                        operator_instruction->left = operator_instruction->right;
+                        operator_instruction->right = tmp;
+                    }
+
+                    *it = constant_folded(operator_instruction);
+
                     break;
                 }
                 case Instruction::UNARY:
@@ -705,6 +730,90 @@ void CodeGenerator::value_numbering() {
             }
         }
     }
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_copy(OperatorInstruction * operator_instruction) {
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, operator_instruction->left);
+    delete operator_instruction;
+    return copy_instruction;
+}
+
+bool CodeGenerator::operands_same(OperatorInstruction * instruction) {
+    return (instruction->left.type == Variant::REGISTER && instruction->right.type == Variant::REGISTER &&
+            instruction->left._int == instruction->right._int);
+}
+
+bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant) {
+    return (instruction->right.type == Variant::CONST_INT && instruction->right._int == constant) ||
+            (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant);
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(OperatorInstruction * operator_instruction, int constant) {
+    // TODO: need to know what type the register is for this constant to have meaning
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
+    delete operator_instruction;
+    return copy_instruction;
+}
+
+CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction * instruction) {
+    // we know that constants are on the right
+    switch (instruction->_operator) {
+        case OperatorInstruction::PLUS:
+        {
+            // a + 0 = a
+            if (constant_is(instruction, 0))
+                return make_copy(instruction);
+            break;
+        }
+        case OperatorInstruction::MINUS:
+        {
+            // b := a - 0;
+            // b := a - a;
+            if (constant_is(instruction, 0))
+                return make_copy(instruction);
+            else if (operands_same(instruction))
+                return make_immediate(instruction, 0);
+            break;
+        }
+        case OperatorInstruction::TIMES:
+        {
+            // a * 1 = a
+            // b := a * 0;
+            // b := a * 2;
+            if (constant_is(instruction, 1))
+                return make_copy(instruction);
+            else if (constant_is(instruction, 0))
+                return make_immediate(instruction, 0);
+            else if (constant_is(instruction, 2)) {
+                instruction->_operator = OperatorInstruction::PLUS;
+                instruction->right = instruction->left;
+                return instruction;
+            }
+            break;
+        }
+        case OperatorInstruction::DIVIDE:
+        {
+            // b := a / 1;
+            // b := a / a;
+            if (constant_is(instruction, 1))
+                return make_copy(instruction);
+            else if (operands_same(instruction))
+                return make_immediate(instruction, 1);
+            break;
+        }
+        case OperatorInstruction::AND:
+        case OperatorInstruction::OR:
+        {
+            // d := c and c;
+            // d := c or c;
+            if (operands_same(instruction))
+                return make_copy(instruction);
+            break;
+        }
+        default:
+            break;
+    }
+    return instruction;
 }
 
 CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {
