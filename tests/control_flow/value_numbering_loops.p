@@ -4,29 +4,31 @@ class Main begin
         var a1 : Integer;
         var a2 : Integer;
         var a3 : Integer;
-        var a4 : Integer;
         var b : Integer;
         var c : Integer;
         var d : Integer;
         var t : Integer;
+        var t2 : Integer;
+        var t3 : Integer;
+        var t4 : Integer;
         var trash1 : Integer;
         var trash2 : Integer;
     begin
         t := b + c;
+        t2 := c + d;
         if trash1 then begin
             a1 := t + d;
-            if trash2 then begin
-                a2 := b + c + d;
-                t := 0;
-                a3 := b + c + d;
-            end 
+            d := d + 1;
         end else begin
-            if trash2 then
-                d := b + c
-            else
-                d := 2 + b
+            a2 := trash2;
         end;
-        a4 := b + c;
+        t3 := b + c;
+        t4 := c + d;
+        while trash2 do begin
+            a2 := b + c;
+            t := 0;
+            a3 := b + c;
+        end;
     end
 end
 .
