@@ -1,7 +1,6 @@
 Project 2 Release:
  * basic block value numbering
  * extended block value numbering
- * simple constant evaluation (only if siblings of expression tree)
  * correct line numbers when printing for jumps
 
 

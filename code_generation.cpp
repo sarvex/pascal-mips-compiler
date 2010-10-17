@@ -205,7 +205,9 @@ private:
     bool operands_same(OperatorInstruction * instruction);
     bool constant_is(OperatorInstruction * instruction, int constant);
     CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant);
+    CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, int constant);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, OperatorInstruction * operator_instruction);
+    CopyInstruction * constant_expression_evaluated(BasicBlock * block, UnaryInstruction * operator_instruction);
 };
 
 void generate_code(Program * program) {
@@ -725,7 +727,18 @@ void CodeGenerator::value_numbering() {
                     break;
                 }
                 case Instruction::UNARY:
+                {
+                    UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
+                    unary_instruction->source = inline_value(block, unary_instruction->source);
+
+                    CopyInstruction * copy_instruction = constant_expression_evaluated(block, unary_instruction);
+                    if (copy_instruction != NULL) {
+                        *it = copy_instruction;
+                        break;
+                    }
+
                     break;
+                }
                 case Instruction::IF:
                     break;
                 case Instruction::GOTO:
@@ -742,6 +755,34 @@ void CodeGenerator::value_numbering() {
         }
     }
 }
+
+
+CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
+    if (instruction->source.type == Variant::REGISTER)
+        return NULL;
+    switch (instruction->_operator) {
+        case UnaryInstruction::NEGATE:
+            switch (instruction->source.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, -instruction->source._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, -instruction->source._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case UnaryInstruction::NOT:
+            switch (instruction->source.type) {
+                case Variant::CONST_BOOL:
+                    return make_immediate(block, instruction, !instruction->source._bool);
+                default:
+                    assert(false);
+            }
+            break;
+    }
+    return NULL;
+}
+
 
 CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, OperatorInstruction * instruction) {
     if (instruction->left.type == Variant::REGISTER || instruction->right.type == Variant::REGISTER)
@@ -897,6 +938,14 @@ bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant)
             (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant);
 }
 
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
+    // TODO: need to know what type the register is for this constant to have meaning
+    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant, Variant::CONST_INT));
+    delete unary_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+    return copy_instruction;
+}
+
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
     // TODO: need to know what type the register is for this constant to have meaning
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
@@ -963,7 +1012,7 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
         default:
             break;
     }
-    return NULL;
+    return instruction;
 }
 
 CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {

@@ -6,8 +6,9 @@ class Main begin
         var c : Boolean;
         var d : Boolean;
     begin
-        a := (1 + 2) * 3 / (4 - 5) * 2 + 42 + 1337;
+        a := (1 + 2) * 3 / (4 - 5) * -2 + 42 + -1337;
         print a;
+        print 1 + b ---- 1;
     end
 end
 .
