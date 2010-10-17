@@ -17,6 +17,7 @@ public:
     void generate(FunctionDeclaration * function_declaration);
     void build_basic_blocks();
     void value_numbering();
+    void dependency_management();
 
     void print_basic_blocks();
     void print_control_flow_graph();
@@ -101,6 +102,30 @@ private:
             }
             assert(false);
             return false;
+        }
+
+        bool operator== (Variant right) const {
+            if (type != right.type) {
+                return false;
+            } else {
+                switch (type) {
+                case REGISTER: // int
+                case CONST_INT: // int
+                    return _int == right._int;
+                case CONST_BOOL: // bool
+                    return _bool == right._bool;
+                case CONST_REAL: // float
+                    return _float == right._float;
+                case VALUE_NUMBER: // string
+                    return _string == right._string;
+                }
+            }
+            assert(false);
+            return false;
+        }
+
+        bool operator != (Variant right) const {
+            return !this->operator ==(right);
         }
     };
 
@@ -223,6 +248,7 @@ private:
     std::vector<Instruction *> m_instructions;
     OrderedInsensitiveMap<Variant> m_variable_numbers;
     int m_register_count;
+    int m_unique_value_count;
     std::vector<BasicBlock *> m_basic_blocks;
 
     enum RegisterType {
@@ -261,7 +287,7 @@ private:
     CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, int constant);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, OperatorInstruction * operator_instruction);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, UnaryInstruction * operator_instruction);
-    std::string hash_register(int _register);
+    std::string next_unique_value();
     std::string hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction);
     void basic_block_value_numbering(BasicBlock * block);
     std::string hash_operand(BasicBlock * block, Variant operand);
@@ -303,6 +329,15 @@ void generate_code(Program * program) {
             std::cout << "--------------------------" << std::endl;
             generator.print_basic_blocks();
             std::cout << "--------------------------" << std::endl;
+
+            /*
+            generator.dependency_management();
+
+            std::cout << "3 Address Code After Dependency Management" << std::endl;
+            std::cout << "--------------------------" << std::endl;
+            generator.print_basic_blocks();
+            std::cout << "--------------------------" << std::endl;
+            */
         }
     }
 }
@@ -725,15 +760,35 @@ void CodeGenerator::build_basic_blocks() {
 }
 
 void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
-    if (block->parents.size() == 1) {
-        BasicBlock * parent = m_basic_blocks[*(block->parents.begin())];
-        // clone parent's value numbers
-        block->value_numbers.associate_all(parent->value_numbers);
-    } else {
+    if (block->parents.size() == 0) {
+        // set all registers to garbage
         for (int register_index = 0; register_index < m_register_count; ++register_index) {
-            block->value_numbers.associate(register_index, Variant(hash_register(register_index)));
+            block->value_numbers.associate(register_index, Variant(next_unique_value()));
+        }
+    } else if (block->parents.size() == 1) {
+        // clone all parents' value numbers
+        for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); ++it) {
+            BasicBlock * parent = m_basic_blocks[*it];
+            block->value_numbers.associate_all(parent->value_numbers);
+        }
+    } else {
+        // for each register
+        for (int register_index = 0; register_index < m_register_count; ++register_index) {
+            // if any of the parents disagree about the value number, assign garbage, otherwise use the agreed upon value
+            std::set<int>::iterator it = block->parents.begin();
+            BasicBlock * parent = m_basic_blocks[*it];
+            Variant value = parent->value_numbers.get(register_index);
+            block->value_numbers.associate(register_index, value);
+            for (; it != block->parents.end(); ++it) {
+                parent = m_basic_blocks[*it];
+                if (parent->value_numbers.get(register_index) != value) {
+                    block->value_numbers.associate(register_index, next_unique_value());
+                    break;
+                }
+            }
         }
     }
+
 
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
@@ -830,12 +885,16 @@ void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
 }
 
 void CodeGenerator::value_numbering() {
+
     for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
         BasicBlock * block = m_basic_blocks[i];
         basic_block_value_numbering(block);
     }
 }
 
+void CodeGenerator::dependency_management() {
+    // TODO
+}
 
 CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
     if (instruction->source.type == Variant::REGISTER)
@@ -1144,9 +1203,9 @@ std::string CodeGenerator::hash_operator_instruction(BasicBlock * block, Operato
     return ss.str();
 }
 
-std::string CodeGenerator::hash_register(int _register) {
+std::string CodeGenerator::next_unique_value() {
     std::stringstream ss;
-    ss << "?" << _register;
+    ss << "?" << m_unique_value_count++;
     return ss.str();
 }
 

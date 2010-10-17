@@ -13,6 +13,8 @@ public:
     V get(K key);
     // make this TwoWayMap equal to other
     void associate_all(const TwoWayMap & other);
+
+    bool is_empty() const;
 private:
     std::map<K, V> forward;
     std::map<V, std::set<K> *> backward;
@@ -25,6 +27,10 @@ void TwoWayMap<K, V>::associate_all(const TwoWayMap & other) {
     }
 }
 
+template <class K, class V>
+bool TwoWayMap<K, V>::is_empty() const {
+    return forward.size() == 0;
+}
 
 template <class K, class V>
 std::set<K> * TwoWayMap<K, V>::keys(V value){
