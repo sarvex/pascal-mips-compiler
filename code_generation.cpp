@@ -225,8 +225,16 @@ private:
     int m_register_count;
     std::vector<BasicBlock *> m_basic_blocks;
 
+    enum RegisterType {
+        INTEGER,
+        REAL,
+        BOOL,
+    };
+
+    std::vector<RegisterType> m_register_type;
+
 private:
-    Variant next_available_register() { return Variant(m_register_count++, Variant::REGISTER); }
+    Variant next_available_register(RegisterType type);
 
     void gen_statement_list(StatementList * statement_list);
     void gen_statement(Statement * statement);
@@ -257,7 +265,14 @@ private:
     std::string hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction);
     void basic_block_value_numbering(BasicBlock * block);
     std::string hash_operand(BasicBlock * block, Variant operand);
+    Variant typed_constant(Variant _register, int constant);
+    RegisterType type_denoter_to_register_type(TypeDenoter * type);
 };
+
+CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
+    m_register_type.push_back(type);
+    return Variant(m_register_count++, Variant::REGISTER);
+}
 
 void generate_code(Program * program) {
     for (ClassList * class_list_node = program->class_list; class_list_node != NULL; class_list_node = class_list_node->next) {
@@ -373,11 +388,24 @@ void CodeGenerator::print_control_flow_graph() {
     }
 }
 
+CodeGenerator::RegisterType CodeGenerator::type_denoter_to_register_type(TypeDenoter * type) {
+    switch (type->type) {
+        case TypeDenoter::BOOLEAN:
+            return BOOL;
+        case TypeDenoter::INTEGER:
+            return INTEGER;
+        case TypeDenoter::REAL:
+            return REAL;
+        default:
+            assert(false);
+            return BOOL; // BOOL is COOL
+    }
+}
 
 void CodeGenerator::generate(FunctionDeclaration * function_declaration) {
     for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
-            m_variable_numbers.put(id_list->item->text, next_available_register());
+            m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
     }
 
     gen_statement_list(function_declaration->block->statement_list);
@@ -467,7 +495,7 @@ CodeGenerator::Variant CodeGenerator::gen_expression(Expression * expression) {
         // we're looking at a compare operator
         Variant left = gen_additive_expression(expression->left);
         Variant right = gen_additive_expression(expression->right);
-        Variant dest = next_available_register();
+        Variant dest = next_available_register(type_denoter_to_register_type(expression->type));
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(expression->_operator->type + OperatorInstruction::EQUAL); // LOL HAX!
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
         return dest;
@@ -482,7 +510,7 @@ CodeGenerator::Variant CodeGenerator::gen_additive_expression(AdditiveExpression
         return right;
     } else {
         Variant left = gen_additive_expression(additive_expression->left);
-        Variant dest = next_available_register();
+        Variant dest = next_available_register(type_denoter_to_register_type(additive_expression->type));
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(additive_expression->_operator->type + OperatorInstruction::PLUS);
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
         return dest;
@@ -497,7 +525,7 @@ CodeGenerator::Variant CodeGenerator::gen_multiplicitive_expression(Multiplicati
         return right;
     } else {
         Variant left = gen_multiplicitive_expression(multiplicative_expression->left);
-        Variant dest = next_available_register();
+        Variant dest = next_available_register(type_denoter_to_register_type(multiplicative_expression->type));
         OperatorInstruction::Operator _operator = (OperatorInstruction::Operator)(multiplicative_expression->_operator->type + OperatorInstruction::TIMES);
         m_instructions.push_back(new OperatorInstruction(dest, left, _operator, right));
         return dest;
@@ -509,7 +537,7 @@ CodeGenerator::Variant CodeGenerator::gen_negatable_expression(NegatableExpressi
         return gen_primary_expression(negatable_expression->primary_expression);
     } else if (negatable_expression->type == NegatableExpression::SIGN) {
         Variant source = gen_negatable_expression(negatable_expression->next);
-        Variant dest = next_available_register();
+        Variant dest = next_available_register(type_denoter_to_register_type(negatable_expression->variable_type));
         m_instructions.push_back(new UnaryInstruction(dest, UnaryInstruction::NEGATE, source));
         return dest;
     } else {
@@ -524,21 +552,21 @@ CodeGenerator::Variant CodeGenerator::gen_primary_expression(PrimaryExpression *
             return gen_variable_access(primary_expression->variable);
         case PrimaryExpression::INTEGER:
         {
-            Variant dest = next_available_register();
+            Variant dest = next_available_register(INTEGER);
             int constant = primary_expression->literal_integer->value;
             m_instructions.push_back(new CopyInstruction(dest, Variant(constant, Variant::CONST_INT)));
             return dest;
         }
         case PrimaryExpression::BOOLEAN:
         {
-            Variant dest = next_available_register();
+            Variant dest = next_available_register(BOOL);
             bool constant = primary_expression->literal_boolean->value;
             m_instructions.push_back(new CopyInstruction(dest, Variant(constant)));
             return dest;
         }
         case PrimaryExpression::REAL:
         {
-            Variant dest = next_available_register();
+            Variant dest = next_available_register(REAL);
             float constant = primary_expression->literal_real->value;
             m_instructions.push_back(new CopyInstruction(dest, Variant(constant)));
             return dest;
@@ -547,7 +575,7 @@ CodeGenerator::Variant CodeGenerator::gen_primary_expression(PrimaryExpression *
             return gen_expression(primary_expression->parens_expression);
         case PrimaryExpression::NOT:
         {
-            Variant dest = next_available_register();
+            Variant dest = next_available_register(BOOL);
             Variant source = gen_primary_expression(primary_expression->not_expression);
             m_instructions.push_back(new UnaryInstruction(dest, UnaryInstruction::NOT, source));
             return dest;
@@ -991,17 +1019,30 @@ bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant)
            (instruction->right.type == Variant::CONST_BOOL && instruction->right._bool == (bool)constant);
 }
 
+CodeGenerator::Variant CodeGenerator::typed_constant(Variant _register, int constant) {
+    Variant variant_constant;
+    switch (m_register_type[_register._int]) {
+        case REAL:
+            return Variant((float) constant);
+        case INTEGER:
+            return Variant((int) constant, Variant::CONST_INT);
+        case BOOL:
+            return Variant((bool) constant);
+        default:
+            assert(false);
+            return Variant();
+    }
+}
+
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
-    // TODO: need to know what type the register is for this constant to have meaning
-    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant, Variant::CONST_INT));
+    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, typed_constant(unary_instruction->dest, constant));
     delete unary_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
-    // TODO: need to know what type the register is for this constant to have meaning
-    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, typed_constant(operator_instruction->dest, constant));
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;

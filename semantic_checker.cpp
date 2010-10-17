@@ -282,13 +282,16 @@ void SemanticChecker::check_statement(Statement * statement)
 
 TypeDenoter * SemanticChecker::check_expression(Expression * expression)
 {
+    TypeDenoter * type;
     if (expression->right == NULL) {
         // it's just the type of the first additive expression
-        return check_additive_expression(expression->left);
+        type = check_additive_expression(expression->left);
     } else {
         // we're looking at a compare operator, so it always returns a boolean
-        return new TypeDenoter(TypeDenoter::BOOLEAN);
+        type = new TypeDenoter(TypeDenoter::BOOLEAN);
     }
+    expression->type = type; // cache the type
+    return type;
 }
 
 // when we do a multiplicitive or additive operation, what is the return type?
@@ -301,6 +304,7 @@ TypeDenoter * SemanticChecker::combined_type(TypeDenoter * left_type, TypeDenote
     // real +       integer =   real
     // real +       real =      real
     // real +       char =      real
+    // bool +       bool =      bool
     if (left_type->type == TypeDenoter::CHAR && right_type->type == TypeDenoter::CHAR) {
         return new TypeDenoter(TypeDenoter::CHAR);
     } else if (left_type->type == TypeDenoter::INTEGER && right_type->type == TypeDenoter::INTEGER) {
@@ -319,6 +323,8 @@ TypeDenoter * SemanticChecker::combined_type(TypeDenoter * left_type, TypeDenote
         (left_type->type == TypeDenoter::CHAR && right_type->type == TypeDenoter::REAL))
     {
         return new TypeDenoter(TypeDenoter::REAL);
+    } else if (left_type->type == TypeDenoter::BOOLEAN && right_type->type == TypeDenoter::BOOLEAN) {
+        return new TypeDenoter(TypeDenoter::BOOLEAN);
     } else {
         // anything else is invalid
         return NULL;
@@ -327,80 +333,102 @@ TypeDenoter * SemanticChecker::combined_type(TypeDenoter * left_type, TypeDenote
 
 TypeDenoter * SemanticChecker::check_additive_expression(AdditiveExpression * additive_expression)
 {
+    TypeDenoter * type;
     TypeDenoter * right_type = check_multiplicitive_expression(additive_expression->right);
     if (additive_expression->left == NULL) {
         // it's just the type of the right
-        return right_type;
+        type = right_type;
     } else {
         TypeDenoter * left_type = check_additive_expression(additive_expression->left);
         if (left_type == NULL || right_type == NULL) {
             // semantic error occurred down the stack
             return NULL;
         }
-        return combined_type(left_type, right_type);
+        type = combined_type(left_type, right_type);
     }
+    additive_expression->type = type;
+    return type;
 }
 
 TypeDenoter * SemanticChecker::check_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression) {
+    TypeDenoter * type;
     TypeDenoter * right_type = check_negatable_expression(multiplicative_expression->right);
     if (multiplicative_expression->left == NULL) {
         // it's just the type of the right
-        return right_type;
+        type = right_type;
     } else {
         TypeDenoter * left_type = check_multiplicitive_expression(multiplicative_expression->left);
         if (left_type == NULL || right_type == NULL) {
             // semantic error occurred down the stack
             return NULL;
         }
-        return combined_type(left_type, right_type);
+        type = combined_type(left_type, right_type);
     }
+    multiplicative_expression->type = type;
+    return type;
 }
 
 TypeDenoter * SemanticChecker::check_negatable_expression(NegatableExpression * negatable_expression) {
+    TypeDenoter * type;
     if (negatable_expression->type == NegatableExpression::SIGN) {
-        return check_negatable_expression(negatable_expression->next);
+        type = check_negatable_expression(negatable_expression->next);
     } else if (negatable_expression->type == NegatableExpression::PRIMARY) {
-        return check_primary_expression(negatable_expression->primary_expression);
+        type = check_primary_expression(negatable_expression->primary_expression);
     } else {
         assert(false);
         return NULL;
     }
+    negatable_expression->variable_type = type;
+    return type;
 }
 
 TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * primary_expression) {
+    TypeDenoter * type;
     switch (primary_expression->type) {
         case PrimaryExpression::VARIABLE:
-            return check_variable_access(primary_expression->variable);
+            type = check_variable_access(primary_expression->variable);
+            break;
         case PrimaryExpression::INTEGER:
-            return new TypeDenoter(TypeDenoter::INTEGER);
+            type = new TypeDenoter(TypeDenoter::INTEGER);
+            break;
         case PrimaryExpression::REAL:
-            return new TypeDenoter(TypeDenoter::REAL);
+            type = new TypeDenoter(TypeDenoter::REAL);
+            break;
         case PrimaryExpression::BOOLEAN:
-            return new TypeDenoter(TypeDenoter::BOOLEAN);
+            type = new TypeDenoter(TypeDenoter::BOOLEAN);
+            break;
         case PrimaryExpression::STRING:
         {
             std::string str = primary_expression->literal_string->value;
             int str_len = (int) str.length();
             if (str_len == 1) {
-                return new TypeDenoter(TypeDenoter::CHAR);
+                type = new TypeDenoter(TypeDenoter::CHAR);
             } else {
-                return new TypeDenoter(new ArrayType(new LiteralInteger(0, 0), new LiteralInteger(str_len-1, 0), new TypeDenoter(TypeDenoter::CHAR)));
+                type = new TypeDenoter(new ArrayType(new LiteralInteger(0, 0), new LiteralInteger(str_len-1, 0), new TypeDenoter(TypeDenoter::CHAR)));
             }
+            break;
         }
         case PrimaryExpression::FUNCTION:
-            return check_function_designator(primary_expression->function);
+            type = check_function_designator(primary_expression->function);
+            break;
         case PrimaryExpression::METHOD:
-            return check_method_designator(primary_expression->method);
+            type = check_method_designator(primary_expression->method);
+            break;
         case PrimaryExpression::OBJECT_INSTANTIATION:
-            return check_object_instantiation(primary_expression->object_instantiation);
+            type = check_object_instantiation(primary_expression->object_instantiation);
+            break;
         case PrimaryExpression::PARENS:
-            return check_expression(primary_expression->parens_expression);
+            type = check_expression(primary_expression->parens_expression);
+            break;
         case PrimaryExpression::NOT:
-            return check_primary_expression(primary_expression->not_expression);
+            type = check_primary_expression(primary_expression->not_expression);
+            break;
         default:
             assert(false);
             return NULL;
     }
+    primary_expression->variable_type = type;
+    return type;
 }
 
 TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_access, bool allow_function_return_value)

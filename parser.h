@@ -85,7 +85,7 @@ struct ClassBlock {
 
 struct VariableDeclarationList {
     VariableDeclaration * item;
-    VariableDeclarationList * next;  
+    VariableDeclarationList * next;
     VariableDeclarationList(VariableDeclaration * item, VariableDeclarationList * next)
         : item(item), next(next) {}
 };
@@ -98,7 +98,7 @@ struct VariableDeclaration {
 };
 
 struct IdentifierList {
-    Identifier * item; 
+    Identifier * item;
     IdentifierList * next;
     IdentifierList(Identifier * item, IdentifierList * next)
         : item(item), next(next) {}
@@ -240,6 +240,8 @@ struct Expression {
     AdditiveExpression * left;
     ComparisonOperator * _operator;
     AdditiveExpression * right;
+    // annotate this struct with the type when we figure it out
+    TypeDenoter * type;
     Expression(AdditiveExpression * only_expression) : left(only_expression), right(NULL) {}
     Expression(AdditiveExpression * left, ComparisonOperator * _operator, AdditiveExpression * right)
         : left(left), _operator(_operator), right(right) {}
@@ -256,6 +258,7 @@ struct AdditiveExpression {
     AdditiveExpression * left;
     AdditiveOperator * _operator;
     MultiplicativeExpression * right;
+    TypeDenoter * type; // cached type
     AdditiveExpression(MultiplicativeExpression * only_expression)
         : left(NULL), right(only_expression) {}
     AdditiveExpression(AdditiveExpression * left, AdditiveOperator * _operator, MultiplicativeExpression * right)
@@ -273,6 +276,8 @@ struct MultiplicativeExpression {
     MultiplicativeExpression * left;
     MultiplicativeOperator * _operator;
     NegatableExpression * right;
+
+    TypeDenoter * type; // cached type
     MultiplicativeExpression(NegatableExpression * only_expression)
         : left(NULL), right(only_expression) {}
     MultiplicativeExpression(MultiplicativeExpression * left, MultiplicativeOperator * _operator, NegatableExpression * right)
@@ -297,6 +302,7 @@ struct NegatableExpression {
         };
         PrimaryExpression * primary_expression;
     };
+    TypeDenoter * variable_type;
     NegatableExpression(int sign, NegatableExpression * next) : type(SIGN), sign(sign), next(next) {}
     NegatableExpression(PrimaryExpression * primary_expression)
         : type(PRIMARY), primary_expression(primary_expression) {}
@@ -310,13 +316,14 @@ struct PrimaryExpression {
         LiteralReal * literal_real;
         LiteralString * literal_string;
         LiteralBoolean * literal_boolean;
-        VariableAccess * variable; 
+        VariableAccess * variable;
         FunctionDesignator * function;
         MethodDesignator * method;
         ObjectInstantiation * object_instantiation;
         Expression * parens_expression;
         PrimaryExpression * not_expression;
     };
+    TypeDenoter * variable_type; // cached type
     PrimaryExpression(LiteralInteger * literal_integer) : type(INTEGER), literal_integer(literal_integer) {}
     PrimaryExpression(LiteralReal * literal_real) : type(REAL), literal_real(literal_real) {}
     PrimaryExpression(LiteralString * literal_string) : type(STRING), literal_string(literal_string) {}
@@ -324,7 +331,7 @@ struct PrimaryExpression {
     PrimaryExpression(VariableAccess * variable) : type(VARIABLE), variable(variable) {}
     PrimaryExpression(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     PrimaryExpression(MethodDesignator * method) : type(METHOD), method(method) {}
-    PrimaryExpression(ObjectInstantiation * object_instantiation) 
+    PrimaryExpression(ObjectInstantiation * object_instantiation)
         : type(OBJECT_INSTANTIATION), object_instantiation(object_instantiation) {}
     PrimaryExpression(Expression * parens_expression)
         : type(PARENS), parens_expression(parens_expression) {}
