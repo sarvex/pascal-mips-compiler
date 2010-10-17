@@ -1,6 +1,7 @@
 #include "code_generation.h"
 #include "insensitive_map.h"
 #include "two_way_map.h"
+#include "utils.h"
 
 #include <vector>
 #include <set>
@@ -40,7 +41,7 @@ private:
     public:
         enum Type {
             REGISTER, // int
-            VALUE_NUMBER, // int
+            VALUE_NUMBER, // string
             CONST_INT, // int
             CONST_BOOL, // bool
             CONST_REAL, // float
@@ -51,12 +52,14 @@ private:
             bool _bool;
             float _float;
         };
+        std::string _string;
 
         // don't use this, stupid face
         Variant(){}
         Variant(int _int, Type type) : type(type), _int(_int) {}
         Variant(bool _bool) : type(CONST_BOOL), _bool(_bool) {}
         Variant(float _float) : type(CONST_REAL), _float(_float) {}
+        Variant(std::string _string) : type(VALUE_NUMBER), _string(_string) {}
 
         std::string str() {
             std::stringstream ss;
@@ -65,7 +68,7 @@ private:
                     ss << "$" << _int;
                     break;
                 case VALUE_NUMBER:
-                    ss << _int;
+                    ss << _string;
                     break;
                 case CONST_INT:
                     ss << _int;
@@ -86,13 +89,14 @@ private:
             } else {
                 switch (type) {
                 case REGISTER: // int
-                case VALUE_NUMBER: // int
                 case CONST_INT: // int
                     return _int < right._int;
                 case CONST_BOOL: // bool
                     return _bool < right._bool;
                 case CONST_REAL: // float
                     return _float < right._float;
+                case VALUE_NUMBER: // string
+                    return _string < right._string;
                 }
             }
             assert(false);
@@ -121,6 +125,46 @@ private:
 
         OperatorInstruction(Variant dest, Variant left, Operator _operator, Variant right) :
             Instruction(OPERATOR), dest(dest), left(left), _operator(_operator), right(right) {}
+
+        std::string str() {
+            std::stringstream ss;
+            ss << dest.str() << " = " << left.str() << " " << operator_str() << " " << right.str();
+            return ss.str();
+        }
+
+        std::string operator_str() {
+            switch (_operator) {
+                case EQUAL:
+                    return "==";
+                case NOT_EQUAL:
+                    return "!=";
+                case LESS:
+                    return "<";
+                case GREATER:
+                    return ">";
+                case LESS_EQUAL:
+                    return "<=";
+                case GREATER_EQUAL:
+                    return ">=";
+                case PLUS:
+                    return "+";
+                case MINUS:
+                    return "-";
+                case OR:
+                    return "||";
+                case TIMES:
+                    return "*";
+                case DIVIDE:
+                    return "/";
+                case MOD:
+                    return "%";
+                case AND:
+                    return "&&";
+                default:
+                    assert(false);
+            }
+            return std::string();
+        }
     };
 
     struct UnaryInstruction : public Instruction {
@@ -168,6 +212,7 @@ private:
         std::set<int> parents;
         std::list<Instruction *> instructions;
 
+        // maps registers to value number/ constant
         TwoWayMap<int, Variant> value_numbers;
 
         BasicBlock(int start, int end) : start(start), end(end) {}
@@ -208,6 +253,8 @@ private:
     CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, int constant);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, OperatorInstruction * operator_instruction);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, UnaryInstruction * operator_instruction);
+    std::string hash_register(int _register);
+    std::string hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction);
 };
 
 void generate_code(Program * program) {
@@ -255,38 +302,7 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
         case Instruction::OPERATOR:
         {
             OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-            std::cout << operator_instruction->dest.str() << " = " << operator_instruction->left.str() << " ";
-            switch (operator_instruction->_operator) {
-                case OperatorInstruction::EQUAL:
-                    std::cout << "=="; break;
-                case OperatorInstruction::NOT_EQUAL:
-                    std::cout << "!="; break;
-                case OperatorInstruction::LESS:
-                    std::cout << "<"; break;
-                case OperatorInstruction::GREATER:
-                    std::cout << ">"; break;
-                case OperatorInstruction::LESS_EQUAL:
-                    std::cout << "<="; break;
-                case OperatorInstruction::GREATER_EQUAL:
-                    std::cout << ">="; break;
-                case OperatorInstruction::PLUS:
-                    std::cout << "+"; break;
-                case OperatorInstruction::MINUS:
-                    std::cout << "-"; break;
-                case OperatorInstruction::OR:
-                    std::cout << "||"; break;
-                case OperatorInstruction::TIMES:
-                    std::cout << "*"; break;
-                case OperatorInstruction::DIVIDE:
-                    std::cout << "/"; break;
-                case OperatorInstruction::MOD:
-                    std::cout << "%"; break;
-                case OperatorInstruction::AND:
-                    std::cout << "&&"; break;
-                default:
-                    assert(false);
-            }
-            std::cout << " " << operator_instruction->right.str();
+            std::cout << operator_instruction->str();
             break;
         }
         case Instruction::UNARY:
@@ -682,7 +698,7 @@ void CodeGenerator::value_numbering() {
     for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
         BasicBlock * block = m_basic_blocks[i];
         for (int register_index = 0; register_index < m_register_count; ++register_index) {
-            block->value_numbers.associate(register_index, Variant(register_index, Variant::VALUE_NUMBER));
+            block->value_numbers.associate(register_index, Variant(hash_register(register_index)));
         }
 
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
@@ -723,7 +739,27 @@ void CodeGenerator::value_numbering() {
                         operator_instruction->right = tmp;
                     }
 
-                    *it = constant_folded(block, operator_instruction);
+                    instruction = constant_folded(block, operator_instruction);
+                    *it = instruction;
+
+                    if (instruction->type != Instruction::OPERATOR)
+                        break;
+
+                    operator_instruction = (OperatorInstruction *) instruction;
+
+                    // replace operator instruction with a copy instruction if we can
+                    std::string hash = hash_operator_instruction(block, operator_instruction);
+                    std::set<int> * registers = block->value_numbers.keys(hash);
+                    if (registers != NULL && registers->size() > 0) {
+                        int lowest = *(registers->begin());
+                        CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(lowest, Variant::REGISTER));
+                        instruction = copy_instruction;
+                        *it = copy_instruction;
+                        delete operator_instruction;
+                        block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+                    } else {
+                        block->value_numbers.associate(operator_instruction->dest._int, Variant(hash));
+                    }
                     break;
                 }
                 case Instruction::UNARY:
@@ -740,7 +776,11 @@ void CodeGenerator::value_numbering() {
                     break;
                 }
                 case Instruction::IF:
+                {
+                    IfInstruction * if_instruction = (IfInstruction *) instruction;
+                    if_instruction->condition = inline_value(block, if_instruction->condition);
                     break;
+                }
                 case Instruction::GOTO:
                     break;
                 case Instruction::RETURN:
@@ -1013,6 +1053,29 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
             break;
     }
     return instruction;
+}
+
+
+std::string CodeGenerator::hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction) {
+    std::stringstream ss;
+    if (instruction->left.type == Variant::REGISTER) {
+        Variant value = block->value_numbers.get(instruction->left._int);
+        if (value.type == Variant::VALUE_NUMBER) {
+            ss << "#" << value.str();
+        } else {
+            ss << value.str();
+        }
+    } else {
+        ss << instruction->left.str();
+    }
+    ss << " " << instruction->operator_str() << " ";
+    return ss.str();
+}
+
+std::string CodeGenerator::hash_register(int _register) {
+    std::stringstream ss;
+    ss << "?" << _register;
+    return ss.str();
 }
 
 CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {

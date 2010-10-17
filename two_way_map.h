@@ -18,7 +18,10 @@ private:
 
 template <class K, class V>
 std::set<K> * TwoWayMap<K, V>::keys(V value){
-    return backward.at(value);
+    if (backward.count(value))
+        return backward.at(value);
+    else
+        return NULL;
 }
 
 template <class K, class V>
