@@ -205,6 +205,7 @@ private:
     bool operands_same(OperatorInstruction * instruction);
     bool constant_is(OperatorInstruction * instruction, int constant);
     CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant);
+    CopyInstruction * constant_expression_evaluated(BasicBlock * block, OperatorInstruction * operator_instruction);
 };
 
 void generate_code(Program * program) {
@@ -698,6 +699,12 @@ void CodeGenerator::value_numbering() {
                     operator_instruction->left = inline_value(block, operator_instruction->left);
                     operator_instruction->right = inline_value(block, operator_instruction->right);
 
+                    CopyInstruction * copy_instruction = constant_expression_evaluated(block, operator_instruction);
+                    if (copy_instruction != NULL) {
+                        *it = copy_instruction;
+                        break;
+                    }
+
                     // normalize parameter order
                     // constant on the right and lower register first
                     bool swap = false;
@@ -715,7 +722,6 @@ void CodeGenerator::value_numbering() {
                     }
 
                     *it = constant_folded(block, operator_instruction);
-
                     break;
                 }
                 case Instruction::UNARY:
@@ -727,10 +733,151 @@ void CodeGenerator::value_numbering() {
                 case Instruction::RETURN:
                     break;
                 case Instruction::PRINT:
+                {
+                    PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+                    print_instruction->value = inline_value(block, print_instruction->value);
                     break;
+                }
             }
         }
     }
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, OperatorInstruction * instruction) {
+    if (instruction->left.type == Variant::REGISTER || instruction->right.type == Variant::REGISTER)
+        return NULL;
+
+    switch (instruction->_operator) {
+        case OperatorInstruction::EQUAL:
+            switch (instruction->left.type) {
+                case Variant::CONST_BOOL:
+                    return make_immediate(block, instruction, instruction->left._bool == instruction->right._bool);
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int == instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float == instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::NOT_EQUAL:
+            switch (instruction->left.type) {
+                case Variant::CONST_BOOL:
+                    return make_immediate(block, instruction, instruction->left._bool != instruction->right._bool);
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int != instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float != instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::LESS:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int < instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float < instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::GREATER:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int > instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float > instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::LESS_EQUAL:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int <= instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float <= instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::GREATER_EQUAL:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int >= instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float >= instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::PLUS:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int + instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float + instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::MINUS:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int - instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float - instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::OR:
+            switch (instruction->left.type) {
+                case Variant::CONST_BOOL:
+                    return make_immediate(block, instruction, instruction->left._bool || instruction->right._bool);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::TIMES:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int * instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float * instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::DIVIDE:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int / instruction->right._int);
+                case Variant::CONST_REAL:
+                    return make_immediate(block, instruction, instruction->left._float / instruction->right._float);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::MOD:
+            switch (instruction->left.type) {
+                case Variant::CONST_INT:
+                    return make_immediate(block, instruction, instruction->left._int % instruction->right._int);
+                default:
+                    assert(false);
+            }
+            break;
+        case OperatorInstruction::AND:
+            switch (instruction->left.type) {
+                case Variant::CONST_BOOL:
+                    return make_immediate(block, instruction, instruction->left._bool && instruction->right._bool);
+                default:
+                    assert(false);
+            }
+            break;
+    }
+    return NULL;
 }
 
 CodeGenerator::CopyInstruction * CodeGenerator::make_copy(BasicBlock * block, OperatorInstruction * operator_instruction) {
@@ -816,7 +963,7 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
         default:
             break;
     }
-    return instruction;
+    return NULL;
 }
 
 CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {
