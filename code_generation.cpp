@@ -238,12 +238,15 @@ private:
         std::set<int> parents;
         std::list<Instruction *> instructions;
         std::set<int> mangled_registers;
-        bool visited;
+
+        // for detecting loops during mangle set calculations
+        bool is_destination;
+        bool is_source;
 
         // maps registers to value number/ constant
         TwoWayMap<int, Variant> value_numbers;
 
-        BasicBlock(int start, int end) : start(start), end(end), visited(false) {}
+        BasicBlock(int start, int end) : start(start), end(end), is_destination(false), is_source(false) {}
     };
 
     typedef std::list<Instruction *> InstructionList;
@@ -298,7 +301,8 @@ private:
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
     void calculate_mangle_set(int block_index);
     void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
-    bool calculate_child_mangle_set(int block_index, int later_parent_index);
+    void calculate_downward_mangle_set(int block_index);
+    void calculate_upward_mangle_set(int block_index);
 };
 
 CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
@@ -937,32 +941,49 @@ void CodeGenerator::calculate_mangle_set(int block_index) {
         if (parent_index > block_index) {
             // search for every path from this block to the later parent (which is the entire
             // scope of the loop) and record which registers are mangled along the way.
-            calculate_child_mangle_set(block_index, parent_index);
+            calculate_downward_mangle_set(block_index);
+            calculate_upward_mangle_set(parent_index);
+            BasicBlock * end_node = m_basic_blocks[parent_index];
+            // now add in all the mangles from the between nodes.
+            for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
+                BasicBlock * node = m_basic_blocks[i];
+                if (node->is_destination && node->is_source) {
+                    // this block is on the path to victory.
+                    // record the mangled registers and store them in the later parent.
+                    record_mangled_registers(node, end_node);
+                }
+                // reset state for next go around.
+                node->is_destination = false;
+                node->is_source = false;
+            }
         }
     }
 }
 
-bool CodeGenerator::calculate_child_mangle_set(int block_index, int later_parent_index) {
+void CodeGenerator::calculate_downward_mangle_set(int block_index) {
     BasicBlock * block = m_basic_blocks[block_index];
-
     // prevent infinite recursion
-    if (block->visited)
-        return false;
-    block->visited = true;
-    bool leads_to_victory = false;
-    if (block->jump_child != -1)
-        leads_to_victory |= calculate_child_mangle_set(block->jump_child, later_parent_index);
-    if (block->fallthrough_child != -1)
-        leads_to_victory |= calculate_child_mangle_set(block->fallthrough_child, later_parent_index);
-    leads_to_victory |= block_index == later_parent_index;
-    block->visited = false;
+    if (block->is_destination)
+        return;
+    block->is_destination = true;
 
-    if (leads_to_victory) {
-        // this block is on the path to victory.
-        // record the mangled registers and store them in the later parent.
-        record_mangled_registers(block, m_basic_blocks[later_parent_index]);
+    if (block->jump_child != -1)
+        calculate_downward_mangle_set(block->jump_child);
+    if (block->fallthrough_child != -1)
+        calculate_downward_mangle_set(block->fallthrough_child);
+}
+
+void CodeGenerator::calculate_upward_mangle_set(int block_index) {
+    BasicBlock * block = m_basic_blocks[block_index];
+    // prevent infinite recursion
+    if (block->is_source)
+        return;
+    block->is_source = true;
+
+    for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); ++it) {
+        int parent_index = *it;
+        calculate_upward_mangle_set(parent_index);
     }
-    return leads_to_victory;
 }
 
 void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls) {
