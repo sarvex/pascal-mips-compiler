@@ -975,7 +975,8 @@ bool CodeGenerator::operands_same(OperatorInstruction * instruction) {
 
 bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant) {
     return (instruction->right.type == Variant::CONST_INT && instruction->right._int == constant) ||
-            (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant);
+           (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant) ||
+           (instruction->right.type == Variant::CONST_BOOL && instruction->right._bool == (bool)constant);
 }
 
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
@@ -1041,12 +1042,23 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
             break;
         }
         case OperatorInstruction::AND:
-        case OperatorInstruction::OR:
         {
             // d := c and c;
-            // d := c or c;
+            // a and false -> false
             if (operands_same(instruction))
                 return make_copy(block, instruction);
+            else if (constant_is(instruction, false))
+                return make_immediate(block, instruction, false);
+            break;
+        }
+        case OperatorInstruction::OR:
+        {
+            // d := c or c;
+            // a or true -> true
+            if (operands_same(instruction))
+                return make_copy(block, instruction);
+            else if (constant_is(instruction, true))
+                return make_immediate(block, instruction, true);
             break;
         }
         default:

@@ -16,7 +16,9 @@ class Main begin
         b := a / a;
 
         d := c and c;
+        d := c and false;
         d := c or c;
+        d := c or true;
         
         { unsupported 
         a >> 0 = a

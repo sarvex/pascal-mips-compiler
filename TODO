@@ -6,8 +6,6 @@ Project 2 Release:
 Bonus:
  * optimize out $a = $a
  * minus negative number -> add positive number
- * a and false -> false
- * a or true -> true
  * reals
  * global redundancy elimination
  * add NOT operator
