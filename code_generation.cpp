@@ -199,12 +199,12 @@ private:
 
     Variant get_value_number(BasicBlock * block, Variant register_or_const);
     Variant inline_value(BasicBlock * block, Variant register_or_const);
-    Instruction * constant_folded(OperatorInstruction * instruction);
+    Instruction * constant_folded(BasicBlock * block, OperatorInstruction * instruction);
 
-    CopyInstruction * make_copy(OperatorInstruction * operator_instruction);
+    CopyInstruction * make_copy(BasicBlock * block, OperatorInstruction * operator_instruction);
     bool operands_same(OperatorInstruction * instruction);
     bool constant_is(OperatorInstruction * instruction, int constant);
-    CopyInstruction * make_immediate(OperatorInstruction * operator_instruction, int constant);
+    CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant);
 };
 
 void generate_code(Program * program) {
@@ -688,6 +688,7 @@ void CodeGenerator::value_numbering() {
                 case Instruction::COPY:
                 {
                     CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+                    copy_instruction->source = inline_value(block, copy_instruction->source);
                     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
                     break;
                 }
@@ -713,7 +714,7 @@ void CodeGenerator::value_numbering() {
                         operator_instruction->right = tmp;
                     }
 
-                    *it = constant_folded(operator_instruction);
+                    *it = constant_folded(block, operator_instruction);
 
                     break;
                 }
@@ -732,9 +733,10 @@ void CodeGenerator::value_numbering() {
     }
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_copy(OperatorInstruction * operator_instruction) {
+CodeGenerator::CopyInstruction * CodeGenerator::make_copy(BasicBlock * block, OperatorInstruction * operator_instruction) {
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, operator_instruction->left);
     delete operator_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
@@ -748,21 +750,22 @@ bool CodeGenerator::constant_is(OperatorInstruction * instruction, int constant)
             (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant);
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(OperatorInstruction * operator_instruction, int constant) {
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
     // TODO: need to know what type the register is for this constant to have meaning
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
     delete operator_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction * instruction) {
+CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, OperatorInstruction * instruction) {
     // we know that constants are on the right
     switch (instruction->_operator) {
         case OperatorInstruction::PLUS:
         {
             // a + 0 = a
             if (constant_is(instruction, 0))
-                return make_copy(instruction);
+                return make_copy(block, instruction);
             break;
         }
         case OperatorInstruction::MINUS:
@@ -770,9 +773,9 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction 
             // b := a - 0;
             // b := a - a;
             if (constant_is(instruction, 0))
-                return make_copy(instruction);
+                return make_copy(block, instruction);
             else if (operands_same(instruction))
-                return make_immediate(instruction, 0);
+                return make_immediate(block, instruction, 0);
             break;
         }
         case OperatorInstruction::TIMES:
@@ -781,9 +784,9 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction 
             // b := a * 0;
             // b := a * 2;
             if (constant_is(instruction, 1))
-                return make_copy(instruction);
+                return make_copy(block, instruction);
             else if (constant_is(instruction, 0))
-                return make_immediate(instruction, 0);
+                return make_immediate(block, instruction, 0);
             else if (constant_is(instruction, 2)) {
                 instruction->_operator = OperatorInstruction::PLUS;
                 instruction->right = instruction->left;
@@ -796,9 +799,9 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction 
             // b := a / 1;
             // b := a / a;
             if (constant_is(instruction, 1))
-                return make_copy(instruction);
+                return make_copy(block, instruction);
             else if (operands_same(instruction))
-                return make_immediate(instruction, 1);
+                return make_immediate(block, instruction, 1);
             break;
         }
         case OperatorInstruction::AND:
@@ -807,7 +810,7 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(OperatorInstruction 
             // d := c and c;
             // d := c or c;
             if (operands_same(instruction))
-                return make_copy(instruction);
+                return make_copy(block, instruction);
             break;
         }
         default:
