@@ -11,10 +11,20 @@ public:
     void associate(K key, V value);
     std::set<K> * keys(V value);
     V get(K key);
+    // make this TwoWayMap equal to other
+    void associate_all(const TwoWayMap & other);
 private:
     std::map<K, V> forward;
     std::map<V, std::set<K> *> backward;
 };
+
+template <class K, class V>
+void TwoWayMap<K, V>::associate_all(const TwoWayMap & other) {
+    for (typename std::map<K, V>::const_iterator it = other.forward.begin(); it != other.forward.end(); ++it) {
+        associate(it->first, it->second);
+    }
+}
+
 
 template <class K, class V>
 std::set<K> * TwoWayMap<K, V>::keys(V value){

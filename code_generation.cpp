@@ -255,6 +255,8 @@ private:
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, UnaryInstruction * operator_instruction);
     std::string hash_register(int _register);
     std::string hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction);
+    void basic_block_value_numbering(BasicBlock * block);
+    std::string hash_operand(BasicBlock * block, Variant operand);
 };
 
 void generate_code(Program * program) {
@@ -694,105 +696,115 @@ void CodeGenerator::build_basic_blocks() {
     }
 }
 
-void CodeGenerator::value_numbering() {
-    for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
-        BasicBlock * block = m_basic_blocks[i];
+void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
+    if (block->parents.size() == 1) {
+        BasicBlock * parent = m_basic_blocks[*(block->parents.begin())];
+        // clone parent's value numbers
+        block->value_numbers.associate_all(parent->value_numbers);
+    } else {
         for (int register_index = 0; register_index < m_register_count; ++register_index) {
             block->value_numbers.associate(register_index, Variant(hash_register(register_index)));
         }
+    }
 
-        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
-            Instruction * instruction = *it;
-            switch (instruction->type) {
-                case Instruction::COPY:
-                {
-                    CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-                    copy_instruction->source = inline_value(block, copy_instruction->source);
+    for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+        Instruction * instruction = *it;
+        switch (instruction->type) {
+            case Instruction::COPY:
+            {
+                CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+                copy_instruction->source = inline_value(block, copy_instruction->source);
+                block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+                break;
+            }
+            case Instruction::OPERATOR:
+            {
+                OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
+                operator_instruction->left = inline_value(block, operator_instruction->left);
+                operator_instruction->right = inline_value(block, operator_instruction->right);
+
+                CopyInstruction * copy_instruction = constant_expression_evaluated(block, operator_instruction);
+                if (copy_instruction != NULL) {
+                    *it = copy_instruction;
+                    break;
+                }
+
+                // normalize parameter order
+                // constant on the right and lower register first
+                bool swap = false;
+                if (operator_instruction->left.type != Variant::REGISTER) {
+                    // left is constant, swap
+                    swap = true;
+                } else if (operator_instruction->right.type == Variant::REGISTER) {
+                    // right is not constant. order by lower register first
+                    swap = operator_instruction->left._int > operator_instruction->right._int;
+                }
+                if (swap) {
+                    Variant tmp = operator_instruction->left;
+                    operator_instruction->left = operator_instruction->right;
+                    operator_instruction->right = tmp;
+                }
+
+                instruction = constant_folded(block, operator_instruction);
+                *it = instruction;
+
+                if (instruction->type != Instruction::OPERATOR)
+                    break;
+
+                operator_instruction = (OperatorInstruction *) instruction;
+
+                // replace operator instruction with a copy instruction if we can
+                std::string hash = hash_operator_instruction(block, operator_instruction);
+                std::set<int> * registers = block->value_numbers.keys(hash);
+                if (registers != NULL && registers->size() > 0) {
+                    int lowest = *(registers->begin());
+                    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(lowest, Variant::REGISTER));
+                    instruction = copy_instruction;
+                    *it = copy_instruction;
+                    delete operator_instruction;
                     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+                } else {
+                    block->value_numbers.associate(operator_instruction->dest._int, Variant(hash));
+                }
+                break;
+            }
+            case Instruction::UNARY:
+            {
+                UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
+                unary_instruction->source = inline_value(block, unary_instruction->source);
+
+                CopyInstruction * copy_instruction = constant_expression_evaluated(block, unary_instruction);
+                if (copy_instruction != NULL) {
+                    *it = copy_instruction;
                     break;
                 }
-                case Instruction::OPERATOR:
-                {
-                    OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-                    operator_instruction->left = inline_value(block, operator_instruction->left);
-                    operator_instruction->right = inline_value(block, operator_instruction->right);
 
-                    CopyInstruction * copy_instruction = constant_expression_evaluated(block, operator_instruction);
-                    if (copy_instruction != NULL) {
-                        *it = copy_instruction;
-                        break;
-                    }
-
-                    // normalize parameter order
-                    // constant on the right and lower register first
-                    bool swap = false;
-                    if (operator_instruction->left.type != Variant::REGISTER) {
-                        // left is constant, swap
-                        swap = true;
-                    } else if (operator_instruction->right.type == Variant::REGISTER) {
-                        // right is not constant. order by lower register first
-                        swap = operator_instruction->left._int > operator_instruction->right._int;
-                    }
-                    if (swap) {
-                        Variant tmp = operator_instruction->left;
-                        operator_instruction->left = operator_instruction->right;
-                        operator_instruction->right = tmp;
-                    }
-
-                    instruction = constant_folded(block, operator_instruction);
-                    *it = instruction;
-
-                    if (instruction->type != Instruction::OPERATOR)
-                        break;
-
-                    operator_instruction = (OperatorInstruction *) instruction;
-
-                    // replace operator instruction with a copy instruction if we can
-                    std::string hash = hash_operator_instruction(block, operator_instruction);
-                    std::set<int> * registers = block->value_numbers.keys(hash);
-                    if (registers != NULL && registers->size() > 0) {
-                        int lowest = *(registers->begin());
-                        CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(lowest, Variant::REGISTER));
-                        instruction = copy_instruction;
-                        *it = copy_instruction;
-                        delete operator_instruction;
-                        block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
-                    } else {
-                        block->value_numbers.associate(operator_instruction->dest._int, Variant(hash));
-                    }
-                    break;
-                }
-                case Instruction::UNARY:
-                {
-                    UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-                    unary_instruction->source = inline_value(block, unary_instruction->source);
-
-                    CopyInstruction * copy_instruction = constant_expression_evaluated(block, unary_instruction);
-                    if (copy_instruction != NULL) {
-                        *it = copy_instruction;
-                        break;
-                    }
-
-                    break;
-                }
-                case Instruction::IF:
-                {
-                    IfInstruction * if_instruction = (IfInstruction *) instruction;
-                    if_instruction->condition = inline_value(block, if_instruction->condition);
-                    break;
-                }
-                case Instruction::GOTO:
-                    break;
-                case Instruction::RETURN:
-                    break;
-                case Instruction::PRINT:
-                {
-                    PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-                    print_instruction->value = inline_value(block, print_instruction->value);
-                    break;
-                }
+                break;
+            }
+            case Instruction::IF:
+            {
+                IfInstruction * if_instruction = (IfInstruction *) instruction;
+                if_instruction->condition = inline_value(block, if_instruction->condition);
+                break;
+            }
+            case Instruction::GOTO:
+                break;
+            case Instruction::RETURN:
+                break;
+            case Instruction::PRINT:
+            {
+                PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+                print_instruction->value = inline_value(block, print_instruction->value);
+                break;
             }
         }
+    }
+}
+
+void CodeGenerator::value_numbering() {
+    for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
+        BasicBlock * block = m_basic_blocks[i];
+        basic_block_value_numbering(block);
     }
 }
 
@@ -1067,20 +1079,27 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
     return instruction;
 }
 
+std::string CodeGenerator::hash_operand(BasicBlock * block, Variant operand) {
+    if (operand.type == Variant::REGISTER) {
+        Variant value = block->value_numbers.get(operand._int);
+        if (value.type == Variant::VALUE_NUMBER) {
+            std::stringstream ss;
+            ss << "#" << value.str();
+            return ss.str();
+        } else {
+            return value.str();
+        }
+    } else {
+        return operand.str();
+    }
+}
 
 std::string CodeGenerator::hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction) {
     std::stringstream ss;
-    if (instruction->left.type == Variant::REGISTER) {
-        Variant value = block->value_numbers.get(instruction->left._int);
-        if (value.type == Variant::VALUE_NUMBER) {
-            ss << "#" << value.str();
-        } else {
-            ss << value.str();
-        }
-    } else {
-        ss << instruction->left.str();
-    }
+    ss << hash_operand(block, instruction->left);
     ss << " " << instruction->operator_str() << " ";
+    ss << hash_operand(block, instruction->right);
+
     return ss.str();
 }
 

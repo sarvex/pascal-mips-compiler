@@ -1,11 +1,9 @@
 Project 2 Release:
- * extended block value numbering
  * correct line numbers when printing for jumps
 
 
 Bonus:
  * optimize out $a = $a
- * minus negative number -> add positive number
  * reals
  * global redundancy elimination
  * add NOT operator
