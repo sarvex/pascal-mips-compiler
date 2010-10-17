@@ -1,34 +1,45 @@
 program Main;
 class Main begin
     function Main;
-        var a1 : Integer;
-        var a2 : Integer;
-        var a3 : Integer;
-        var b : Integer;
-        var c : Integer;
-        var d : Integer;
-        var t : Integer;
+        var t0 : Integer;
+        var t1 : Integer;
         var t2 : Integer;
         var t3 : Integer;
         var t4 : Integer;
-        var trash1 : Integer;
-        var trash2 : Integer;
+        var t5 : Integer;
+        var t6 : Integer;
+        var a : Integer;
+        var b : Integer;
+        var c : Integer;
+        var d : Integer;
+        var trash1 : Boolean;
+        var trash2 : Boolean;
     begin
-        t := b + c;
+        t6 := a + b;
+        t5 := b + c;
         t2 := c + d;
         if trash1 then begin
-            a1 := t + d;
             d := d + 1;
         end else begin
-            a2 := trash2;
+            t1 := t1 + 1;
         end;
-        t3 := b + c;
-        t4 := c + d;
+        print 123;
+        t3 := b + c; {use value number}
+        t4 := c + d; {don't use value number}
         while trash2 do begin
-            a2 := b + c;
-            t := 0;
-            a3 := b + c;
+            t0 := a + b; {don't use value number}
+            t0 := b + c; {use value number}
+            t1 := c + d; {don't use value number}
+            while trash1 do begin
+                d := d + 1;
+                trash1 := false;
+                trash2 := false;
+            end;
+            a := a + 1;
         end;
+        t3 := a + b; {don't use value number}
+        t3 := b + c; {use value number}
+        t3 := c + d; {don't use value number}
     end
 end
 .

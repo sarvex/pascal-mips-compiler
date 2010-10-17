@@ -298,7 +298,7 @@ private:
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
     void calculate_mangle_set(int block_index);
     void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
-    bool check_child(int block_index, int later_parent_index);
+    bool calculate_child_mangle_set(int block_index, int later_parent_index);
 };
 
 CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
@@ -767,36 +767,59 @@ void CodeGenerator::build_basic_blocks() {
 }
 
 void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
-    if (block->parents.size() == 0) {
-        // set all registers to garbage
-        for (int register_index = 0; register_index < m_register_count; ++register_index) {
-            block->value_numbers.associate(register_index, Variant(next_unique_value()));
-        }
-    } else if (block->parents.size() == 1) {
-        // clone all parents' value numbers
-        for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); ++it) {
+    // initialize our value numbers to something that has to do with parent value numbers.
+    // for each register
+    for (int register_index = 0; register_index < m_register_count; ++register_index) {
+        // if any of our parents disagree about the value number, or if any of the parents mangle our value number,
+        // then we have to use a unique one. As long as at least one parent provides a value number, and nobody mangles it,
+        // then we can use that.
+        std::set<int>::iterator it = block->parents.begin();
+        // consult all of the parents with value numbers (normal parents).
+        // find the first parent with value numbers and start with that parent's opinion of what the value number is.
+        Variant value;
+        bool has_a_value_at_all = false;
+        for (; it != block->parents.end(); ++it) {
             BasicBlock * parent = m_basic_blocks[*it];
-            block->value_numbers.associate_all(parent->value_numbers);
-        }
-    } else {
-        // for each register
-        for (int register_index = 0; register_index < m_register_count; ++register_index) {
-            // if any of the parents disagree about the value number, assign garbage, otherwise use the agreed upon value
-            std::set<int>::iterator it = block->parents.begin();
-            BasicBlock * parent = m_basic_blocks[*it];
-            Variant value = parent->value_numbers.get(register_index);
+            if (parent->value_numbers.is_empty())
+                continue; // no value numbers
+            value = parent->value_numbers.get(register_index);
             block->value_numbers.associate(register_index, value);
-            for (; it != block->parents.end(); ++it) {
-                parent = m_basic_blocks[*it];
-                if (parent->value_numbers.get(register_index) != value) {
-                    block->value_numbers.associate(register_index, next_unique_value());
-                    break;
-                }
+            has_a_value_at_all = true;
+            break;
+        }
+        // then check the value with all the rest of the parents who have value numbers
+        for (; it != block->parents.end(); ++it) {
+            BasicBlock * parent = m_basic_blocks[*it];
+            if (parent->value_numbers.is_empty())
+                continue; // no value numbers
+            Variant other_value = parent->value_numbers.get(register_index);
+            if (other_value != value) {
+                // at least two parents disagree about this register. gotta say it's unique.
+                block->value_numbers.associate(register_index, next_unique_value());
+                // this register can't get any worse. move on to the next one.
+                goto continue_register_loop;
             }
         }
+        // finally check with any parents who want to mangle our values.
+        it = block->parents.begin();
+        for (; it != block->parents.end(); ++it) {
+            BasicBlock * parent = m_basic_blocks[*it];
+            if (parent->mangled_registers.count(register_index)) {
+                block->value_numbers.associate(register_index, next_unique_value());
+                has_a_value_at_all = true;
+                // one bit of bad news is all it takes. we have nothing left to lose.
+                goto continue_register_loop;
+            }
+        }
+        // if none of our parents will help us out (like if we have no parents), then we'll assume our value is garbage.
+        if (!has_a_value_at_all)
+            block->value_numbers.associate(register_index, next_unique_value());
+
+        // we wouldn't have to use goto if C++ had labeld loops like Java.
+        continue_register_loop:;
     }
 
-
+    // now do our own value numbers.
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
         switch (instruction->type) {
@@ -913,12 +936,12 @@ void CodeGenerator::calculate_mangle_set(int block_index) {
         if (parent_index > block_index) {
             // search for every path from this block to the later parent (which is the entire
             // scope of the loop) and record which registers are mangled along the way.
-            check_child(block_index, parent_index);
+            calculate_child_mangle_set(block_index, parent_index);
         }
     }
 }
 
-bool CodeGenerator::check_child(int block_index, int later_parent_index) {
+bool CodeGenerator::calculate_child_mangle_set(int block_index, int later_parent_index) {
     BasicBlock * block = m_basic_blocks[block_index];
 
     // prevent infinite recursion
@@ -927,9 +950,9 @@ bool CodeGenerator::check_child(int block_index, int later_parent_index) {
     block->visited = true;
     bool leads_to_victory = false;
     if (block->jump_child != -1)
-        leads_to_victory |= check_child(block->jump_child, later_parent_index);
+        leads_to_victory |= calculate_child_mangle_set(block->jump_child, later_parent_index);
     if (block->fallthrough_child != -1)
-        leads_to_victory |= check_child(block->fallthrough_child, later_parent_index);
+        leads_to_victory |= calculate_child_mangle_set(block->fallthrough_child, later_parent_index);
     leads_to_victory |= block_index == later_parent_index;
     block->visited = false;
 
@@ -963,6 +986,7 @@ void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * bl
         }
     }
 }
+
 void CodeGenerator::dependency_management() {
     // TODO
 }
