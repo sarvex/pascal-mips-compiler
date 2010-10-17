@@ -785,6 +785,7 @@ void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
             value = parent->value_numbers.get(register_index);
             block->value_numbers.associate(register_index, value);
             has_a_value_at_all = true;
+            it++;
             break;
         }
         // then check the value with all the rest of the parents who have value numbers
@@ -1278,7 +1279,7 @@ std::string CodeGenerator::hash_operand(BasicBlock * block, Variant operand) {
         Variant value = block->value_numbers.get(operand._int);
         if (value.type == Variant::VALUE_NUMBER) {
             std::stringstream ss;
-            ss << "#" << value.str();
+            ss << "(" << value.str() << ")";
             return ss.str();
         } else {
             return value.str();
