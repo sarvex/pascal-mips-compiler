@@ -14,6 +14,10 @@ class Main begin
         a2 := b + c + d;
         t := 0;
         a3 := b + c + d;
+        print a1;
+        print a2;
+        print a3;
+        print t;
     end
 end
 .

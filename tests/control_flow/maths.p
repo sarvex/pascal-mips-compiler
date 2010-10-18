@@ -14,6 +14,10 @@ class Main begin
         b := a / 1;
         b := 2 * a;
         b := a / a;
+        b := a mod a;
+        b := 0 mod a;
+        b := 0 / a;
+        b := 0 - a;
         print b;
 
         d := c and c;
