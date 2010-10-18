@@ -892,7 +892,7 @@ void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
 
                 // replace operator instruction with a copy instruction if we can
                 std::string hash = hash_operator_instruction(block, operator_instruction);
-                std::set<int> * registers = block->value_numbers.keys(hash);
+                std::list<int> * registers = block->value_numbers.keys(hash);
                 if (registers != NULL && registers->size() > 0) {
                     int lowest = *(registers->begin());
                     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(lowest, Variant::REGISTER));
@@ -1581,7 +1581,7 @@ CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant r
     if (register_or_const.type == Variant::REGISTER) {
         Variant value = block->value_numbers.get(register_or_const._int);
         if (value.type == Variant::VALUE_NUMBER) {
-            std::set<int> * registers = block->value_numbers.keys(value);
+            std::list<int> * registers = block->value_numbers.keys(value);
             int lowest = *(registers->begin());
             return Variant(lowest, Variant::REGISTER);
         } else {

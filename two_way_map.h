@@ -2,14 +2,14 @@
 #define TWO_WAY_MAP_H
 
 #include <map>
-#include <set>
+#include <list>
 
 template <class K, class V>
 class TwoWayMap
 {
 public:
     void associate(K key, V value);
-    std::set<K> * keys(V value);
+    std::list<K> * keys(V value);
     V get(K key);
     // make this TwoWayMap equal to other
     void associate_all(const TwoWayMap & other);
@@ -17,7 +17,7 @@ public:
     bool is_empty() const;
 private:
     std::map<K, V> forward;
-    std::map<V, std::set<K> *> backward;
+    std::map<V, std::list<K> *> backward;
 };
 
 template <class K, class V>
@@ -33,7 +33,7 @@ bool TwoWayMap<K, V>::is_empty() const {
 }
 
 template <class K, class V>
-std::set<K> * TwoWayMap<K, V>::keys(V value){
+std::list<K> * TwoWayMap<K, V>::keys(V value){
     if (backward.count(value))
         return backward[value];
     else
@@ -50,24 +50,24 @@ void TwoWayMap<K, V>::associate(K key, V value){
     // destroy old association
     if (forward.count(key)) {
         V old_value = forward[key];
-        std::set<K> * set = backward[old_value];
-        set->erase(key);
-        if (set->size() == 0) {
-            delete set;
+        std::list<K> * list = backward[old_value];
+        list->remove(key);
+        if (list->size() == 0) {
+            delete list;
             backward.erase(old_value);
         }
     }
 
     // make new one
     forward[key] = value;
-    std::set<K> * set;
+    std::list<K> * list;
     if (backward.count(value)) {
-        set = backward[value];
+        list = backward[value];
     } else {
-        set = new std::set<K>();
-        backward[value] = set;
+        list = new std::list<K>();
+        backward[value] = list;
     }
-    set->insert(key);
+    list->push_back(key);
 
 }
 

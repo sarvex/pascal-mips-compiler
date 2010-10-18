@@ -27,10 +27,7 @@ class Main begin
 
         print b;
 
-        b := ---------a;
-        print b;
-
-        d := not not not not c;
+        d := not c;
         print d;
 
         
