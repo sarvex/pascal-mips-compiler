@@ -2,10 +2,7 @@ Project 2 Release
 
 Bonus:
  * test for negating non-numeric types
- * test for expressions in a compare (1 < this)
  * test for boolean expression in if statement
- * pass the test that crashes program
- * evaluate constant expressions before semantic checking
  * test for invalid/valid array indicies with expressions like 8*8-32
  * print statement with trailing comma (meaning no newline)
  * functions with parameters but no return type

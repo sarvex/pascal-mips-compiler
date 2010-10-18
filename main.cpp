@@ -4,10 +4,26 @@
 #include "semantic_checker.h"
 #include "code_generation.h"
 
-int main(int argc, char ** argv) {
+#include <string>
+
+void print_usage(std::string exe_name);
+
+int main(int argc, char * argv[]) {
     char * filename = NULL;
-    if (1 < argc) {
-        filename = argv[1];
+
+    bool print_assembly = false;
+    for (int i=1; i<argc; ++i) {
+        std::string arg = argv[i];
+        if (arg[0] == '-') {
+            if (arg.compare("-s") == 0) {
+                print_assembly = true;
+            } else {
+                std::cerr << "Unrecognized parameter: " << arg << std::endl;
+                print_usage(argv[0]);
+            }
+        } else {
+            filename = argv[i];
+        }
     }
 
     Program * program = parse_input(filename);
@@ -20,7 +36,17 @@ int main(int argc, char ** argv) {
     if (!semantic_success)
         return 1;
 
-    generate_code(program);
+    if (print_assembly) {
+        generate_code(program);
+    }
 
     return 0;
+}
+
+void print_usage(std::string exe_name) {
+    std::cerr << "Usage: \n\n";
+    std::cerr << "Compile a file:\n\n";
+    std::cerr << exe_name << " [file]\n\n";
+    std::cerr << "Show assembly output:\n";
+    std::cerr << exe_name << " -s [file]\n";
 }

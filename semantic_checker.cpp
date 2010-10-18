@@ -15,7 +15,8 @@ bool SemanticChecker::check(Program * program, SymbolTable * symbol_table)
 SemanticChecker::SemanticChecker(Program * program, SymbolTable * symbol_table) :
     m_program(program),
     m_symbol_table(symbol_table),
-    m_success(true) {}
+    m_success(true),
+    m_recursive_error(false){}
 
 bool SemanticChecker::internal_check()
 {
@@ -40,6 +41,26 @@ bool SemanticChecker::internal_check()
     } else {
         std::cerr << err_header(m_program->identifier->line_number) << "missing program class" << std::endl;
         m_success = false;
+    }
+
+    // check classes for illegal recursive structures
+    for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
+        ClassDeclaration * class_declaration = class_list->item;
+        m_class_id = class_declaration->identifier->text;
+
+        TypeDenoter * class_type = new TypeDenoter(class_declaration->identifier);
+        for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
+            VariableDeclaration * variable_declaration = variable_list->item;
+
+            if (variable_declaration->type->type == TypeDenoter::CLASS) {
+                if (class_contains_class(variable_declaration->type, class_type)) {
+                    std::cerr << err_header(variable_declaration->type->class_identifier->line_number) <<
+                            "cannot have a recursive data structure" << std::endl;
+                    m_success = false;
+                    m_recursive_error = true;
+                }
+            }
+        }
     }
 
     // check classes
@@ -134,6 +155,27 @@ bool SemanticChecker::types_equal(TypeDenoter * type1, TypeDenoter * type2)
     }
 }
 
+bool SemanticChecker::class_contains_class(TypeDenoter * owner, TypeDenoter * owned) {
+    // return true if any of the fields or their classes has this class
+    assert(owner->type == TypeDenoter::CLASS);
+    assert(owned->type == TypeDenoter::CLASS);
+
+    if (owner->class_identifier->text == owned->class_identifier->text) {
+        return true;
+    }
+
+    if (! m_symbol_table->has_key(owner->class_identifier->text))
+        return false;
+
+    VariableTable * owner_fields = m_symbol_table->get(owner->class_identifier->text)->variables;
+    for (int i=0; i<owner_fields->count(); ++i) {
+        VariableData * variable_data = owner_fields->get(i);
+        if (variable_data->type->type == TypeDenoter::CLASS && class_contains_class(variable_data->type, owned))
+            return true;
+    }
+    return false;
+}
+
 bool SemanticChecker::is_ancestor(TypeDenoter * child, TypeDenoter * ancestor)
 {
     assert(child->type == TypeDenoter::CLASS);
@@ -152,6 +194,10 @@ bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenot
 {
     assert(left_type->type == TypeDenoter::CLASS);
     assert(right_type->type == TypeDenoter::CLASS);
+
+    if (m_recursive_error)
+        return true;
+
     VariableTable * left_fields = m_symbol_table->get(left_type->class_identifier->text)->variables;
     VariableTable * right_fields = m_symbol_table->get(right_type->class_identifier->text)->variables;
     for (int i=0; i < left_fields->count() || i < right_fields->count(); ++i) {
@@ -161,8 +207,9 @@ bool SemanticChecker::structurally_equivalent(TypeDenoter * left_type, TypeDenot
         if (i >= right_fields->count())
             return false;
         // each field has to be assignment compatible
-        if (! assignment_valid(left_fields->get(i)->type, right_fields->get(i)->type))
+        if (!assignment_valid(left_fields->get(i)->type, right_fields->get(i)->type))
             return false;
+
     }
 
     return true;
@@ -287,6 +334,14 @@ TypeDenoter * SemanticChecker::check_expression(Expression * expression)
         // it's just the type of the first additive expression
         type = check_additive_expression(expression->left);
     } else {
+        TypeDenoter * left_type = check_additive_expression(expression->left);
+        TypeDenoter * right_type = check_additive_expression(expression->right);
+        if (! assignment_valid(left_type, right_type) && !assignment_valid(right_type, left_type)) {
+            std::cerr << err_header(expression->_operator->line_number) <<
+                    type_to_string(left_type) << " and " << type_to_string(right_type) << " are not comparable." << std::endl;
+            m_success = false;
+            return NULL;
+        }
         // we're looking at a compare operator, so it always returns a boolean
         type = new TypeDenoter(TypeDenoter::BOOLEAN);
     }

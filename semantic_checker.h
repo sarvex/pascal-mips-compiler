@@ -22,6 +22,9 @@ class SemanticChecker {
         // true if we have not encountered any errors
         bool m_success;
 
+        // true if we have any recursive data structures
+        bool m_recursive_error;
+
     private: // methods
         SemanticChecker(Program * program, SymbolTable * symbol_table);
         bool internal_check();
@@ -61,6 +64,7 @@ class SemanticChecker {
         TypeDenoter * class_variable_type(std::string class_name, Identifier * variable);
         void check_type(TypeDenoter * type);
         bool structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type);
+        bool class_contains_class(TypeDenoter * owner, TypeDenoter * owned);
 };
 
 #endif

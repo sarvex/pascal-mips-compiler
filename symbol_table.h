@@ -37,7 +37,7 @@ struct ClassSymbolTable {
     ClassSymbolTable(ClassDeclaration * class_declaration) :
         class_declaration(class_declaration),
         variables(new OrderedInsensitiveMap<VariableData *>),
-        function_symbols(new OrderedInsensitiveMap<FunctionSymbolTable *>) {};
+        function_symbols(new OrderedInsensitiveMap<FunctionSymbolTable *>) {}
 };
 // maps class name to symbol table
 typedef OrderedInsensitiveMap<ClassSymbolTable *> SymbolTable;
