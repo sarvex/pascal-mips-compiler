@@ -3,7 +3,6 @@ Project 2 Release:
 Bonus:
  * optimize out $a = $a
  * reals
- * global redundancy elimination
  * add NOT operator
  * test for negating non-numeric types
  * document enum hax

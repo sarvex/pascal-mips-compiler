@@ -80,7 +80,9 @@ private:
                     ss << (_bool ? "true" : "false");
                     break;
                 case CONST_REAL:
+                    ss.setf(std::ios::showpoint);
                     ss << _float;
+                    ss.unsetf(std::ios::showpoint);
                     break;
             }
             return ss.str();
