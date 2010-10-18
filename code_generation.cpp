@@ -19,6 +19,7 @@ public:
     void value_numbering();
     void calculate_mangle_sets();
     void dependency_management();
+    void block_deletion();
     void compute_addresses();
 
     void print_basic_blocks();
@@ -247,10 +248,11 @@ private:
         bool is_destination;
         bool is_source;
 
+        bool deleted;
         // maps registers to value number/ constant
         TwoWayMap<int, Variant> value_numbers;
 
-        BasicBlock(int start, int end) : start(start), end(end), is_destination(false), is_source(false) {}
+        BasicBlock(int start, int end) : start(start), end(end), is_destination(false), is_source(false), deleted(false) {}
     };
 
     typedef std::list<Instruction *> InstructionList;
@@ -284,7 +286,7 @@ private:
     void gen_assignment(VariableAccess * variable, Variant source);
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
 
-    void print_disassembly(int address, Instruction * instruction);
+    void print_assembly(int address, Instruction * instruction);
 
     Variant get_value_number(BasicBlock * block, Variant register_or_const);
     Variant inline_value(BasicBlock * block, Variant register_or_const);
@@ -295,14 +297,17 @@ private:
     bool right_constant_is(OperatorInstruction * instruction, int constant);
     bool left_constant_is(OperatorInstruction * instruction, int constant);
     CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant);
+    CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, float constant);
+    CopyInstruction * make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, bool constant);
     CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, int constant);
+    CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, float constant);
+    CopyInstruction * make_immediate(BasicBlock * block, UnaryInstruction * operator_instruction, bool constant);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, OperatorInstruction * operator_instruction);
     CopyInstruction * constant_expression_evaluated(BasicBlock * block, UnaryInstruction * operator_instruction);
     std::string next_unique_value();
     std::string hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction);
     void basic_block_value_numbering(BasicBlock * block);
     std::string hash_operand(BasicBlock * block, Variant operand);
-    Variant typed_constant(Variant _register, int constant);
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
     void calculate_mangle_set(int block_index);
     void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
@@ -310,6 +315,7 @@ private:
     void calculate_downward_mangle_set(int block_index);
     void calculate_upward_mangle_set(int block_index);
     void add_if_register(std::set<int> & set, Variant possibly_a_register);
+    void delete_block(int index);
 };
 
 CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
@@ -356,11 +362,18 @@ void generate_code(Program * program) {
             generator.print_basic_blocks();
             std::cout << "--------------------------" << std::endl;
 
+            generator.block_deletion();
+            generator.compute_addresses();
+            std::cout << "3 Address Code After Block Deletion" << std::endl;
+            std::cout << "--------------------------" << std::endl;
+            generator.print_basic_blocks();
+            std::cout << "--------------------------" << std::endl;
+
         }
     }
 }
 
-void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
+void CodeGenerator::print_assembly(int address, Instruction * instruction) {
     std::cout << address << ":\t";
     switch (instruction->type) {
         case Instruction::COPY:
@@ -416,12 +429,14 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
 }
 
 void CodeGenerator::print_basic_blocks() {
+    int block_count = 0;
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
-        std::cout << "block_" << b << ":" << std::endl;
         BasicBlock * block = m_basic_blocks[b];
+        if (! block->deleted)
+            std::cout << "block_" << block_count++ << ":" << std::endl;
         int i = block->start;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i)
-            print_disassembly(i, *it);
+            print_assembly(i, *it);
     }
 }
 
@@ -1065,12 +1080,16 @@ void CodeGenerator::compute_addresses() {
     int address = 0;
     for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
         BasicBlock * block = m_basic_blocks[i];
+        if (block->deleted)
+            continue;
         block->start = address;
         address += block->instructions.size();
         block->end = address;
     }
     for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
         BasicBlock * block = m_basic_blocks[i];
+        if (block->deleted)
+            continue;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
             Instruction * instruction = *it;
             if (instruction->type == Instruction::IF) {
@@ -1081,6 +1100,59 @@ void CodeGenerator::compute_addresses() {
                 goto_instruction->goto_index = m_basic_blocks[block->jump_child]->start;
             }
         }
+    }
+}
+
+void CodeGenerator::delete_block(int index) {
+    BasicBlock * block = m_basic_blocks[index];
+
+    assert((block->jump_child == -1) != (block->fallthrough_child == -1));
+    int child = block->jump_child != -1 ? block->jump_child : block->fallthrough_child;
+
+    for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); ++it) {
+        BasicBlock * parent = m_basic_blocks[*it];
+        if (parent->jump_child == index) {
+            parent->jump_child = child;
+        } else if (parent->fallthrough_child == index) {
+            parent->fallthrough_child = child;
+        }
+    }
+    block->deleted = true;
+}
+
+void CodeGenerator::block_deletion() {
+    for (int i = m_basic_blocks.size() - 1; i >= 0; --i) {
+        BasicBlock * block = m_basic_blocks[i];
+
+        if (block->instructions.size() != 0) {
+            // if last instruction is if statement
+            Instruction * last_instruction = *(block->instructions.rbegin());
+            bool fallthrough = false;
+
+            if (last_instruction->type == Instruction::IF) {
+                fallthrough = block->jump_child == block->fallthrough_child;
+            } else if (last_instruction->type == Instruction::GOTO) {
+                for (int j = i+1; j < (int)m_basic_blocks.size(); ++j) {
+                    BasicBlock * next_block = m_basic_blocks[j];
+                    if (next_block->deleted)
+                        continue;
+                    fallthrough = block->jump_child == j;
+                    block->fallthrough_child = j;
+                    break;
+                }
+            }
+            if (fallthrough) {
+                InstructionList::iterator last = block->instructions.end();
+                --last;
+                block->instructions.erase(last);
+                block->jump_child = -1;
+                delete last_instruction;
+            }
+        }
+
+        // delete empty blocks
+        if (block->instructions.size() == 0)
+            delete_block(i);
     }
 }
 
@@ -1272,6 +1344,8 @@ CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(Ba
     if (instruction->left.type == Variant::REGISTER || instruction->right.type == Variant::REGISTER)
         return NULL;
 
+    assert(instruction->left.type == instruction->right.type);
+
     switch (instruction->_operator) {
         case OperatorInstruction::EQUAL:
             switch (instruction->left.type) {
@@ -1428,29 +1502,44 @@ bool CodeGenerator::left_constant_is(OperatorInstruction * instruction, int cons
            (instruction->left.type == Variant::CONST_REAL && instruction->left._float == (float)constant) ||
            (instruction->left.type == Variant::CONST_BOOL && instruction->left._bool == (bool)constant);
 }
-CodeGenerator::Variant CodeGenerator::typed_constant(Variant _register, int constant) {
-    switch (m_register_type[_register._int]) {
-        case REAL:
-            return Variant((float) constant);
-        case INTEGER:
-            return Variant((int) constant, Variant::CONST_INT);
-        case BOOL:
-            return Variant((bool) constant);
-        default:
-            assert(false);
-            return Variant();
-    }
-}
 
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
-    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, typed_constant(unary_instruction->dest, constant));
+    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant, Variant::CONST_INT));
+    delete unary_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+    return copy_instruction;
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, float constant) {
+    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant));
+    delete unary_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+    return copy_instruction;
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, bool constant) {
+    CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant));
     delete unary_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
 CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
-    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, typed_constant(operator_instruction->dest, constant));
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
+    delete operator_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+    return copy_instruction;
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, float constant) {
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant));
+    delete operator_instruction;
+    block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
+    return copy_instruction;
+}
+
+CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, bool constant) {
+    CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant));
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
