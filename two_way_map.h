@@ -35,14 +35,14 @@ bool TwoWayMap<K, V>::is_empty() const {
 template <class K, class V>
 std::set<K> * TwoWayMap<K, V>::keys(V value){
     if (backward.count(value))
-        return backward.at(value);
+        return backward[value];
     else
         return NULL;
 }
 
 template <class K, class V>
 V TwoWayMap<K, V>::get(K key){
-    return forward.at(key);
+    return forward[key];
 }
 
 template <class K, class V>
