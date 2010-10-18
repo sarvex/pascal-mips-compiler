@@ -1,9 +1,7 @@
 Project 2 Release
 
 Bonus:
- * optimize out $a = $a
  * test for negating non-numeric types
- * document enum hax
  * test for expressions in a compare (1 < this)
  * test for boolean expression in if statement
  * pass the test that crashes program

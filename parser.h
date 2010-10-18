@@ -105,6 +105,7 @@ struct IdentifierList {
 };
 
 struct TypeDenoter {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {INTEGER, REAL, CHAR, BOOLEAN, CLASS, ARRAY};
     Type type;
     union {
@@ -155,6 +156,7 @@ struct StatementList {
 };
 
 struct Statement {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {FUNCTION, METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND, ATTRIBUTE};
     Type type;
     union {
@@ -208,6 +210,7 @@ struct WhileStatement {
 };
 
 struct VariableAccess {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {IDENTIFIER, INDEXED_VARIABLE, ATTRIBUTE, THIS};
     Type type;
     union {
@@ -248,6 +251,7 @@ struct Expression {
 };
 
 struct ComparisonOperator {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {EQUAL, NOT_EQUAL, LESS, GREATER, LESS_EQUAL, GREATER_EQUAL};
     Type type;
     int line_number;
@@ -266,6 +270,7 @@ struct AdditiveExpression {
 };
 
 struct AdditiveOperator {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {PLUS, MINUS, OR};
     Type type;
     int line_number;
@@ -285,6 +290,7 @@ struct MultiplicativeExpression {
 };
 
 struct MultiplicativeOperator {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {TIMES, DIVIDE, MOD, AND};
     Type type;
     int line_number;
@@ -292,6 +298,7 @@ struct MultiplicativeOperator {
 };
 
 struct NegatableExpression {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {SIGN, PRIMARY};
     Type type;
     union {
@@ -309,6 +316,7 @@ struct NegatableExpression {
 };
 
 struct PrimaryExpression {
+    // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
     int type;
     union {
