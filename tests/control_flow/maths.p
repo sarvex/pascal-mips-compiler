@@ -14,11 +14,21 @@ class Main begin
         b := a / 1;
         b := 2 * a;
         b := a / a;
+        print b;
 
         d := c and c;
         d := c and false;
         d := c or c;
         d := c or true;
+
+        print b;
+
+        b := ---------a;
+        print b;
+
+        d := not not not not c;
+        print d;
+
         
         { unsupported 
         a >> 0 = a

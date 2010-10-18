@@ -27,6 +27,7 @@ class Main begin
                 d := 2 + b
         end;
         a4 := b + c;
+        print a4;
     end
 end
 .

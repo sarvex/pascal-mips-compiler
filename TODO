@@ -1,6 +1,4 @@
 Project 2 Release:
- * correct line numbers when printing for jumps
-
 
 Bonus:
  * optimize out $a = $a

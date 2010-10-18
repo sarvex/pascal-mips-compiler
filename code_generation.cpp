@@ -19,6 +19,7 @@ public:
     void value_numbering();
     void calculate_mangle_sets();
     void dependency_management();
+    void compute_addresses();
 
     void print_basic_blocks();
     void print_control_flow_graph();
@@ -238,6 +239,7 @@ private:
         std::set<int> parents;
         std::list<Instruction *> instructions;
         std::set<int> mangled_registers;
+        std::set<int> used_registers;
 
         // for detecting loops during mangle set calculations
         bool is_destination;
@@ -301,8 +303,10 @@ private:
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
     void calculate_mangle_set(int block_index);
     void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
+    void record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results);
     void calculate_downward_mangle_set(int block_index);
     void calculate_upward_mangle_set(int block_index);
+    void add_if_register(std::set<int> & set, Variant possibly_a_register);
 };
 
 CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
@@ -341,14 +345,14 @@ void generate_code(Program * program) {
             generator.print_basic_blocks();
             std::cout << "--------------------------" << std::endl;
 
-            /*
             generator.dependency_management();
+            generator.compute_addresses();
 
             std::cout << "3 Address Code After Dependency Management" << std::endl;
             std::cout << "--------------------------" << std::endl;
             generator.print_basic_blocks();
             std::cout << "--------------------------" << std::endl;
-            */
+
         }
     }
 }
@@ -397,9 +401,13 @@ void CodeGenerator::print_disassembly(int address, Instruction * instruction) {
             std::cout << "return";
             break;
         case Instruction::PRINT:
+        {
             PrintInstruction * print_instruction = (PrintInstruction *) instruction;
             std::cout << "print " << print_instruction->value.str();
             break;
+        }
+        default:
+            assert(false);
     }
     std::cout << ";" << std::endl;
 }
@@ -986,8 +994,8 @@ void CodeGenerator::calculate_upward_mangle_set(int block_index) {
     }
 }
 
-void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls) {
-    std::set<int> * mangled_registers = & block_that_gets_the_resutls->mangled_registers;
+void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
+    std::set<int> * mangled_registers = & block_that_gets_the_results->mangled_registers;
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
         switch (instruction->type) {
@@ -1009,8 +1017,207 @@ void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * bl
     }
 }
 
+void CodeGenerator::add_if_register(std::set<int> & set, Variant possibly_a_register) {
+    if (possibly_a_register.type == Variant::REGISTER)
+        set.insert(possibly_a_register._int);
+}
+
+void CodeGenerator::record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
+    std::set<int> & used_registers = block_that_gets_the_results->used_registers;
+    for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+        Instruction * instruction = *it;
+        switch (instruction->type) {
+        case Instruction::COPY:
+            add_if_register(used_registers, ((CopyInstruction *)instruction)->source);
+            break;
+        case Instruction::OPERATOR:
+            add_if_register(used_registers, ((OperatorInstruction *)instruction)->left);
+            add_if_register(used_registers, ((OperatorInstruction *)instruction)->right);
+            break;
+        case Instruction::UNARY:
+            add_if_register(used_registers, ((UnaryInstruction *)instruction)->source);
+            break;
+        case Instruction::PRINT:
+            add_if_register(used_registers, ((PrintInstruction *)instruction)->value);
+            break;
+        case Instruction::IF:
+            add_if_register(used_registers, ((IfInstruction *)instruction)->condition);
+            break;
+        case Instruction::GOTO:
+        case Instruction::RETURN:
+            break;
+        }
+    }
+}
+
+void CodeGenerator::compute_addresses() {
+    int address = 0;
+    for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
+        BasicBlock * block = m_basic_blocks[i];
+        block->start = address;
+        address += block->instructions.size();
+        block->end = address;
+    }
+    for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
+        BasicBlock * block = m_basic_blocks[i];
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+            Instruction * instruction = *it;
+            if (instruction->type == Instruction::IF) {
+                IfInstruction * if_instruction = (IfInstruction *) instruction;
+                if_instruction->goto_index = m_basic_blocks[block->jump_child]->start;
+            } else if (instruction->type == Instruction::GOTO) {
+                GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
+                goto_instruction->goto_index = m_basic_blocks[block->jump_child]->start;
+            }
+        }
+    }
+}
+
 void CodeGenerator::dependency_management() {
-    // TODO
+    for (int block_index = 0; block_index < (int)m_basic_blocks.size(); ++block_index) {
+        BasicBlock * block = m_basic_blocks[block_index];
+        for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); it++) {
+            int parent_index = *it;
+            // only consider blocks that have parents later in the program.
+            // these blocks are usually the beginings of loops
+            if (parent_index > block_index) {
+                // search for every path from this block to the later parent (which is the entire
+                // scope of the loop) and record which registers are mangled along the way.
+                calculate_downward_mangle_set(block_index);
+                calculate_upward_mangle_set(parent_index);
+                BasicBlock * end_node = m_basic_blocks[parent_index];
+                // now add in all the mangles from the between nodes.
+                for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
+                    BasicBlock * node = m_basic_blocks[i];
+                    if (node->is_destination && node->is_source) {
+                        // this block is on the path to victory.
+                        // record the mangled registers and store them in the later parent.
+                        record_used_registers(node, end_node);
+                    }
+                    // reset state for next go around.
+                    node->is_destination = false;
+                    node->is_source = false;
+                }
+            }
+        }
+
+    }
+
+    for (int i = m_basic_blocks.size() - 1; i >= 0; --i) {
+        BasicBlock * block = m_basic_blocks[i];
+
+        if (block->jump_child != -1) {
+            BasicBlock * child = m_basic_blocks[block->jump_child];
+            block->used_registers.insert(child->used_registers.begin(), child->used_registers.end());
+        }
+        if (block->fallthrough_child != -1) {
+            BasicBlock * child = m_basic_blocks[block->fallthrough_child];
+            block->used_registers.insert(child->used_registers.begin(), child->used_registers.end());
+        }
+
+        InstructionList::iterator it = block->instructions.end();
+        while (it != block->instructions.begin()) {
+            --it;
+            Instruction * instruction = *it;
+            switch (instruction->type) {
+                case Instruction::COPY:
+                {
+                    CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+
+                    int dest_register = copy_instruction->dest._int;
+
+                    // see if this is unecessary
+                    if (! block->used_registers.count(dest_register)) {
+                        bool beg = (block->instructions.begin() == it);
+                        block->instructions.erase(it);
+                        if (beg)
+                            it = block->instructions.begin();
+
+                        delete instruction;
+                        instruction = NULL;
+                    } else {
+                        // add the source to used set
+                        add_if_register(block->used_registers, copy_instruction->source);
+                    }
+
+                    // delete dest from used set
+                    block->used_registers.erase(dest_register);
+
+                    break;
+                }
+                case Instruction::OPERATOR:
+                {
+                    OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
+
+                    int dest_register = operator_instruction->dest._int;
+
+                    // see if this is unecessary
+                    if (! block->used_registers.count(dest_register)) {
+                        bool beg = (block->instructions.begin() == it);
+                        block->instructions.erase(it);
+                        if (beg)
+                            it = block->instructions.begin();
+
+                        delete instruction;
+                        instruction = NULL;
+                    } else {
+                        // add the operands to used set
+                        add_if_register(block->used_registers, operator_instruction->left);
+                        add_if_register(block->used_registers, operator_instruction->right);
+                    }
+
+                    // delete dest from used set
+                    block->used_registers.erase(dest_register);
+
+
+                    break;
+                }
+                case Instruction::UNARY:
+                {
+                    UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
+
+
+                    int dest_register = unary_instruction->dest._int;
+
+                    // see if this is unecessary
+                    if (! block->used_registers.count(dest_register)) {
+                        bool beg = (block->instructions.begin() == it);
+                        block->instructions.erase(it);
+                        if (beg)
+                            it = block->instructions.begin();
+
+                        delete instruction;
+                        instruction = NULL;
+                    } else {
+                        // add the source to used set
+                        add_if_register(block->used_registers, unary_instruction->source);
+                    }
+
+                    // delete dest from used set
+                    block->used_registers.erase(dest_register);
+
+
+                    break;
+                }
+                case Instruction::PRINT:
+                {
+                    PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+                    add_if_register(block->used_registers, print_instruction->value);
+                    break;
+                }
+                case Instruction::IF:
+                {
+                    IfInstruction * if_instruction = (IfInstruction *) instruction;
+                    add_if_register(block->used_registers, if_instruction->condition);
+                    break;
+                }
+                case Instruction::GOTO:
+                case Instruction::RETURN:
+                    break;
+            }
+        }
+    }
+
 }
 
 CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
