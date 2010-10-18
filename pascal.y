@@ -430,6 +430,10 @@ object_instantiation: KEYWORD_NEW TOKEN_IDENTIFIER {
 Program * parse_input(char * filename) {
     if (filename != NULL) {
         yyin = fopen(filename, "r");
+        if (yyin == NULL) {
+            fprintf(stderr, "%s not found.\n", filename);
+            exit(1);
+        }
     }
     yyparse();
     return main_program;

@@ -3,9 +3,8 @@ code_generation.cpp
 code_generation.h
 insensitive_map.h
 main.cpp
-output/lex.yy.cpp
-output/y.tab.cpp
-output/y.tab.hpp
+pascal.y
+pascal.l
 parser.h
 semantic_checker.cpp
 semantic_checker.h
