@@ -1436,14 +1436,18 @@ void MethodGenerator::compress_registers()
 
     // create a mapping between current registers and new ones.
     std::vector<int> new_number;
+    std::vector<RegisterType> new_type;
     new_number.resize(m_register_count);
+    new_type.resize(m_register_count);
 
     int new_register_count = 0;
     for (int i=0; i<(int)m_register_count; ++i) {
-        if (used_registers[i])
-            new_number[i] = new_register_count++;
+        if (used_registers[i]) {
+            new_number[i] = new_register_count;
+            new_type[new_register_count] = m_register_type[i];
+            ++new_register_count;
+        }
     }
-
     // apply the mapping to existing code
     for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
         BasicBlock * block = m_basic_blocks[b];
@@ -1454,7 +1458,15 @@ void MethodGenerator::compress_registers()
             instruction->remapRegisters(new_number);
         }
     }
+
     m_register_count = new_register_count;
+
+    // apply to register types
+    for (int i=0; i<m_register_count; ++i) {
+        m_register_type[i] = new_type[i];
+    }
+    m_register_type.resize(m_register_count);
+
 }
 
 void MethodGenerator::delete_block(int index) {
