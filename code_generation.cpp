@@ -322,7 +322,7 @@ private:
     void calculate_upward_mangle_set(int block_index);
     void add_if_register(std::set<int> & set, Variant possibly_a_register);
     void delete_block(int index);
-    void loadRegister(std::ostream & out, int register_number, int tmp_register_number);
+    void loadRegister(std::ostream & out, Variant value, int tmp_register_number);
     void storeRegister(std::ostream & out, int register_number, int tmp_register_number);
     int getStackSpace();
 };
@@ -399,9 +399,17 @@ void generate_code(Program * program, bool debug) {
     std::cout << asm_out.str();
 }
 
-void MethodGenerator::loadRegister(std::ostream & out, int register_number, int tmp_register_number)
+void MethodGenerator::loadRegister(std::ostream & out, Variant value, int tmp_register_number)
 {
-    out << "lw $t" << tmp_register_number << ", " << (register_number * 4 - getStackSpace()) << "($sp)" << std::endl;
+    if (value.type == Variant::CONST_BOOL) {
+        out << "li $t0, " << (value._bool ? 1 : 0) << std::endl;
+    } else if (value.type == Variant::CONST_INT) {
+        out << "li $t0, " << value._int << std::endl;
+    } else if (value.type == Variant::REGISTER) {
+        out << "lw $t" << tmp_register_number << ", " << (value._int * 4 - getStackSpace()) << "($sp)" << std::endl;
+    } else {
+        assert(false);
+    }
 }
 
 void MethodGenerator::storeRegister(std::ostream & out, int register_number, int tmp_register_number)
@@ -439,15 +447,15 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::COPY:
                 {
                     CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-                    loadRegister(out, copy_instruction->source._int, 0);
+                    loadRegister(out, copy_instruction->source, 0);
                     storeRegister(out, copy_instruction->dest._int, 0);
                     break;
                 }
                 case Instruction::OPERATOR:
                 {
                     OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-                    loadRegister(out, operator_instruction->left._int, 0);
-                    loadRegister(out, operator_instruction->right._int, 1);
+                    loadRegister(out, operator_instruction->left, 0);
+                    loadRegister(out, operator_instruction->right, 1);
                     switch (operator_instruction->_operator) {
                         case OperatorInstruction::EQUAL:
                             out << "sub $t1, $t0, $t1" << std::endl;
@@ -505,7 +513,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::UNARY:
                 {
                     UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-                    loadRegister(out, unary_instruction->source._int, 0);
+                    loadRegister(out, unary_instruction->source, 0);
                     if (unary_instruction->_operator == UnaryInstruction::NOT) {
                         out << "xori $t0, $t0, 1" << std::endl;
                     } else if (unary_instruction->_operator == UnaryInstruction::NEGATE) {
@@ -519,7 +527,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::IF:
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
-                    loadRegister(out, if_instruction->condition._int, 0);
+                    loadRegister(out, if_instruction->condition, 0);
                     out << "bne $t0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
                     break;
                 }
@@ -535,7 +543,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::PRINT:
                 {
                     PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-                    loadRegister(out, print_instruction->value._int, 0);
+                    loadRegister(out, print_instruction->value, 0);
                     out << "move $a0, $t0" << std::endl;
                     out << "li $v0, 1" << std::endl;
                     out << "syscall" << std::endl;
