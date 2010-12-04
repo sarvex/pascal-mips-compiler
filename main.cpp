@@ -20,6 +20,7 @@ int main(int argc, char * argv[]) {
             } else {
                 std::cerr << "Unrecognized parameter: " << arg << std::endl;
                 print_usage(argv[0]);
+                return 1;
             }
         } else {
             filename = argv[i];
