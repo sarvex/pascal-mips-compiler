@@ -28,6 +28,7 @@ public:
     void dependency_management();
     void block_deletion();
     void compute_addresses();
+    void compress_registers();
 
     void print_basic_blocks(std::ostream & out);
     void print_control_flow_graph(std::ostream & out);
@@ -47,6 +48,10 @@ private:
         Type type;
 
         Instruction(Type type) : type(type) {}
+        // toggle the index of the registers you use in this instruction to true.
+        virtual void markUsedRegisters(std::vector<bool> & used_list) = 0;
+        // remap the register indexes used to a new value based on a vector lookup
+        virtual void remapRegisters(std::vector<int> & map) = 0;
     };
 
     class Variant {
@@ -147,6 +152,20 @@ private:
         Variant dest; // register number
         Variant source; // register number
         CopyInstruction(Variant dest, Variant source) : Instruction(COPY), dest(dest), source(source) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            if (dest.type == Variant::REGISTER)
+                used_list[dest._int] = true;
+            if (source.type == Variant::REGISTER)
+                used_list[source._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (dest.type == Variant::REGISTER)
+                dest._int = map[dest._int];
+            if (source.type == Variant::REGISTER)
+                source._int = map[source._int];
+        }
     };
 
     struct OperatorInstruction : public Instruction {
@@ -203,6 +222,24 @@ private:
             }
             return std::string();
         }
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            if (dest.type == Variant::REGISTER)
+                used_list[dest._int] = true;
+            if (left.type == Variant::REGISTER)
+                used_list[left._int] = true;
+            if (right.type == Variant::REGISTER)
+                used_list[right._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (dest.type == Variant::REGISTER)
+                dest._int = map[dest._int];
+            if (left.type == Variant::REGISTER)
+                left._int = map[left._int];
+            if (right.type == Variant::REGISTER)
+                right._int = map[right._int];
+        }
     };
 
     struct UnaryInstruction : public Instruction {
@@ -216,6 +253,21 @@ private:
         Variant source;
 
         UnaryInstruction(Variant dest, Operator _operator, Variant source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
+
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            if (dest.type == Variant::REGISTER)
+                used_list[dest._int] = true;
+            if (source.type == Variant::REGISTER)
+                used_list[source._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (dest.type == Variant::REGISTER)
+                dest._int = map[dest._int];
+            if (source.type == Variant::REGISTER)
+                source._int = map[source._int];
+        }
     };
 
     struct IfInstruction : public Instruction {
@@ -223,21 +275,47 @@ private:
         int goto_index;
 
         IfInstruction(Variant condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            if (condition.type == Variant::REGISTER)
+                used_list[condition._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (condition.type == Variant::REGISTER)
+                condition._int = map[condition._int];
+        }
     };
 
     struct GotoInstruction : public Instruction {
         int goto_index;
 
         GotoInstruction(int goto_index) : Instruction(GOTO), goto_index(goto_index) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {}
+        void remapRegisters(std::vector<int> & map) {}
     };
 
     struct ReturnInstruction : public Instruction {
         ReturnInstruction() : Instruction(RETURN) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {}
+        void remapRegisters(std::vector<int> & map) {}
     };
 
     struct PrintInstruction : public Instruction {
         Variant value;
         PrintInstruction(Variant value) : Instruction(PRINT), value(value) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            if (value.type == Variant::REGISTER)
+                used_list[value._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (value.type == Variant::REGISTER)
+                value._int = map[value._int];
+        }
     };
 
     struct BasicBlock {
@@ -376,6 +454,7 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
             if (! disable_optimization) {
                 generator.calculate_mangle_sets();
                 generator.value_numbering();
+                generator.compress_registers();
 
                 debug_out << "3 Address Code After Value Numbering" << std::endl;
                 debug_out << "--------------------------" << std::endl;
@@ -384,6 +463,7 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
 
                 generator.dependency_management();
                 generator.compute_addresses();
+                generator.compress_registers();
 
                 debug_out << "3 Address Code After Dependency Management" << std::endl;
                 debug_out << "--------------------------" << std::endl;
@@ -392,6 +472,7 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
 
                 generator.block_deletion();
                 generator.compute_addresses();
+                generator.compress_registers();
                 debug_out << "3 Address Code After Block Deletion" << std::endl;
                 debug_out << "--------------------------" << std::endl;
                 generator.print_basic_blocks(debug_out);
@@ -1331,6 +1412,49 @@ void MethodGenerator::compute_addresses() {
             }
         }
     }
+}
+
+void MethodGenerator::compress_registers()
+{
+    // start out, assume not using any
+    std::vector<bool> used_registers;
+    used_registers.resize(m_register_count);
+    for (int i=0; i<(int)m_register_count; ++i) {
+        used_registers[i] = false;
+    }
+
+    // go through program and mark the ones we do use
+    for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
+        BasicBlock * block = m_basic_blocks[b];
+        if (block->deleted)
+            continue;
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+            Instruction * instruction = *it;
+            instruction->markUsedRegisters(used_registers);
+        }
+    }
+
+    // create a mapping between current registers and new ones.
+    std::vector<int> new_number;
+    new_number.resize(m_register_count);
+
+    int new_register_count = 0;
+    for (int i=0; i<(int)m_register_count; ++i) {
+        if (used_registers[i])
+            new_number[i] = new_register_count++;
+    }
+
+    // apply the mapping to existing code
+    for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
+        BasicBlock * block = m_basic_blocks[b];
+        if (block->deleted)
+            continue;
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+            Instruction * instruction = *it;
+            instruction->remapRegisters(new_number);
+        }
+    }
+    m_register_count = new_register_count;
 }
 
 void MethodGenerator::delete_block(int index) {
