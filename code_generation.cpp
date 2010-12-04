@@ -10,6 +10,10 @@
 #include <list>
 #include <sstream>
 
+int g_next_unique_label = 0;
+int getNextUniqueLabel() {
+    return g_next_unique_label++;
+}
 
 class MethodGenerator {
 public:
@@ -337,6 +341,10 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
     std::stringstream asm_out;
 
     // mips header and main program
+    asm_out << ".data" << std::endl;
+    asm_out << "true_text: .asciiz \"true\"" << std::endl;
+    asm_out << "false_text: .asciiz \"false\"" << std::endl;
+
     asm_out << ".text" << std::endl;
     asm_out << "main:" << std::endl;
     asm_out << "jal " << Utils::to_lower(program->identifier->text) << "_"
@@ -459,17 +467,23 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     loadRegister(out, operator_instruction->right, 1);
                     switch (operator_instruction->_operator) {
                         case OperatorInstruction::EQUAL:
-                            out << "sub $t1, $t0, $t1" << std::endl;
+                        {
+                            int skip_label = getNextUniqueLabel();
                             out << "li $t0, 1" << std::endl;
-                            out << "beq $t1, 1" << std::endl;
+                            out << "beq $t0, $t1, 1" << std::endl;
                             out << "li $t0, 0" << std::endl;
+                            out << "l" << skip_label << ":" << std::endl;
                             break;
+                        }
                         case OperatorInstruction::NOT_EQUAL:
-                            out << "sub $t1, $t0, $t1" << std::endl;
+                        {
+                            int skip_label = getNextUniqueLabel();
                             out << "li $t0, 1" << std::endl;
-                            out << "bne $t1, 1" << std::endl;
+                            out << "bne $t0, $t1, 1" << std::endl;
                             out << "li $t0, 0" << std::endl;
+                            out << "l" << skip_label << ":" << std::endl;
                             break;
+                        }
                         case OperatorInstruction::LESS:
                             out << "slt $t0, $t0, $t1" << std::endl;
                             break;
@@ -529,7 +543,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
                     loadRegister(out, if_instruction->condition, 0);
-                    out << "bne $t0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    out << "bne $t0, $0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
                     break;
                 }
                 case Instruction::GOTO:
@@ -544,10 +558,34 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::PRINT:
                 {
                     PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-                    loadRegister(out, print_instruction->value, 0);
-                    out << "move $a0, $t0" << std::endl;
-                    out << "li $v0, 1" << std::endl;
-                    out << "syscall" << std::endl;
+                    bool is_bool = false;
+                    if (print_instruction->value.type == Variant::REGISTER) {
+                        if (m_register_type.at(print_instruction->value._int) == BOOL) {
+                            is_bool = true;
+                            loadRegister(out, print_instruction->value, 0);
+                            int skip_label = getNextUniqueLabel();
+                            out << "la $a0, true_text" << std::endl;
+                            out << "bne $t0, $0, l" << skip_label << std::endl;
+                            out << "la $a0, false_text" << std::endl;
+                            out << "l" << skip_label << ":" << std::endl;
+                            out << "li $v0, 4" << std::endl;
+                            out << "syscall" << std::endl;
+                        }
+                    } else {
+                        if (print_instruction->value.type == Variant::CONST_BOOL) {
+                            is_bool = true;
+                            out << "la $a0, " << (print_instruction->value._bool ? "true_text" : "false_text") << std::endl;
+                            out << "li $v0, 4" << std::endl;
+                            out << "syscall" << std::endl;
+                        }
+                    }
+                    if (! is_bool) {
+                        loadRegister(out, print_instruction->value, 0);
+                        out << "move $a0, $t0" << std::endl;
+                        out << "li $v0, 1" << std::endl;
+                        out << "syscall" << std::endl;
+                    }
+                    // newline
                     out << "li $a0, 10" << std::endl;
                     out << "li $v0, 11" << std::endl;
                     out << "syscall" << std::endl;
