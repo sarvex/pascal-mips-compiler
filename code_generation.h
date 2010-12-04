@@ -1,4 +1,4 @@
 
 #include "parser.h"
 
-void generate_code(Program * program, bool debug=false);
+void generate_code(Program * program, bool debug=false, bool disable_optimization=false);

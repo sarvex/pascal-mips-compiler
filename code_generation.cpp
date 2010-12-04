@@ -332,7 +332,7 @@ MethodGenerator::Variant MethodGenerator::next_available_register(RegisterType t
     return Variant(m_register_count++, Variant::REGISTER);
 }
 
-void generate_code(Program * program, bool debug) {
+void generate_code(Program * program, bool debug, bool disable_optimization) {
     std::stringstream debug_out;
     std::stringstream asm_out;
 
@@ -355,39 +355,40 @@ void generate_code(Program * program, bool debug) {
             generator.generate(function_declaration);
             generator.build_basic_blocks();
 
-            debug_out << "3 Address Code" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_basic_blocks(debug_out);
-            debug_out << "--------------------------" << std::endl;
+            if (! disable_optimization) {
+                debug_out << "3 Address Code" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_basic_blocks(debug_out);
+                debug_out << "--------------------------" << std::endl;
 
-            debug_out << "Control Flow Graph" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_control_flow_graph(debug_out);
-            debug_out << "--------------------------" << std::endl;
+                debug_out << "Control Flow Graph" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_control_flow_graph(debug_out);
+                debug_out << "--------------------------" << std::endl;
 
-            generator.calculate_mangle_sets();
-            generator.value_numbering();
+                generator.calculate_mangle_sets();
+                generator.value_numbering();
 
-            debug_out << "3 Address Code After Value Numbering" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_basic_blocks(debug_out);
-            debug_out << "--------------------------" << std::endl;
+                debug_out << "3 Address Code After Value Numbering" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_basic_blocks(debug_out);
+                debug_out << "--------------------------" << std::endl;
 
-            generator.dependency_management();
-            generator.compute_addresses();
+                generator.dependency_management();
+                generator.compute_addresses();
 
-            debug_out << "3 Address Code After Dependency Management" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_basic_blocks(debug_out);
-            debug_out << "--------------------------" << std::endl;
+                debug_out << "3 Address Code After Dependency Management" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_basic_blocks(debug_out);
+                debug_out << "--------------------------" << std::endl;
 
-            generator.block_deletion();
-            generator.compute_addresses();
-            debug_out << "3 Address Code After Block Deletion" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_basic_blocks(debug_out);
-            debug_out << "--------------------------" << std::endl;
-
+                generator.block_deletion();
+                generator.compute_addresses();
+                debug_out << "3 Address Code After Block Deletion" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_basic_blocks(debug_out);
+                debug_out << "--------------------------" << std::endl;
+            }
 
             generator.print_assembly(asm_out);
         }

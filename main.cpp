@@ -13,6 +13,7 @@ int main(int argc, char * argv[]) {
 
     bool only_semantic_checking = false;
     bool output_intermediate = false;
+    bool disable_optimization = false;
     for (int i=1; i<argc; ++i) {
         std::string arg = argv[i];
         if (arg[0] == '-') {
@@ -20,6 +21,8 @@ int main(int argc, char * argv[]) {
                 only_semantic_checking = true;
             } else if (arg.compare("-p2") == 0) {
                 output_intermediate = true;
+            } else if (arg.compare("-O0") == 0) {
+                disable_optimization = true;
             } else {
                 std::cerr << "Unrecognized parameter: " << arg << std::endl;
                 print_usage(argv[0]);
@@ -42,7 +45,7 @@ int main(int argc, char * argv[]) {
     if (only_semantic_checking)
         return 0;
 
-    generate_code(program, output_intermediate);
+    generate_code(program, output_intermediate, disable_optimization);
 
     return 0;
 }
@@ -58,4 +61,7 @@ void print_usage(std::string exe_name) {
 
     std::cerr << "Output optimized intermediate representation:\n";
     std::cerr << exe_name << " -p2 [file]\n";
+
+    std::cerr << "Disable optimization:\n";
+    std::cerr << exe_name << " -O0 [file]\n";
 }
