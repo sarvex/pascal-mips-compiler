@@ -663,6 +663,10 @@ MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(Typ
 }
 
 void MethodGenerator::generate(FunctionDeclaration * function_declaration) {
+    for (VariableDeclarationList * variable_list = function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
+        for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
+            m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
+    }
     for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
