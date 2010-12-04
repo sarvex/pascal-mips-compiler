@@ -363,17 +363,17 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
             generator.generate(function_declaration);
             generator.build_basic_blocks();
 
+            debug_out << "3 Address Code" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_basic_blocks(debug_out);
+            debug_out << "--------------------------" << std::endl;
+
+            debug_out << "Control Flow Graph" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_control_flow_graph(debug_out);
+            debug_out << "--------------------------" << std::endl;
+
             if (! disable_optimization) {
-                debug_out << "3 Address Code" << std::endl;
-                debug_out << "--------------------------" << std::endl;
-                generator.print_basic_blocks(debug_out);
-                debug_out << "--------------------------" << std::endl;
-
-                debug_out << "Control Flow Graph" << std::endl;
-                debug_out << "--------------------------" << std::endl;
-                generator.print_control_flow_graph(debug_out);
-                debug_out << "--------------------------" << std::endl;
-
                 generator.calculate_mangle_sets();
                 generator.value_numbering();
 
@@ -411,9 +411,9 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
 void MethodGenerator::loadRegister(std::ostream & out, Variant value, int tmp_register_number)
 {
     if (value.type == Variant::CONST_BOOL) {
-        out << "li $t0, " << (value._bool ? 1 : 0) << std::endl;
+        out << "li $t" << tmp_register_number << ", " << (value._bool ? 1 : 0) << std::endl;
     } else if (value.type == Variant::CONST_INT) {
-        out << "li $t0, " << value._int << std::endl;
+        out << "li $t" << tmp_register_number << ", " << value._int << std::endl;
     } else if (value.type == Variant::REGISTER) {
         out << "lw $t" << tmp_register_number << ", " << (value._int * 4 - getStackSpace()) << "($sp)" << std::endl;
     } else {
@@ -543,7 +543,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
                     loadRegister(out, if_instruction->condition, 0);
-                    out << "bne $t0, $0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    out << "beq $t0, $0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
                     break;
                 }
                 case Instruction::GOTO:
