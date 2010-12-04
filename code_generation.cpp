@@ -11,9 +11,12 @@
 #include <sstream>
 
 
-class CodeGenerator {
+class MethodGenerator {
 public:
-    CodeGenerator() : m_register_count(0) {}
+    MethodGenerator(std::string class_name, std::string method_name) :
+        m_register_count(0),
+        m_class_name(class_name),
+        m_method_name(method_name) {}
     void generate(FunctionDeclaration * function_declaration);
     void build_basic_blocks();
     void value_numbering();
@@ -22,8 +25,9 @@ public:
     void block_deletion();
     void compute_addresses();
 
-    void print_basic_blocks();
-    void print_control_flow_graph();
+    void print_basic_blocks(std::ostream & out);
+    void print_control_flow_graph(std::ostream & out);
+    void print_assembly(std::ostream & out);
 
 private:
     struct Instruction {
@@ -262,6 +266,8 @@ private:
     int m_register_count;
     int m_unique_value_count;
     std::vector<BasicBlock *> m_basic_blocks;
+    std::string m_class_name;
+    std::string m_method_name;
 
     enum RegisterType {
         INTEGER,
@@ -286,7 +292,7 @@ private:
     void gen_assignment(VariableAccess * variable, Variant source);
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
 
-    void print_assembly(int address, Instruction * instruction);
+    void print_instruction(std::ostream & out, int address, Instruction * instruction);
 
     Variant get_value_number(BasicBlock * block, Variant register_or_const);
     Variant inline_value(BasicBlock * block, Variant register_or_const);
@@ -316,151 +322,324 @@ private:
     void calculate_upward_mangle_set(int block_index);
     void add_if_register(std::set<int> & set, Variant possibly_a_register);
     void delete_block(int index);
+    void loadRegister(std::ostream & out, int register_number, int tmp_register_number);
+    void storeRegister(std::ostream & out, int register_number, int tmp_register_number);
+    int getStackSpace();
 };
 
-CodeGenerator::Variant CodeGenerator::next_available_register(RegisterType type) {
+MethodGenerator::Variant MethodGenerator::next_available_register(RegisterType type) {
     m_register_type.push_back(type);
     return Variant(m_register_count++, Variant::REGISTER);
 }
 
-void generate_code(Program * program) {
+void generate_code(Program * program, bool debug) {
+    std::stringstream debug_out;
+    std::stringstream asm_out;
+
+    // mips header and main program
+    asm_out << ".text" << std::endl;
+    asm_out << "main:" << std::endl;
+    asm_out << "jal " << Utils::to_lower(program->identifier->text) << "_"
+        << Utils::to_lower(program->identifier->text) << std::endl;
+    asm_out << "li $v0, 10" << std::endl;
+    asm_out << "syscall" << std::endl;
     for (ClassList * class_list_node = program->class_list; class_list_node != NULL; class_list_node = class_list_node->next) {
         ClassDeclaration * class_declaration = class_list_node->item;
         for (FunctionDeclarationList * function_list_node = class_declaration->class_block->function_list; function_list_node != NULL; function_list_node = function_list_node->next) {
             FunctionDeclaration * function_declaration = function_list_node->item;
 
-            std::cout << "Method " << class_declaration->identifier->text << "." << function_declaration->identifier->text << std::endl;
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "Method " << class_declaration->identifier->text << "." << function_declaration->identifier->text << std::endl;
+            debug_out << "--------------------------" << std::endl;
 
-            CodeGenerator generator;
+            MethodGenerator generator(Utils::to_lower(class_declaration->identifier->text), Utils::to_lower(function_declaration->identifier->text));
             generator.generate(function_declaration);
             generator.build_basic_blocks();
 
-            std::cout << "3 Address Code" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_basic_blocks();
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "3 Address Code" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_basic_blocks(debug_out);
+            debug_out << "--------------------------" << std::endl;
 
-            std::cout << "Control Flow Graph" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_control_flow_graph();
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "Control Flow Graph" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_control_flow_graph(debug_out);
+            debug_out << "--------------------------" << std::endl;
 
             generator.calculate_mangle_sets();
             generator.value_numbering();
 
-            std::cout << "3 Address Code After Value Numbering" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_basic_blocks();
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "3 Address Code After Value Numbering" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_basic_blocks(debug_out);
+            debug_out << "--------------------------" << std::endl;
 
             generator.dependency_management();
             generator.compute_addresses();
 
-            std::cout << "3 Address Code After Dependency Management" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_basic_blocks();
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "3 Address Code After Dependency Management" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_basic_blocks(debug_out);
+            debug_out << "--------------------------" << std::endl;
 
             generator.block_deletion();
             generator.compute_addresses();
-            std::cout << "3 Address Code After Block Deletion" << std::endl;
-            std::cout << "--------------------------" << std::endl;
-            generator.print_basic_blocks();
-            std::cout << "--------------------------" << std::endl;
+            debug_out << "3 Address Code After Block Deletion" << std::endl;
+            debug_out << "--------------------------" << std::endl;
+            generator.print_basic_blocks(debug_out);
+            debug_out << "--------------------------" << std::endl;
 
+
+            generator.print_assembly(asm_out);
         }
     }
+
+    if (debug)
+        std::cout << debug_out.str();
+
+    std::cout << asm_out.str();
 }
 
-void CodeGenerator::print_assembly(int address, Instruction * instruction) {
-    std::cout << address << ":\t";
+void MethodGenerator::loadRegister(std::ostream & out, int register_number, int tmp_register_number)
+{
+    out << "lw $t" << tmp_register_number << ", " << (register_number * 4 - getStackSpace()) << "($sp)" << std::endl;
+}
+
+void MethodGenerator::storeRegister(std::ostream & out, int register_number, int tmp_register_number)
+{
+    out << "sw $t" << tmp_register_number << ", " << (register_number * 4 - getStackSpace()) << "($sp)" << std::endl;
+}
+
+int MethodGenerator::getStackSpace()
+{
+    return
+        // a slot for each register (int or boolean, each 4 bytes)
+        m_register_count * 4 +
+        // a slot for return address (4 bytes)
+        1 * 4;
+}
+
+void MethodGenerator::print_assembly(std::ostream & out)
+{
+    out << m_class_name << "_" << m_method_name << ":" << std::endl;
+
+    // allocate stack space for locals
+    out << "addi $sp, $sp, -" << getStackSpace() << std::endl;
+    out << "sw $ra, -4($sp)" << std::endl;
+
+    for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
+        BasicBlock * block = m_basic_blocks[b];
+        if (block->deleted)
+            continue;
+        out << m_class_name << "_" << m_method_name << "_" << b << ":" << std::endl;
+
+        int i = block->start;
+        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i) {
+            Instruction * instruction = *it;
+            switch (instruction->type) {
+                case Instruction::COPY:
+                {
+                    CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
+                    loadRegister(out, copy_instruction->source._int, 0);
+                    storeRegister(out, copy_instruction->dest._int, 0);
+                    break;
+                }
+                case Instruction::OPERATOR:
+                {
+                    OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
+                    loadRegister(out, operator_instruction->left._int, 0);
+                    loadRegister(out, operator_instruction->right._int, 1);
+                    switch (operator_instruction->_operator) {
+                        case OperatorInstruction::EQUAL:
+                            out << "sub $t1, $t0, $t1" << std::endl;
+                            out << "li $t0, 1" << std::endl;
+                            out << "beq $t1, 1" << std::endl;
+                            out << "li $t0, 0" << std::endl;
+                            break;
+                        case OperatorInstruction::NOT_EQUAL:
+                            out << "sub $t1, $t0, $t1" << std::endl;
+                            out << "li $t0, 1" << std::endl;
+                            out << "bne $t1, 1" << std::endl;
+                            out << "li $t0, 0" << std::endl;
+                            break;
+                        case OperatorInstruction::LESS:
+                            out << "slt $t0, $t0, $t1" << std::endl;
+                            break;
+                        case OperatorInstruction::GREATER:
+                            out << "slt $t0, $t1, t0" << std::endl;
+                            break;
+                        case OperatorInstruction::LESS_EQUAL:
+                            out << "slt $t0, $t1, $t0" << std::endl;
+                            out << "xori $t0, 1" << std::endl;
+                            break;
+                        case OperatorInstruction::GREATER_EQUAL:
+                            out << "slt $t0, $t0, $t1" << std::endl;
+                            out << "xori $t0, 1" << std::endl;
+                            break;
+                        case OperatorInstruction::PLUS:
+                            out << "add $t0, $t0, $t1" << std::endl;
+                            break;
+                        case OperatorInstruction::MINUS:
+                            out << "sub $t0, $t0, $t1" << std::endl;
+                            break;
+                        case OperatorInstruction::OR:
+                            out << "or $t0, $t0, $t1" << std::endl;
+                            break;
+                        case OperatorInstruction::TIMES:
+                            out << "mul $t0, $t0, $t1" << std::endl;
+                            break;
+                        case OperatorInstruction::DIVIDE:
+                            out << "div $t0, $t1" << std::endl;
+                            out << "mflo $t0" << std::endl;
+                            break;
+                        case OperatorInstruction::MOD:
+                            out << "div $t0, $t1" << std::endl;
+                            out << "mfhi $t0" << std::endl;
+                            break;
+                        case OperatorInstruction::AND:
+                            out << "and $t0, $t0, $t1" << std::endl;
+                            break;
+                    }
+                    storeRegister(out, operator_instruction->dest._int, 0);
+                    break;
+                }
+                case Instruction::UNARY:
+                {
+                    UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
+                    loadRegister(out, unary_instruction->source._int, 0);
+                    if (unary_instruction->_operator == UnaryInstruction::NOT) {
+                        out << "xori $t0, $t0, 1" << std::endl;
+                    } else if (unary_instruction->_operator == UnaryInstruction::NEGATE) {
+                        out << "sub $t0, $zero, $t0" << std::endl;
+                    } else {
+                        assert(false);
+                    }
+                    storeRegister(out, unary_instruction->dest._int, 0);
+                    break;
+                }
+                case Instruction::IF:
+                {
+                    IfInstruction * if_instruction = (IfInstruction *) instruction;
+                    loadRegister(out, if_instruction->condition._int, 0);
+                    out << "bne $t0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    break;
+                }
+                case Instruction::GOTO:
+                    out << "j " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    break;
+                case Instruction::RETURN:
+                    // deallocate stack
+                    out << "lw $ra, -4($sp)" << std::endl;
+                    out << "addi $sp, $sp, " << getStackSpace() << std::endl;
+                    out << "jr $ra" << std::endl;
+                    return;
+                case Instruction::PRINT:
+                {
+                    PrintInstruction * print_instruction = (PrintInstruction *) instruction;
+                    loadRegister(out, print_instruction->value._int, 0);
+                    out << "move $a0, $t0" << std::endl;
+                    out << "li $v0, 1" << std::endl;
+                    out << "syscall" << std::endl;
+                    out << "li $a0, 10" << std::endl;
+                    out << "li $v0, 11" << std::endl;
+                    out << "syscall" << std::endl;
+                    break;
+                }
+            }
+        }
+    }
+    // should have been a return statement
+    assert(false);
+
+}
+
+void MethodGenerator::print_instruction(std::ostream & out, int address, Instruction * instruction) {
+    out << address << ":\t";
     switch (instruction->type) {
         case Instruction::COPY:
         {
             CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-            std::cout << copy_instruction->dest.str() << " = " << copy_instruction->source.str();
+            out << copy_instruction->dest.str() << " = " << copy_instruction->source.str();
             break;
         }
         case Instruction::OPERATOR:
         {
             OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-            std::cout << operator_instruction->str();
+            out << operator_instruction->str();
             break;
         }
         case Instruction::UNARY:
         {
             UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-            std::cout << unary_instruction->dest.str() << " = ";
+            out << unary_instruction->dest.str() << " = ";
             if (unary_instruction->_operator == UnaryInstruction::NEGATE)
-                std::cout << "-";
+                out << "-";
             else if (unary_instruction->_operator == UnaryInstruction::NOT)
-                std::cout << "!";
+                out << "!";
             else
                 assert(false);
-            std::cout << unary_instruction->source.str();
+            out << unary_instruction->source.str();
             break;
         }
         case Instruction::IF:
         {
             IfInstruction * if_instruction = (IfInstruction *) instruction;
-            std::cout << "if !" << if_instruction->condition.str() << " goto " << if_instruction->goto_index;
+            out << "if !" << if_instruction->condition.str() << " goto " << if_instruction->goto_index;
             break;
         }
         case Instruction::GOTO:
         {
             GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
-            std::cout << "goto " << goto_instruction->goto_index;
+            out << "goto " << goto_instruction->goto_index;
             break;
         }
         case Instruction::RETURN:
-            std::cout << "return";
+            out << "return";
             break;
         case Instruction::PRINT:
         {
             PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-            std::cout << "print " << print_instruction->value.str();
+            out << "print " << print_instruction->value.str();
             break;
         }
         default:
             assert(false);
     }
-    std::cout << ";" << std::endl;
+    out << ";" << std::endl;
 }
 
-void CodeGenerator::print_basic_blocks() {
+void MethodGenerator::print_basic_blocks(std::ostream & out) {
     int block_count = 0;
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
         BasicBlock * block = m_basic_blocks[b];
         if (! block->deleted)
-            std::cout << "block_" << block_count++ << ":" << std::endl;
+            out << "block_" << block_count++ << ":" << std::endl;
         int i = block->start;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i)
-            print_assembly(i, *it);
+            print_instruction(out, i, *it);
     }
 }
 
-void CodeGenerator::print_control_flow_graph() {
+void MethodGenerator::print_control_flow_graph(std::ostream & out) {
     for (int parent = 0; parent < (int)m_basic_blocks.size(); parent++) {
         BasicBlock * parent_block = m_basic_blocks[parent];
         for (int child = 0; child < (int)m_basic_blocks.size(); child++) {
             if (parent == child) {
                 // for self, print the number (ugly if more than 1 digit)
-                std::cout << parent;
+                out << parent;
             } else if (parent_block->jump_child == child || parent_block->fallthrough_child == child) {
                 // child is a child of parent
-                std::cout << (child < parent ? "^" : "v");
+                out << (child < parent ? "^" : "v");
             } else {
                 // nothing to see here
-                std::cout << " ";
+                out << " ";
             }
-            std::cout << " ";
+            out << " ";
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 }
 
-CodeGenerator::RegisterType CodeGenerator::type_denoter_to_register_type(TypeDenoter * type) {
+MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(TypeDenoter * type) {
     switch (type->type) {
         case TypeDenoter::BOOLEAN:
             return BOOL;
@@ -474,7 +653,7 @@ CodeGenerator::RegisterType CodeGenerator::type_denoter_to_register_type(TypeDen
     }
 }
 
-void CodeGenerator::generate(FunctionDeclaration * function_declaration) {
+void MethodGenerator::generate(FunctionDeclaration * function_declaration) {
     for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
@@ -485,14 +664,14 @@ void CodeGenerator::generate(FunctionDeclaration * function_declaration) {
     m_instructions.push_back(new ReturnInstruction());
 }
 
-void CodeGenerator::gen_statement_list(StatementList * statement_list) {
+void MethodGenerator::gen_statement_list(StatementList * statement_list) {
     for (StatementList * statement_list_node = statement_list; statement_list_node != NULL; statement_list_node = statement_list_node->next) {
         if (statement_list_node->item != NULL)
             gen_statement(statement_list_node->item);
     }
 }
 
-void CodeGenerator::gen_statement(Statement * statement) {
+void MethodGenerator::gen_statement(Statement * statement) {
     switch (statement->type) {
         case Statement::ASSIGNMENT:
         {
@@ -559,7 +738,7 @@ void CodeGenerator::gen_statement(Statement * statement) {
 }
 
 
-CodeGenerator::Variant CodeGenerator::gen_expression(Expression * expression) {
+MethodGenerator::Variant MethodGenerator::gen_expression(Expression * expression) {
     if (expression->right == NULL) {
         // it's just the type of the first additive expression
         return gen_additive_expression(expression->left);
@@ -574,7 +753,7 @@ CodeGenerator::Variant CodeGenerator::gen_expression(Expression * expression) {
     }
 }
 
-CodeGenerator::Variant CodeGenerator::gen_additive_expression(AdditiveExpression * additive_expression) {
+MethodGenerator::Variant MethodGenerator::gen_additive_expression(AdditiveExpression * additive_expression) {
     Variant right = gen_multiplicitive_expression(additive_expression->right);
 
     if (additive_expression->left == NULL) {
@@ -589,7 +768,7 @@ CodeGenerator::Variant CodeGenerator::gen_additive_expression(AdditiveExpression
     }
 }
 
-CodeGenerator::Variant CodeGenerator::gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression) {
+MethodGenerator::Variant MethodGenerator::gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression) {
     Variant right = gen_negatable_expression(multiplicative_expression->right);
 
     if (multiplicative_expression->left == NULL) {
@@ -604,7 +783,7 @@ CodeGenerator::Variant CodeGenerator::gen_multiplicitive_expression(Multiplicati
     }
 }
 
-CodeGenerator::Variant CodeGenerator::gen_negatable_expression(NegatableExpression * negatable_expression) {
+MethodGenerator::Variant MethodGenerator::gen_negatable_expression(NegatableExpression * negatable_expression) {
     if (negatable_expression->type == NegatableExpression::PRIMARY) {
         return gen_primary_expression(negatable_expression->primary_expression);
     } else if (negatable_expression->type == NegatableExpression::SIGN) {
@@ -618,7 +797,7 @@ CodeGenerator::Variant CodeGenerator::gen_negatable_expression(NegatableExpressi
     }
 }
 
-CodeGenerator::Variant CodeGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
+MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
     switch (primary_expression->type) {
         case PrimaryExpression::VARIABLE:
             return gen_variable_access(primary_expression->variable);
@@ -664,7 +843,7 @@ CodeGenerator::Variant CodeGenerator::gen_primary_expression(PrimaryExpression *
     }
 }
 
-CodeGenerator::Variant CodeGenerator::gen_variable_access(VariableAccess * variable) {
+MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * variable) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
             return m_variable_numbers.get(variable->identifier->text);
@@ -681,7 +860,7 @@ CodeGenerator::Variant CodeGenerator::gen_variable_access(VariableAccess * varia
     }
 }
 
-void CodeGenerator::gen_assignment(VariableAccess * variable, Variant source) {
+void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
         {
@@ -701,7 +880,7 @@ void CodeGenerator::gen_assignment(VariableAccess * variable, Variant source) {
     }
 }
 
-void CodeGenerator::link_parent_and_child(int parent_index, int jump_child, int fallthrough_child) {
+void MethodGenerator::link_parent_and_child(int parent_index, int jump_child, int fallthrough_child) {
     m_basic_blocks[parent_index]->jump_child = jump_child;
     m_basic_blocks[parent_index]->fallthrough_child = fallthrough_child;
 
@@ -711,7 +890,7 @@ void CodeGenerator::link_parent_and_child(int parent_index, int jump_child, int 
         m_basic_blocks[fallthrough_child]->parents.insert(parent_index);
 }
 
-void CodeGenerator::build_basic_blocks() {
+void MethodGenerator::build_basic_blocks() {
     // identify breaks between blocks
     std::set<int> block_break_indexes;
     // 0 is a break, but leave it out for easier iteration later.
@@ -796,7 +975,7 @@ void CodeGenerator::build_basic_blocks() {
     }
 }
 
-void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
+void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
     // initialize our value numbers to something that has to do with parent value numbers.
     // for each register
     for (int register_index = 0; register_index < m_register_count; ++register_index) {
@@ -953,7 +1132,7 @@ void CodeGenerator::basic_block_value_numbering(BasicBlock * block) {
     }
 }
 
-void CodeGenerator::value_numbering() {
+void MethodGenerator::value_numbering() {
 
     for (int i = 0; i < (int)m_basic_blocks.size(); i++) {
         BasicBlock * block = m_basic_blocks[i];
@@ -961,12 +1140,12 @@ void CodeGenerator::value_numbering() {
     }
 }
 
-void CodeGenerator::calculate_mangle_sets() {
+void MethodGenerator::calculate_mangle_sets() {
     for (int i = 0; i < (int)m_basic_blocks.size(); i++)
         calculate_mangle_set(i);
 }
 
-void CodeGenerator::calculate_mangle_set(int block_index) {
+void MethodGenerator::calculate_mangle_set(int block_index) {
     BasicBlock * block = m_basic_blocks[block_index];
     for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); it++) {
         int parent_index = *it;
@@ -994,7 +1173,7 @@ void CodeGenerator::calculate_mangle_set(int block_index) {
     }
 }
 
-void CodeGenerator::calculate_downward_mangle_set(int block_index) {
+void MethodGenerator::calculate_downward_mangle_set(int block_index) {
     BasicBlock * block = m_basic_blocks[block_index];
     // prevent infinite recursion
     if (block->is_destination)
@@ -1007,7 +1186,7 @@ void CodeGenerator::calculate_downward_mangle_set(int block_index) {
         calculate_downward_mangle_set(block->fallthrough_child);
 }
 
-void CodeGenerator::calculate_upward_mangle_set(int block_index) {
+void MethodGenerator::calculate_upward_mangle_set(int block_index) {
     BasicBlock * block = m_basic_blocks[block_index];
     // prevent infinite recursion
     if (block->is_source)
@@ -1020,7 +1199,7 @@ void CodeGenerator::calculate_upward_mangle_set(int block_index) {
     }
 }
 
-void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
+void MethodGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
     std::set<int> * mangled_registers = & block_that_gets_the_results->mangled_registers;
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
@@ -1043,12 +1222,12 @@ void CodeGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * bl
     }
 }
 
-void CodeGenerator::add_if_register(std::set<int> & set, Variant possibly_a_register) {
+void MethodGenerator::add_if_register(std::set<int> & set, Variant possibly_a_register) {
     if (possibly_a_register.type == Variant::REGISTER)
         set.insert(possibly_a_register._int);
 }
 
-void CodeGenerator::record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
+void MethodGenerator::record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
     std::set<int> & used_registers = block_that_gets_the_results->used_registers;
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
@@ -1076,7 +1255,7 @@ void CodeGenerator::record_used_registers(BasicBlock * block, BasicBlock * block
     }
 }
 
-void CodeGenerator::compute_addresses() {
+void MethodGenerator::compute_addresses() {
     int address = 0;
     for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
         BasicBlock * block = m_basic_blocks[i];
@@ -1103,7 +1282,7 @@ void CodeGenerator::compute_addresses() {
     }
 }
 
-void CodeGenerator::delete_block(int index) {
+void MethodGenerator::delete_block(int index) {
     BasicBlock * block = m_basic_blocks[index];
 
     assert((block->jump_child == -1) != (block->fallthrough_child == -1));
@@ -1120,7 +1299,7 @@ void CodeGenerator::delete_block(int index) {
     block->deleted = true;
 }
 
-void CodeGenerator::block_deletion() {
+void MethodGenerator::block_deletion() {
     for (int i = m_basic_blocks.size() - 1; i >= 0; --i) {
         BasicBlock * block = m_basic_blocks[i];
 
@@ -1156,7 +1335,7 @@ void CodeGenerator::block_deletion() {
     }
 }
 
-void CodeGenerator::dependency_management() {
+void MethodGenerator::dependency_management() {
     for (int block_index = 0; block_index < (int)m_basic_blocks.size(); ++block_index) {
         BasicBlock * block = m_basic_blocks[block_index];
         for (std::set<int>::iterator it = block->parents.begin(); it != block->parents.end(); it++) {
@@ -1313,7 +1492,7 @@ void CodeGenerator::dependency_management() {
 
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
+MethodGenerator::CopyInstruction * MethodGenerator::constant_expression_evaluated(BasicBlock * block, UnaryInstruction * instruction) {
     if (instruction->source.type == Variant::REGISTER)
         return NULL;
     switch (instruction->_operator) {
@@ -1340,7 +1519,7 @@ CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(Ba
 }
 
 
-CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(BasicBlock * block, OperatorInstruction * instruction) {
+MethodGenerator::CopyInstruction * MethodGenerator::constant_expression_evaluated(BasicBlock * block, OperatorInstruction * instruction) {
     if (instruction->left.type == Variant::REGISTER || instruction->right.type == Variant::REGISTER)
         return NULL;
 
@@ -1479,73 +1658,73 @@ CodeGenerator::CopyInstruction * CodeGenerator::constant_expression_evaluated(Ba
     return NULL;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_copy(BasicBlock * block, OperatorInstruction * operator_instruction) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_copy(BasicBlock * block, OperatorInstruction * operator_instruction) {
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, operator_instruction->left);
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-bool CodeGenerator::operands_same(OperatorInstruction * instruction) {
+bool MethodGenerator::operands_same(OperatorInstruction * instruction) {
     return (instruction->left.type == Variant::REGISTER && instruction->right.type == Variant::REGISTER &&
             instruction->left._int == instruction->right._int);
 }
 
-bool CodeGenerator::right_constant_is(OperatorInstruction * instruction, int constant) {
+bool MethodGenerator::right_constant_is(OperatorInstruction * instruction, int constant) {
     return (instruction->right.type == Variant::CONST_INT && instruction->right._int == constant) ||
            (instruction->right.type == Variant::CONST_REAL && instruction->right._float == (float)constant) ||
            (instruction->right.type == Variant::CONST_BOOL && instruction->right._bool == (bool)constant);
 }
 
-bool CodeGenerator::left_constant_is(OperatorInstruction * instruction, int constant) {
+bool MethodGenerator::left_constant_is(OperatorInstruction * instruction, int constant) {
     return (instruction->left.type == Variant::CONST_INT && instruction->left._int == constant) ||
            (instruction->left.type == Variant::CONST_REAL && instruction->left._float == (float)constant) ||
            (instruction->left.type == Variant::CONST_BOOL && instruction->left._bool == (bool)constant);
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, int constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant, Variant::CONST_INT));
     delete unary_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, float constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, float constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant));
     delete unary_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, bool constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock *block, UnaryInstruction *unary_instruction, bool constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(unary_instruction->dest, Variant(constant));
     delete unary_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, int constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant, Variant::CONST_INT));
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, float constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, float constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant));
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::CopyInstruction * CodeGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, bool constant) {
+MethodGenerator::CopyInstruction * MethodGenerator::make_immediate(BasicBlock * block, OperatorInstruction * operator_instruction, bool constant) {
     CopyInstruction * copy_instruction = new CopyInstruction(operator_instruction->dest, Variant(constant));
     delete operator_instruction;
     block->value_numbers.associate(copy_instruction->dest._int, get_value_number(block, copy_instruction->source));
     return copy_instruction;
 }
 
-CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, OperatorInstruction * instruction) {
+MethodGenerator::Instruction * MethodGenerator::constant_folded(BasicBlock * block, OperatorInstruction * instruction) {
     // we know that constants are on the right
     switch (instruction->_operator) {
         case OperatorInstruction::PLUS:
@@ -1636,7 +1815,7 @@ CodeGenerator::Instruction * CodeGenerator::constant_folded(BasicBlock * block, 
     return instruction;
 }
 
-std::string CodeGenerator::hash_operand(BasicBlock * block, Variant operand) {
+std::string MethodGenerator::hash_operand(BasicBlock * block, Variant operand) {
     if (operand.type == Variant::REGISTER) {
         Variant value = block->value_numbers.get(operand._int);
         if (value.type == Variant::VALUE_NUMBER) {
@@ -1651,7 +1830,7 @@ std::string CodeGenerator::hash_operand(BasicBlock * block, Variant operand) {
     }
 }
 
-std::string CodeGenerator::hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction) {
+std::string MethodGenerator::hash_operator_instruction(BasicBlock * block, OperatorInstruction * instruction) {
     std::stringstream ss;
     ss << hash_operand(block, instruction->left);
     ss << " " << instruction->operator_str() << " ";
@@ -1660,13 +1839,13 @@ std::string CodeGenerator::hash_operator_instruction(BasicBlock * block, Operato
     return ss.str();
 }
 
-std::string CodeGenerator::next_unique_value() {
+std::string MethodGenerator::next_unique_value() {
     std::stringstream ss;
     ss << "?" << m_unique_value_count++;
     return ss.str();
 }
 
-CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant register_or_const) {
+MethodGenerator::Variant MethodGenerator::inline_value(BasicBlock * block, Variant register_or_const) {
     if (register_or_const.type == Variant::REGISTER) {
         Variant value = block->value_numbers.get(register_or_const._int);
         if (value.type == Variant::VALUE_NUMBER) {
@@ -1681,7 +1860,7 @@ CodeGenerator::Variant CodeGenerator::inline_value(BasicBlock * block, Variant r
     }
 }
 
-CodeGenerator::Variant CodeGenerator::get_value_number(BasicBlock * block, Variant register_or_const) {
+MethodGenerator::Variant MethodGenerator::get_value_number(BasicBlock * block, Variant register_or_const) {
     if (register_or_const.type == Variant::REGISTER)
         return block->value_numbers.get(register_or_const._int);
     else
