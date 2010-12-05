@@ -1,1 +1,1 @@
-error, the parameters are bogus
+ERROR: line 7: too many arguments to function "otherDude"
