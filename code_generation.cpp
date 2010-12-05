@@ -17,11 +17,11 @@ int getNextUniqueLabel() {
 
 class MethodGenerator {
 public:
-    MethodGenerator(std::string class_name, std::string method_name) :
+    MethodGenerator(std::string class_name, FunctionDeclaration * function_declaration) :
         m_register_count(0),
         m_class_name(class_name),
-        m_method_name(method_name) {}
-    void generate(FunctionDeclaration * function_declaration);
+        m_function_declaration(function_declaration) {}
+    void generate();
     void build_basic_blocks();
     void value_numbering();
     void calculate_mangle_sets();
@@ -389,7 +389,7 @@ private:
     int m_unique_value_count;
     std::vector<BasicBlock *> m_basic_blocks;
     std::string m_class_name;
-    std::string m_method_name;
+    FunctionDeclaration * m_function_declaration;
 
     enum RegisterType {
         INTEGER,
@@ -476,8 +476,8 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
             debug_out << "Method " << class_declaration->identifier->text << "." << function_declaration->identifier->text << std::endl;
             debug_out << "--------------------------" << std::endl;
 
-            MethodGenerator generator(Utils::to_lower(class_declaration->identifier->text), Utils::to_lower(function_declaration->identifier->text));
-            generator.generate(function_declaration);
+            MethodGenerator generator(Utils::to_lower(class_declaration->identifier->text), function_declaration);
+            generator.generate();
             generator.build_basic_blocks();
 
             debug_out << "3 Address Code" << std::endl;
@@ -535,7 +535,7 @@ void MethodGenerator::loadValue(std::ostream & out, Variant value, int tmp_regis
     } else if (value.type == Variant::CONST_INT) {
         out << "li $t" << tmp_register_number << ", " << value._int << std::endl;
     } else if (value.type == Variant::REGISTER) {
-        out << "lw $t" << tmp_register_number << ", " << (value._int * 4 - getStackSpace()) << "($sp)" << std::endl;
+        out << "lw $t" << tmp_register_number << ", " << (getStackSpace() - value._int * 4) << "($sp)" << std::endl;
     } else {
         assert(false);
     }
@@ -543,7 +543,7 @@ void MethodGenerator::loadValue(std::ostream & out, Variant value, int tmp_regis
 
 void MethodGenerator::storeRegister(std::ostream & out, int register_number, int tmp_register_number)
 {
-    out << "sw $t" << tmp_register_number << ", " << (register_number * 4 - getStackSpace()) << "($sp)" << std::endl;
+    out << "sw $t" << tmp_register_number << ", " << (getStackSpace() - register_number * 4) << "($sp)" << std::endl;
 }
 
 int MethodGenerator::getStackSpace()
@@ -557,17 +557,18 @@ int MethodGenerator::getStackSpace()
 
 void MethodGenerator::print_assembly(std::ostream & out)
 {
-    out << m_class_name << "_" << m_method_name << ":" << std::endl;
+    std::string method_name = Utils::to_lower(m_function_declaration->identifier->text);
+    out << m_class_name << "_" << method_name << ":" << std::endl;
 
     // allocate stack space for locals
     out << "addi $sp, $sp, -" << getStackSpace() << std::endl;
-    out << "sw $ra, -4($sp)" << std::endl;
+    out << "sw $ra, 4($sp)" << std::endl;
 
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
         BasicBlock * block = m_basic_blocks[b];
         if (block->deleted)
             continue;
-        out << m_class_name << "_" << m_method_name << "_" << b << ":" << std::endl;
+        out << m_class_name << "_" << method_name << "_" << b << ":" << std::endl;
 
         int i = block->start;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i) {
@@ -663,15 +664,15 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
                     loadValue(out, if_instruction->condition, 0);
-                    out << "beq $t0, $0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    out << "beq $t0, $0, " << m_class_name << "_" << method_name << "_" << block->jump_child << std::endl;
                     break;
                 }
                 case Instruction::GOTO:
-                    out << "j " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
+                    out << "j " << m_class_name << "_" << method_name << "_" << block->jump_child << std::endl;
                     break;
                 case Instruction::RETURN:
                     // deallocate stack
-                    out << "lw $ra, -4($sp)" << std::endl;
+                    out << "lw $ra, 4($sp)" << std::endl;
                     out << "addi $sp, $sp, " << getStackSpace() << std::endl;
                     out << "jr $ra" << std::endl;
                     return;
@@ -716,7 +717,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
                     for (int i = 0; i < (int)method_call_instruction->parameters.size(); i++) {
                         loadValue(out, method_call_instruction->parameters[i], 0);
-                        out << "sw $t0, " << (i * 4) << "($sp)" << std::endl;
+                        out << "sw $t0, " << (-i * 4) << "($sp)" << std::endl;
                     }
                     out << "jal " << method_call_instruction->class_name << "_" << method_call_instruction->method_name << std::endl;
                     break;
@@ -778,6 +779,17 @@ void MethodGenerator::print_instruction(std::ostream & out, int address, Instruc
             out << "print " << print_instruction->value.str();
             break;
         }
+        case Instruction::METHOD_CALL:
+        {
+            MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
+            out << method_call_instruction->class_name << "::" << method_call_instruction->method_name << "(";
+            out << method_call_instruction->parameters[0].str();
+            for (int i=1; i<(int)method_call_instruction->parameters.size(); ++i) {
+                out << ", " << method_call_instruction->parameters[i].str();
+            }
+            out << ")";
+            break;
+        }
         default:
             assert(false);
     }
@@ -830,18 +842,18 @@ MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(Typ
     }
 }
 
-void MethodGenerator::generate(FunctionDeclaration * function_declaration) {
+void MethodGenerator::generate() {
     m_variable_numbers.put("this", next_available_register(REFERENCE));
-    for (VariableDeclarationList * variable_list = function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
+    for (VariableDeclarationList * variable_list = m_function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
     }
-    for (VariableDeclarationList * variable_list = function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
+    for (VariableDeclarationList * variable_list = m_function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
     }
 
-    gen_statement_list(function_declaration->block->statement_list);
+    gen_statement_list(m_function_declaration->block->statement_list);
 
     m_instructions.push_back(new ReturnInstruction());
 }
@@ -911,7 +923,7 @@ void MethodGenerator::gen_statement(Statement * statement) {
 
 void MethodGenerator::gen_method_designator(MethodDesignator * method_designator) {
     MethodCallInstruction * instruction = new MethodCallInstruction(m_class_name, method_designator->function->identifier->text);
-    instruction->parameters.push_back(method_designator->owner);
+    instruction->parameters.push_back(gen_variable_access(method_designator->owner));
     for (ExpressionList * parameter_list = method_designator->function->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next) {
         Expression * expression = parameter_list->item;
         Variant parameter = gen_expression(expression);
@@ -1423,6 +1435,11 @@ void MethodGenerator::compress_registers()
 {
     // start out, assume not using any
     std::set<int> used_registers;
+
+    used_registers.insert(0);
+    for (VariableDeclarationList * variable_list = m_function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
+        used_registers.insert((int)used_registers.size());
+    }
 
     // go through program and mark the ones we do use
     for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
