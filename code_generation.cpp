@@ -48,8 +48,10 @@ private:
         Type type;
 
         Instruction(Type type) : type(type) {}
-        // toggle the index of the registers you use in this instruction to true.
-        virtual void markUsedRegisters(std::vector<bool> & used_list) = 0;
+        // insert the indexes registers you read (rvalues) in this instruction
+        virtual void insertReadRegisters(std::set<int> & used_list) = 0;
+        // insert the indexes registers you mangle (lvalues) in this instruction
+        virtual void insertMangledRegisters(std::set<int> & mangled_list) = 0;
         // remap the register indexes used to a new value based on a vector lookup
         virtual void remapRegisters(std::vector<int> & map) = 0;
     };
@@ -153,11 +155,14 @@ private:
         Variant source; // register number
         CopyInstruction(Variant dest, Variant source) : Instruction(COPY), dest(dest), source(source) {}
 
-        void markUsedRegisters(std::vector<bool> & used_list) {
-            if (dest.type == Variant::REGISTER)
-                used_list[dest._int] = true;
+        void insertReadRegisters(std::set<int> & used_list) {
             if (source.type == Variant::REGISTER)
-                used_list[source._int] = true;
+                used_list.insert(source._int);
+        }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
         }
 
         void remapRegisters(std::vector<int> & map) {
@@ -223,13 +228,16 @@ private:
             return std::string();
         }
 
-        void markUsedRegisters(std::vector<bool> & used_list) {
-            if (dest.type == Variant::REGISTER)
-                used_list[dest._int] = true;
+        void insertReadRegisters(std::set<int> & used_list) {
             if (left.type == Variant::REGISTER)
-                used_list[left._int] = true;
+                used_list.insert(left._int);
             if (right.type == Variant::REGISTER)
-                used_list[right._int] = true;
+                used_list.insert(right._int);
+        }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
         }
 
         void remapRegisters(std::vector<int> & map) {
@@ -255,12 +263,16 @@ private:
         UnaryInstruction(Variant dest, Operator _operator, Variant source) : Instruction(UNARY), dest(dest), _operator(_operator), source(source) {}
 
 
-        void markUsedRegisters(std::vector<bool> & used_list) {
-            if (dest.type == Variant::REGISTER)
-                used_list[dest._int] = true;
+        void insertReadRegisters(std::set<int> & used_list) {
             if (source.type == Variant::REGISTER)
-                used_list[source._int] = true;
+                used_list.insert(source._int);
         }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
+        }
+
 
         void remapRegisters(std::vector<int> & map) {
             if (dest.type == Variant::REGISTER)
@@ -276,10 +288,12 @@ private:
 
         IfInstruction(Variant condition, int goto_index) : Instruction(IF), condition(condition), goto_index(goto_index) {}
 
-        void markUsedRegisters(std::vector<bool> & used_list) {
+        void insertReadRegisters(std::set<int> & used_list) {
             if (condition.type == Variant::REGISTER)
-                used_list[condition._int] = true;
+                used_list.insert(condition._int);
         }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {}
 
         void remapRegisters(std::vector<int> & map) {
             if (condition.type == Variant::REGISTER)
@@ -292,14 +306,16 @@ private:
 
         GotoInstruction(int goto_index) : Instruction(GOTO), goto_index(goto_index) {}
 
-        void markUsedRegisters(std::vector<bool> & used_list) {}
+        void insertReadRegisters(std::set<int> & used_list) {}
+        void insertMangledRegisters(std::set<int> & mangled_list) {}
         void remapRegisters(std::vector<int> & map) {}
     };
 
     struct ReturnInstruction : public Instruction {
         ReturnInstruction() : Instruction(RETURN) {}
 
-        void markUsedRegisters(std::vector<bool> & used_list) {}
+        void insertReadRegisters(std::set<int> & used_list) {}
+        void insertMangledRegisters(std::set<int> & mangled_list) {}
         void remapRegisters(std::vector<int> & map) {}
     };
 
@@ -307,10 +323,12 @@ private:
         Variant value;
         PrintInstruction(Variant value) : Instruction(PRINT), value(value) {}
 
-        void markUsedRegisters(std::vector<bool> & used_list) {
+        void insertReadRegisters(std::set<int> & used_list) {
             if (value.type == Variant::REGISTER)
-                used_list[value._int] = true;
+                used_list.insert(value._int);
         }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {}
 
         void remapRegisters(std::vector<int> & map) {
             if (value.type == Variant::REGISTER)
@@ -399,10 +417,8 @@ private:
     RegisterType type_denoter_to_register_type(TypeDenoter * type);
     void calculate_mangle_set(int block_index);
     void record_mangled_registers(BasicBlock * block, BasicBlock * block_that_gets_the_resutls);
-    void record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results);
     void calculate_downward_mangle_set(int block_index);
     void calculate_upward_mangle_set(int block_index);
-    void add_if_register(std::set<int> & set, Variant possibly_a_register);
     void delete_block(int index);
     void loadRegister(std::ostream & out, Variant value, int tmp_register_number);
     void storeRegister(std::ostream & out, int register_number, int tmp_register_number);
@@ -1354,39 +1370,6 @@ void MethodGenerator::record_mangled_registers(BasicBlock * block, BasicBlock * 
     }
 }
 
-void MethodGenerator::add_if_register(std::set<int> & set, Variant possibly_a_register) {
-    if (possibly_a_register.type == Variant::REGISTER)
-        set.insert(possibly_a_register._int);
-}
-
-void MethodGenerator::record_used_registers(BasicBlock * block, BasicBlock * block_that_gets_the_results) {
-    std::set<int> & used_registers = block_that_gets_the_results->used_registers;
-    for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
-        Instruction * instruction = *it;
-        switch (instruction->type) {
-        case Instruction::COPY:
-            add_if_register(used_registers, ((CopyInstruction *)instruction)->source);
-            break;
-        case Instruction::OPERATOR:
-            add_if_register(used_registers, ((OperatorInstruction *)instruction)->left);
-            add_if_register(used_registers, ((OperatorInstruction *)instruction)->right);
-            break;
-        case Instruction::UNARY:
-            add_if_register(used_registers, ((UnaryInstruction *)instruction)->source);
-            break;
-        case Instruction::PRINT:
-            add_if_register(used_registers, ((PrintInstruction *)instruction)->value);
-            break;
-        case Instruction::IF:
-            add_if_register(used_registers, ((IfInstruction *)instruction)->condition);
-            break;
-        case Instruction::GOTO:
-        case Instruction::RETURN:
-            break;
-        }
-    }
-}
-
 void MethodGenerator::compute_addresses() {
     int address = 0;
     for (int i = 0; i < (int)m_basic_blocks.size(); ++i) {
@@ -1417,11 +1400,7 @@ void MethodGenerator::compute_addresses() {
 void MethodGenerator::compress_registers()
 {
     // start out, assume not using any
-    std::vector<bool> used_registers;
-    used_registers.resize(m_register_count);
-    for (int i=0; i<(int)m_register_count; ++i) {
-        used_registers[i] = false;
-    }
+    std::set<int> used_registers;
 
     // go through program and mark the ones we do use
     for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
@@ -1430,7 +1409,8 @@ void MethodGenerator::compress_registers()
             continue;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
             Instruction * instruction = *it;
-            instruction->markUsedRegisters(used_registers);
+            instruction->insertReadRegisters(used_registers);
+            instruction->insertMangledRegisters(used_registers);
         }
     }
 
@@ -1440,14 +1420,15 @@ void MethodGenerator::compress_registers()
     new_number.resize(m_register_count);
     new_type.resize(m_register_count);
 
+
     int new_register_count = 0;
-    for (int i=0; i<(int)m_register_count; ++i) {
-        if (used_registers[i]) {
-            new_number[i] = new_register_count;
-            new_type[new_register_count] = m_register_type[i];
-            ++new_register_count;
-        }
+    for (std::set<int>::iterator it = used_registers.begin(); it != used_registers.end(); ++it) {
+        int used_register_number = *it;
+        new_number[used_register_number] = new_register_count;
+        new_type[new_register_count] = m_register_type[used_register_number];
+        ++new_register_count;
     }
+
     // apply the mapping to existing code
     for (int b = 0; b < (int)m_basic_blocks.size(); ++b) {
         BasicBlock * block = m_basic_blocks[b];
@@ -1541,7 +1522,10 @@ void MethodGenerator::dependency_management() {
                     if (node->is_destination && node->is_source) {
                         // this block is on the path to victory.
                         // record the mangled registers and store them in the later parent.
-                        record_used_registers(node, end_node);
+                        for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
+                            Instruction * instruction = *it;
+                            instruction->insertReadRegisters(end_node->used_registers);
+                        }
                     }
                     // reset state for next go around.
                     node->is_destination = false;
@@ -1596,7 +1580,7 @@ void MethodGenerator::dependency_management() {
                         instruction = NULL;
                     } else {
                         // add the source to used set
-                        add_if_register(block->used_registers, copy_instruction->source);
+                        copy_instruction->insertReadRegisters(block->used_registers);
                     }
 
                     // delete dest from used set
@@ -1621,8 +1605,7 @@ void MethodGenerator::dependency_management() {
                         instruction = NULL;
                     } else {
                         // add the operands to used set
-                        add_if_register(block->used_registers, operator_instruction->left);
-                        add_if_register(block->used_registers, operator_instruction->right);
+                        operator_instruction->insertReadRegisters(block->used_registers);
                     }
 
                     // delete dest from used set
@@ -1649,7 +1632,7 @@ void MethodGenerator::dependency_management() {
                         instruction = NULL;
                     } else {
                         // add the source to used set
-                        add_if_register(block->used_registers, unary_instruction->source);
+                        unary_instruction->insertReadRegisters(block->used_registers);
                     }
 
                     // delete dest from used set
@@ -1661,13 +1644,13 @@ void MethodGenerator::dependency_management() {
                 case Instruction::PRINT:
                 {
                     PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-                    add_if_register(block->used_registers, print_instruction->value);
+                    print_instruction->insertReadRegisters(block->used_registers);
                     break;
                 }
                 case Instruction::IF:
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
-                    add_if_register(block->used_registers, if_instruction->condition);
+                    if_instruction->insertReadRegisters(block->used_registers);
                     break;
                 }
                 case Instruction::GOTO:
