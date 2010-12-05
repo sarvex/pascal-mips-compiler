@@ -1,9 +1,11 @@
 program Main;
 class Main begin
     function Main;
-        var a : Integer;
+    begin
+        doit(1, false)
+    end
+    function doit( a : Integer; c : Boolean );
         var b : Integer;
-        var c : Boolean;
         var d : Boolean;
     begin
         b := a + 0;

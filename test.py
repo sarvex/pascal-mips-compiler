@@ -148,7 +148,7 @@ def main():
             })
             if options.failfast:
                 break
-        else:
+        elif compiler.returncode != 1:
             # compiler output correct, now test the generated code output
             asm_output = interpret_command(stdout)
             if asm_output != test['out']:
