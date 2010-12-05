@@ -255,11 +255,13 @@ statement_list : statement KEYWORD_SEMICOLON statement_list {
 };
 
 statement : function_designator {
-    $$ = new Statement($1);
+    // convert "a(...)" to "this.a(...)"
+    $$ = new Statement(new MethodDesignator(new VariableAccess(VariableAccess::THIS), $1));
 } | method_designator {
     $$ = new Statement($1);
 } | attribute_designator {
-    $$ = new Statement($1);
+    // convert "a.b" to "a.b()"
+    $$ = new Statement(new MethodDesignator($1->owner, new FunctionDesignator($1->identifier, NULL)));
 } | assignment_statement {
     $$ = new Statement($1);
 } | if_statement {
@@ -271,7 +273,8 @@ statement : function_designator {
 } | compound_statement {
     $$ = new Statement($1);
 } | TOKEN_IDENTIFIER {
-    $$ = new Statement(new FunctionDesignator($1, NULL));
+    // convert "a" to "this.a()"
+    $$ = new Statement(new MethodDesignator(new VariableAccess(VariableAccess::THIS), new FunctionDesignator($1, NULL)));
 } | {
     $$ = NULL;
 };
@@ -389,7 +392,8 @@ primary_expression : TOKEN_LITERAL_INTEGER {
 } | variable_access {
     $$ = new PrimaryExpression($1);
 } | function_designator {
-    $$ = new PrimaryExpression($1);
+    // convert "a()" to "this.a()"
+    $$ = new PrimaryExpression(new MethodDesignator(new VariableAccess(VariableAccess::THIS), $1));
 } | method_designator {
     $$ = new PrimaryExpression($1);
 } | object_instantiation {

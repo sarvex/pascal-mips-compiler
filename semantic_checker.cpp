@@ -315,13 +315,6 @@ void SemanticChecker::check_statement(Statement * statement)
         case Statement::METHOD:
             check_method_designator(statement->method);
             break;
-        case Statement::FUNCTION:
-            check_function_designator(statement->function);
-            break;
-        case Statement::ATTRIBUTE:
-            // actually this is a method call
-            check_method_designator(new MethodDesignator(statement->attribute->owner, new FunctionDesignator(statement->attribute->identifier, NULL)));
-            break;
         default:
             assert(false);
     }
@@ -463,9 +456,6 @@ TypeDenoter * SemanticChecker::check_primary_expression(PrimaryExpression * prim
             }
             break;
         }
-        case PrimaryExpression::FUNCTION:
-            type = check_function_designator(primary_expression->function);
-            break;
         case PrimaryExpression::METHOD:
             type = check_method_designator(primary_expression->method);
             break;
@@ -507,20 +497,20 @@ TypeDenoter * SemanticChecker::check_variable_access(VariableAccess * variable_a
                     }
                 }
                 return function_symbols->variables->get(variable_access->identifier->text)->type;
-            } else {
-                TypeDenoter * type = class_variable_type(m_class_id, variable_access->identifier);
-                if (type == NULL) {
-                    // undeclared variable
-                    std::cerr << err_header(variable_access->identifier->line_number) <<
-                        "variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
-                    m_success = false;
-                    return NULL;
-                } else {
-                    // class variable
-                    return type;
-                }
             }
-            break;
+            TypeDenoter * type = class_variable_type(m_class_id, variable_access->identifier);
+            if (type != NULL) {
+                // class variable
+                // convert "a" to "this.a"
+                variable_access->type = VariableAccess::ATTRIBUTE;
+                variable_access->attribute = new AttributeDesignator(new VariableAccess(VariableAccess::THIS), variable_access->identifier);
+                return type;
+            }
+            // undeclared variable
+            std::cerr << err_header(variable_access->identifier->line_number) <<
+                "variable \"" << variable_access->identifier->text << "\" not declared" << std::endl;
+            m_success = false;
+            return NULL;
         }
         case VariableAccess::INDEXED_VARIABLE:
             return check_indexed_variable(variable_access->indexed_variable);
@@ -558,67 +548,55 @@ FunctionDeclaration * SemanticChecker::class_method(std::string class_name, Func
     }
 }
 
-TypeDenoter * SemanticChecker::check_function_designator(FunctionDesignator * function_designator)
-{
-    // trace the class hierarchy until we find (or don't find) the function to call
-    FunctionDeclaration * function_declaration = class_method(m_class_id, function_designator);
-    if (function_declaration == NULL) {
-        std::cerr << err_header(function_designator->identifier->line_number) <<
-            "function \"" << function_designator->identifier->text << "\" not declared" << std::endl;
-        m_success = false;
-        return NULL;
-    } else {
-        // check signature
-        int parameter_index = 0;
-        ExpressionList * actual_parameter_list = function_designator->parameter_list;
-        VariableDeclarationList * formal_parameter_list = function_declaration->parameter_list;
-        for (;actual_parameter_list != NULL || formal_parameter_list != NULL;
-            actual_parameter_list = actual_parameter_list->next,
-            formal_parameter_list = formal_parameter_list->next,
-            ++parameter_index)
-        {
-            if (actual_parameter_list == NULL) {
-                std::cerr << err_header(function_designator->identifier->line_number) <<
-                    "too few arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
-                m_success = false;
-                break;
-            } else if (formal_parameter_list == NULL) {
-                std::cerr << err_header(function_designator->identifier->line_number) <<
-                    "too many arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
-                m_success = false;
-                break;
-            } else {
-                TypeDenoter * formal_type = formal_parameter_list->item->type;
-                TypeDenoter * actual_type = check_expression(actual_parameter_list->item);
-                if (formal_type == NULL || actual_type == NULL)
-                    continue;
-                if (! assignment_valid(formal_type, actual_type)) {
-                    std::cerr << err_header(function_designator->identifier->line_number) <<
-                        "function \"" << function_designator->identifier->text << "\": " <<
-                        "parameter index " << parameter_index << ": cannot convert \"" <<
-                        type_to_string(actual_type) << "\" to \"" << type_to_string(formal_type) << "\"" << std::endl;
-                    m_success = false;
-                }
-            }
-        }
-
-        return function_declaration->type;
-    }
-}
-
 TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method_designator)
 {
+    FunctionDesignator * function_designator = method_designator->function;
+
     TypeDenoter * owner_type = check_variable_access(method_designator->owner);
     assert(owner_type->type == TypeDenoter::CLASS);
-    FunctionDeclaration * function_declaration = class_method(owner_type->class_identifier->text, method_designator->function);
+    FunctionDeclaration * function_declaration = class_method(owner_type->class_identifier->text, function_designator);
     if (function_declaration == NULL) {
-        std::cerr << err_header(method_designator->function->identifier->line_number) <<
-            "class \"" << owner_type->class_identifier->text << "\" has no method \"" << method_designator->function->identifier->text << "\"" << std::endl;
+        std::cerr << err_header(function_designator->identifier->line_number) <<
+            "class \"" << owner_type->class_identifier->text << "\" has no method \"" << function_designator->identifier->text << "\"" << std::endl;
         m_success = false;
         return NULL;
-    } else {
-        return function_declaration->type;
     }
+
+    // check signature
+    int parameter_index = 0;
+    ExpressionList * actual_parameter_list = function_designator->parameter_list;
+    VariableDeclarationList * formal_parameter_list = function_declaration->parameter_list;
+    for (;actual_parameter_list != NULL || formal_parameter_list != NULL;
+        actual_parameter_list = actual_parameter_list->next,
+        formal_parameter_list = formal_parameter_list->next,
+        ++parameter_index)
+    {
+        if (actual_parameter_list == NULL) {
+            std::cerr << err_header(function_designator->identifier->line_number) <<
+                "too few arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
+            m_success = false;
+            break;
+        } else if (formal_parameter_list == NULL) {
+            std::cerr << err_header(function_designator->identifier->line_number) <<
+                "too many arguments to function \"" << function_designator->identifier->text << "\"" << std::endl;
+            m_success = false;
+            break;
+        } else {
+            TypeDenoter * formal_type = formal_parameter_list->item->type;
+            TypeDenoter * actual_type = check_expression(actual_parameter_list->item);
+            if (formal_type == NULL || actual_type == NULL)
+                continue;
+            if (! assignment_valid(formal_type, actual_type)) {
+                std::cerr << err_header(function_designator->identifier->line_number) <<
+                    "function \"" << function_designator->identifier->text << "\": " <<
+                    "parameter index " << parameter_index << ": cannot convert \"" <<
+                    type_to_string(actual_type) << "\" to \"" << type_to_string(formal_type) << "\"" << std::endl;
+                m_success = false;
+            }
+        }
+    }
+
+    return function_declaration->type;
 }
 
 TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * object_instantiation)

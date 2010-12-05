@@ -157,22 +157,17 @@ struct StatementList {
 
 struct Statement {
     // don't change this enum without changing the corresponding one in CodeGenerator
-    enum Type {FUNCTION, METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND, ATTRIBUTE};
+    enum Type {METHOD, ASSIGNMENT, IF, PRINT, WHILE, COMPOUND};
     Type type;
     union {
-        FunctionDesignator * function;
         MethodDesignator * method;
-        // hack to have methods with no parentheses
-        AttributeDesignator * attribute;
         AssignmentStatement * assignment;
         IfStatement * if_statement;
         PrintStatement * print_statement;
         WhileStatement * while_statement;
         StatementList * compound_statement;
     };
-    Statement(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     Statement(MethodDesignator * method) : type(METHOD), method(method) {}
-    Statement(AttributeDesignator * attribute) : type(ATTRIBUTE), attribute(attribute) {}
     Statement(AssignmentStatement * assignment) : type(ASSIGNMENT), assignment(assignment) {}
     Statement(IfStatement * if_statement) : type(IF), if_statement(if_statement) {}
     Statement(PrintStatement * print_statement) : type(PRINT), print_statement(print_statement) {}
@@ -317,7 +312,7 @@ struct NegatableExpression {
 
 struct PrimaryExpression {
     // don't change this enum without changing the corresponding one in CodeGenerator
-    enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, FUNCTION, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
+    enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
     int type;
     union {
         LiteralInteger * literal_integer;
@@ -325,7 +320,6 @@ struct PrimaryExpression {
         LiteralString * literal_string;
         LiteralBoolean * literal_boolean;
         VariableAccess * variable;
-        FunctionDesignator * function;
         MethodDesignator * method;
         ObjectInstantiation * object_instantiation;
         Expression * parens_expression;
@@ -337,7 +331,6 @@ struct PrimaryExpression {
     PrimaryExpression(LiteralString * literal_string) : type(STRING), literal_string(literal_string) {}
     PrimaryExpression(LiteralBoolean * literal_boolean) : type(BOOLEAN), literal_boolean(literal_boolean) {}
     PrimaryExpression(VariableAccess * variable) : type(VARIABLE), variable(variable) {}
-    PrimaryExpression(FunctionDesignator * function) : type(FUNCTION), function(function) {}
     PrimaryExpression(MethodDesignator * method) : type(METHOD), method(method) {}
     PrimaryExpression(ObjectInstantiation * object_instantiation)
         : type(OBJECT_INSTANTIATION), object_instantiation(object_instantiation) {}
