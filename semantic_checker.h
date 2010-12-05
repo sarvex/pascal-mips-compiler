@@ -47,6 +47,8 @@ class SemanticChecker {
         TypeDenoter * check_indexed_variable(IndexedVariable * indexed_variable);
         TypeDenoter * check_attribute_designator(AttributeDesignator * attribute_designator);
 
+        Identifier * find_identifier(VariableAccess * variable_access);
+
         // get the result type of adding/multiplying/etc types
         TypeDenoter * combined_type(TypeDenoter * left_type, TypeDenoter * right_type);
         // determine if types are exactly equal

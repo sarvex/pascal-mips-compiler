@@ -669,8 +669,9 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
             continue;
         }
         if (index_type->type != TypeDenoter::INTEGER) {
-            std::cerr << err_header(indexed_variable->variable->identifier->line_number) <<
-                "array index not an integer for variable \"" << indexed_variable->variable->identifier->text << "\"" << std::endl;
+            Identifier * identifier = find_identifier(indexed_variable->variable);
+            std::cerr << err_header(identifier->line_number) <<
+                "array index not an integer for variable \"" << identifier->text << "\"" << std::endl;
             m_success = false;
         } else {
             // if expression is constant, check bounds
@@ -693,6 +694,22 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
     // it's the array type of the variable access type
     return array_type_iterator;
 }
+
+Identifier * SemanticChecker::find_identifier(VariableAccess * variable_access)
+{
+    switch (variable_access->type) {
+        case VariableAccess::IDENTIFIER:
+            return variable_access->identifier;
+        case VariableAccess::INDEXED_VARIABLE:
+            return find_identifier(variable_access->indexed_variable->variable);
+        case VariableAccess::ATTRIBUTE:
+            return variable_access->attribute->identifier;
+        case VariableAccess::THIS:
+            assert(false);
+            return NULL;
+    }
+}
+
 
 TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * attribute_designator)
 {
