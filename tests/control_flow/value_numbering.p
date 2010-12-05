@@ -1,12 +1,13 @@
 program Main;
 class Main begin
     function Main;
+    begin
+        doit(1, 2, 3);
+    end
+    function doit( b : Integer; c : Integer; d : Integer);
         var a1 : Integer;
         var a2 : Integer;
         var a3 : Integer;
-        var b : Integer;
-        var c : Integer;
-        var d : Integer;
         var t : Integer;
     begin
         t := b + c;

@@ -1,1 +1,1 @@
-ERROR: line 17: function "setLightSwitchWorks" not declared
+ERROR: line 17: class "testFunctionNotDeclared" has no method "setLightSwitchWorks"

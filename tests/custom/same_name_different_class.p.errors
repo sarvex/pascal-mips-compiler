@@ -1,1 +1,1 @@
-ERROR: line 9: function "foo" not declared
+ERROR: line 9: class "maIne" has no method "foo"

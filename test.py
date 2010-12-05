@@ -112,6 +112,8 @@ def main():
     test_list = sorted(tests.iteritems())
     if options.backwards:
         test_list.reverse()
+
+    # complain about missing files before showing progress
     for test_name, test in test_list:
         if not test.has_key('source'):
             print("%s missing source" % test_name)
@@ -121,6 +123,14 @@ def main():
             continue
         if not test.has_key('out'):
             print("%s missing .out file for what the program should output" % test_name)
+            continue
+
+    for test_name, test in test_list:
+        if not test.has_key('source'):
+            continue
+        if not test.has_key('errors'):
+            continue
+        if not test.has_key('out'):
             continue
 
         # try compiling the test file

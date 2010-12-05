@@ -283,12 +283,13 @@ void SemanticChecker::check_statement(Statement * statement)
             if (left_type == NULL || right_type == NULL)
                 break; // problem elsewhere
             if (! assignment_valid(left_type, right_type)) {
+                Identifier * identifier = find_identifier(statement->assignment->variable);
                 if (left_type->type == TypeDenoter::CLASS && right_type->type == TypeDenoter::CLASS) {
-                    std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
+                    std::cerr << err_header(identifier->line_number) <<
                         "class \"" << type_to_string(right_type) << "\" is not a base class of \"" <<
                         type_to_string(left_type) << "\" in the assignment" << std::endl;
                 } else {
-                    std::cerr << err_header(statement->assignment->variable->identifier->line_number) <<
+                    std::cerr << err_header(identifier->line_number) <<
                         "cannot assign \"" << type_to_string(right_type) << "\" to \"" <<
                         type_to_string(left_type) << "\"" << std::endl;
                 }

@@ -1,6 +1,9 @@
 program Main;
 class Main begin
     function Main;
+    begin
+    end
+    function Test;
         var t0 : Integer;
         var t1 : Integer;
         var t2 : Integer;

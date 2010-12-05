@@ -96,6 +96,7 @@ SymbolTable * build_symbol_table(Program * program) {
         if (inheritance_loop(symbol_table, class_declaration->identifier->text)) {
             std::cerr << err_header(class_declaration->identifier->line_number) <<
                 "inheritance loop detected" << std::endl;
+            success = false;
             continue;
         }
 
