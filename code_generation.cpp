@@ -44,6 +44,7 @@ private:
             GOTO,
             RETURN,
             PRINT,
+            METHOD_CALL,
         };
         Type type;
 
@@ -147,6 +148,25 @@ private:
         }
     };
 
+    struct MethodCallInstruction : public Instruction {
+        std::string class_name;
+        std::string method_name;
+        std::vector<Variant> parameters;
+        MethodCallInstruction(std::string class_name, std::string method_name)
+            : Instruction(METHOD_CALL), class_name(class_name), method_name(method_name) {}
+
+        void markUsedRegisters(std::vector<bool> & used_list) {
+            for (int i = 0; i < (int)parameters.size(); i++)
+                if (parameters[i].type == Variant::REGISTER)
+                    used_list[parameters[i]._int] = true;
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            for (int i = 0; i < (int)parameters.size(); i++)
+                if (parameters[i].type == Variant::REGISTER)
+                    parameters[i]._int = map[parameters[i]._int];
+        }
+    };
 
     struct CopyInstruction : public Instruction {
         Variant dest; // register number
@@ -355,6 +375,7 @@ private:
         INTEGER,
         REAL,
         BOOL,
+        REFERENCE,
     };
 
     std::vector<RegisterType> m_register_type;
@@ -364,6 +385,7 @@ private:
 
     void gen_statement_list(StatementList * statement_list);
     void gen_statement(Statement * statement);
+    void gen_method_designator(MethodDesignator * method_designator);
     Variant gen_expression(Expression * expression);
     Variant gen_additive_expression(AdditiveExpression * additive_expression);
     Variant gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
@@ -404,7 +426,7 @@ private:
     void calculate_upward_mangle_set(int block_index);
     void add_if_register(std::set<int> & set, Variant possibly_a_register);
     void delete_block(int index);
-    void loadRegister(std::ostream & out, Variant value, int tmp_register_number);
+    void loadValue(std::ostream & out, Variant value, int tmp_register_number);
     void storeRegister(std::ostream & out, int register_number, int tmp_register_number);
     int getStackSpace();
 };
@@ -489,7 +511,7 @@ void generate_code(Program * program, bool debug, bool disable_optimization) {
     std::cout << asm_out.str();
 }
 
-void MethodGenerator::loadRegister(std::ostream & out, Variant value, int tmp_register_number)
+void MethodGenerator::loadValue(std::ostream & out, Variant value, int tmp_register_number)
 {
     if (value.type == Variant::CONST_BOOL) {
         out << "li $t" << tmp_register_number << ", " << (value._bool ? 1 : 0) << std::endl;
@@ -537,15 +559,15 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::COPY:
                 {
                     CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-                    loadRegister(out, copy_instruction->source, 0);
+                    loadValue(out, copy_instruction->source, 0);
                     storeRegister(out, copy_instruction->dest._int, 0);
                     break;
                 }
                 case Instruction::OPERATOR:
                 {
                     OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-                    loadRegister(out, operator_instruction->left, 0);
-                    loadRegister(out, operator_instruction->right, 1);
+                    loadValue(out, operator_instruction->left, 0);
+                    loadValue(out, operator_instruction->right, 1);
                     switch (operator_instruction->_operator) {
                         case OperatorInstruction::EQUAL:
                         {
@@ -609,7 +631,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::UNARY:
                 {
                     UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-                    loadRegister(out, unary_instruction->source, 0);
+                    loadValue(out, unary_instruction->source, 0);
                     if (unary_instruction->_operator == UnaryInstruction::NOT) {
                         out << "xori $t0, $t0, 1" << std::endl;
                     } else if (unary_instruction->_operator == UnaryInstruction::NEGATE) {
@@ -623,7 +645,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 case Instruction::IF:
                 {
                     IfInstruction * if_instruction = (IfInstruction *) instruction;
-                    loadRegister(out, if_instruction->condition, 0);
+                    loadValue(out, if_instruction->condition, 0);
                     out << "beq $t0, $0, " << m_class_name << "_" << m_method_name << "_" << block->jump_child << std::endl;
                     break;
                 }
@@ -643,7 +665,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     if (print_instruction->value.type == Variant::REGISTER) {
                         if (m_register_type.at(print_instruction->value._int) == BOOL) {
                             is_bool = true;
-                            loadRegister(out, print_instruction->value, 0);
+                            loadValue(out, print_instruction->value, 0);
                             int skip_label = getNextUniqueLabel();
                             out << "la $a0, true_text" << std::endl;
                             out << "bne $t0, $0, l" << skip_label << std::endl;
@@ -661,7 +683,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                         }
                     }
                     if (! is_bool) {
-                        loadRegister(out, print_instruction->value, 0);
+                        loadValue(out, print_instruction->value, 0);
                         out << "move $a0, $t0" << std::endl;
                         out << "li $v0, 1" << std::endl;
                         out << "syscall" << std::endl;
@@ -670,6 +692,16 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     out << "li $a0, 10" << std::endl;
                     out << "li $v0, 11" << std::endl;
                     out << "syscall" << std::endl;
+                    break;
+                }
+                case Instruction::METHOD_CALL:
+                {
+                    MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
+                    for (int i = 0; i < (int)method_call_instruction->parameters.size(); i++) {
+                        loadValue(out, method_call_instruction->parameters[i], 0);
+                        out << "sw $t0, " << (i * 4) << "($sp)" << std::endl;
+                    }
+                    out << "jal " << method_call_instruction->class_name << "_" << method_call_instruction->method_name << std::endl;
                     break;
                 }
             }
@@ -782,6 +814,7 @@ MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(Typ
 }
 
 void MethodGenerator::generate(FunctionDeclaration * function_declaration) {
+    m_variable_numbers.put("this", next_available_register(REFERENCE));
     for (VariableDeclarationList * variable_list = function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
@@ -851,22 +884,23 @@ void MethodGenerator::gen_statement(Statement * statement) {
         case Statement::COMPOUND:
             gen_statement_list(statement->compound_statement);
             break;
-            /*
         case Statement::METHOD:
-            check_method_designator(statement->method);
+            gen_method_designator(statement->method);
             break;
-        case Statement::FUNCTION:
-            check_function_designator(statement->function);
-            break;
-        case Statement::ATTRIBUTE:
-            // actually this is a method call
-            check_method_designator(new MethodDesignator(statement->attribute->owner, new FunctionDesignator(statement->attribute->identifier, NULL)));
-            break;
-        */
         default:
             assert(false);
-
     }
+}
+
+void MethodGenerator::gen_method_designator(MethodDesignator * method_designator) {
+    MethodCallInstruction * instruction = new MethodCallInstruction(m_class_name, method_designator->function->identifier->text);
+    instruction->parameters.push_back(method_designator->owner);
+    for (ExpressionList * parameter_list = method_designator->function->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next) {
+        Expression * expression = parameter_list->item;
+        Variant parameter = gen_expression(expression);
+        instruction->parameters.push_back(parameter);
+    }
+    m_instructions.push_back(instruction);
 }
 
 
@@ -979,13 +1013,13 @@ MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * v
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
             return m_variable_numbers.get(variable->identifier->text);
+        case VariableAccess::THIS:
+            return m_variable_numbers.get("this");
         /*
         case VariableAccess::INDEXED_VARIABLE:
             return check_indexed_variable(variable_access->indexed_variable);
         case VariableAccess::ATTRIBUTE:
             return check_attribute_designator(variable_access->attribute);
-        case VariableAccess::THIS:
-            return new TypeDenoter(m_symbol_table->item(m_class_id)->class_declaration->identifier);
         */
         default:
             assert(false);
@@ -1260,6 +1294,13 @@ void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
                 print_instruction->value = inline_value(block, print_instruction->value);
                 break;
             }
+            case Instruction::METHOD_CALL:
+            {
+                MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
+                for (int i = 0; i < (int)method_call_instruction->parameters.size(); i++)
+                    method_call_instruction->parameters[i] = inline_value(block, method_call_instruction->parameters[i]);
+                break;
+            }
         }
     }
 }
@@ -1364,25 +1405,25 @@ void MethodGenerator::record_used_registers(BasicBlock * block, BasicBlock * blo
     for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it) {
         Instruction * instruction = *it;
         switch (instruction->type) {
-        case Instruction::COPY:
-            add_if_register(used_registers, ((CopyInstruction *)instruction)->source);
-            break;
-        case Instruction::OPERATOR:
-            add_if_register(used_registers, ((OperatorInstruction *)instruction)->left);
-            add_if_register(used_registers, ((OperatorInstruction *)instruction)->right);
-            break;
-        case Instruction::UNARY:
-            add_if_register(used_registers, ((UnaryInstruction *)instruction)->source);
-            break;
-        case Instruction::PRINT:
-            add_if_register(used_registers, ((PrintInstruction *)instruction)->value);
-            break;
-        case Instruction::IF:
-            add_if_register(used_registers, ((IfInstruction *)instruction)->condition);
-            break;
-        case Instruction::GOTO:
-        case Instruction::RETURN:
-            break;
+            case Instruction::COPY:
+                add_if_register(used_registers, ((CopyInstruction *)instruction)->source);
+                break;
+            case Instruction::OPERATOR:
+                add_if_register(used_registers, ((OperatorInstruction *)instruction)->left);
+                add_if_register(used_registers, ((OperatorInstruction *)instruction)->right);
+                break;
+            case Instruction::UNARY:
+                add_if_register(used_registers, ((UnaryInstruction *)instruction)->source);
+                break;
+            case Instruction::PRINT:
+                add_if_register(used_registers, ((PrintInstruction *)instruction)->value);
+                break;
+            case Instruction::IF:
+                add_if_register(used_registers, ((IfInstruction *)instruction)->condition);
+                break;
+            case Instruction::GOTO:
+            case Instruction::RETURN:
+                break;
         }
     }
 }
