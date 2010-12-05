@@ -1,8 +1,11 @@
 program Main;
 class Main begin
     function Main;
-        var a : Integer;
-        var b : Integer;
+    begin
+        stuff(0, 5);
+        stuff(0, 10);
+    end
+    function stuff(a : Integer; b : Integer);
         var c : Boolean;
         var d : Boolean;
     begin

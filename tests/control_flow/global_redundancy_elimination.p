@@ -1,8 +1,13 @@
 program Main;
 class Main begin
     function Main;
+    begin
+        doit(true, false, false);
+        doit(false, true, false);
+        doit(false, false, true);
+    end
+    function doit( z : Boolean; y : Boolean; x : Boolean);
         var a, b, c : Integer;
-        var z, y, x : Boolean;
     begin
         a := 1;
         a := 1;
