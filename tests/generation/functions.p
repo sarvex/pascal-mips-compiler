@@ -3,14 +3,13 @@ class Main
 begin
     function Main;
     begin
-       printSum(2,8);
+       print addThese(2,8);
     end;
 
-    function printSum(a : integer; b : integer ): integer;
+    function addThese(a : integer; b : integer ) : integer;
         var c : integer;
     begin
-       c := a + b;
-       print c;
+       addThese := a + b;
     end
 end
 .
