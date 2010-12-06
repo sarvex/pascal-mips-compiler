@@ -174,7 +174,7 @@ private:
 
         virtual void insertMangledRegisters(std::set<int> &mangled_list) {}
 
-        void remapRegisters(std::vector<int> & map) {
+        virtual void remapRegisters(std::vector<int> & map) {
             for (int i = 0; i < (int)parameters.size(); i++)
                 if (parameters[i].type == Variant::REGISTER)
                     parameters[i]._int = map[parameters[i]._int];
@@ -196,6 +196,10 @@ private:
             this->type = NON_VOID_METHOD_CALL;
         }
 
+        void remapRegisters(std::vector<int> &map) {
+            dest._int = map[dest._int];
+            MethodCallInstruction::remapRegisters(map);
+        }
         void insertMangledRegisters(std::set<int> &mangled_list) {
             if (dest.type == Variant::REGISTER)
                 mangled_list.insert(dest._int);
@@ -595,7 +599,7 @@ MethodGenerator::Variant MethodGenerator::next_available_register(RegisterType t
     return Variant(m_register_count++, Variant::REGISTER);
 }
 
-void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bool disable_optimization) {
+void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bool disable_optimization, bool skip_lame_stuff) {
     std::stringstream debug_out;
     std::stringstream asm_out;
 
@@ -629,34 +633,40 @@ void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bo
             generator.generate();
             generator.build_basic_blocks();
 
-            debug_out << "3 Address Code" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_basic_blocks(debug_out);
-            debug_out << "--------------------------" << std::endl;
+            if (!skip_lame_stuff) {
+                debug_out << "3 Address Code" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_basic_blocks(debug_out);
+                debug_out << "--------------------------" << std::endl;
 
-            debug_out << "Control Flow Graph" << std::endl;
-            debug_out << "--------------------------" << std::endl;
-            generator.print_control_flow_graph(debug_out);
-            debug_out << "--------------------------" << std::endl;
+                debug_out << "Control Flow Graph" << std::endl;
+                debug_out << "--------------------------" << std::endl;
+                generator.print_control_flow_graph(debug_out);
+                debug_out << "--------------------------" << std::endl;
+            }
 
             if (! disable_optimization) {
                 generator.calculate_mangle_sets();
                 generator.value_numbering();
                 generator.compress_registers();
 
-                debug_out << "3 Address Code After Value Numbering" << std::endl;
-                debug_out << "--------------------------" << std::endl;
-                generator.print_basic_blocks(debug_out);
-                debug_out << "--------------------------" << std::endl;
+                if (!skip_lame_stuff) {
+                    debug_out << "3 Address Code After Value Numbering" << std::endl;
+                    debug_out << "--------------------------" << std::endl;
+                    generator.print_basic_blocks(debug_out);
+                    debug_out << "--------------------------" << std::endl;
+                }
 
                 generator.dependency_management();
                 generator.compute_addresses();
                 generator.compress_registers();
 
-                debug_out << "3 Address Code After Dependency Management" << std::endl;
-                debug_out << "--------------------------" << std::endl;
-                generator.print_basic_blocks(debug_out);
-                debug_out << "--------------------------" << std::endl;
+                if (!skip_lame_stuff) {
+                    debug_out << "3 Address Code After Dependency Management" << std::endl;
+                    debug_out << "--------------------------" << std::endl;
+                    generator.print_basic_blocks(debug_out);
+                    debug_out << "--------------------------" << std::endl;
+                }
 
                 generator.block_deletion();
                 generator.compute_addresses();

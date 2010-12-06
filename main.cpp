@@ -14,6 +14,7 @@ int main(int argc, char * argv[]) {
     bool only_semantic_checking = false;
     bool output_intermediate = false;
     bool disable_optimization = false;
+    bool skip_lame_stuff = false;
     for (int i=1; i<argc; ++i) {
         std::string arg = argv[i];
         if (arg[0] == '-') {
@@ -23,6 +24,8 @@ int main(int argc, char * argv[]) {
                 output_intermediate = true;
             } else if (arg.compare("-O0") == 0) {
                 disable_optimization = true;
+            } else if (arg.compare("-s") == 0) {
+                skip_lame_stuff = true;
             } else {
                 std::cerr << "Unrecognized parameter: " << arg << std::endl;
                 print_usage(argv[0]);
@@ -45,7 +48,7 @@ int main(int argc, char * argv[]) {
     if (only_semantic_checking)
         return 0;
 
-    generate_code(program, symbol_table, output_intermediate, disable_optimization);
+    generate_code(program, symbol_table, output_intermediate, disable_optimization, skip_lame_stuff);
 
     return 0;
 }
