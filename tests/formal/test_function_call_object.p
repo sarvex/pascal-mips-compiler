@@ -29,7 +29,9 @@ BEGIN
 
 FUNCTION testFunctionCallObject;
 BEGIN
-      retval := myCustomObject.setCompilerWorks(onOff)
+      myCustomObject := new myCustomClass;
+      retval := myCustomObject.setCompilerWorks(onOff);
+      print retval
 END
 
 END

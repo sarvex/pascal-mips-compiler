@@ -11,6 +11,7 @@ BEGIN
 FUNCTION testClassPreUseFunctionValid;
 
 BEGIN
+    objectB := new classBB;
    value := objectB.getCounter(7)
 END
 

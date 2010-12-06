@@ -11,6 +11,7 @@ BEGIN
 FUNCTION testClassPreUseAssignmentValid;
 
 BEGIN
+   objectB := new classBB;
    value := objectB.counter
 END
 
