@@ -1705,6 +1705,7 @@ void MethodGenerator::compress_registers()
     // start out, assume not using any
     std::set<int> used_registers;
 
+    // be sure not to compress parameters
     used_registers.insert(0);
     for (VariableDeclarationList * variable_list = m_function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
         used_registers.insert((int)used_registers.size());
@@ -1844,6 +1845,10 @@ void MethodGenerator::dependency_management() {
 
     }
 
+    if (m_function_declaration->type != NULL) {
+        // mark the return value as required
+        m_basic_blocks[m_basic_blocks.size() - 1]->used_registers.insert(m_variable_numbers.get(m_function_declaration->identifier->text)._int);
+    }
     for (int i = m_basic_blocks.size() - 1; i >= 0; --i) {
         BasicBlock * block = m_basic_blocks[i];
 
