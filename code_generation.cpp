@@ -14,8 +14,8 @@ int g_next_unique_label = 0;
 int getNextUniqueLabel() {
     return g_next_unique_label++;
 }
-int getClassSizeInBytes(std::string class_name, SymbolTable *symbol_table);
-int getTypeSizeInBytes(TypeDenoter * type);
+int get_class_size_in_bytes(std::string class_name, SymbolTable *symbol_table);
+int get_type_size_in_bytes(TypeDenoter * type);
 
 class MethodGenerator {
 public:
@@ -589,7 +589,7 @@ private:
 
     std::string get_class_name(VariableAccess * variable_access);
     std::string get_class_name(TypeDenoter * type);
-    int getFieldOffsetInBytes(std::string class_name, std::string field_name);
+    int get_field_offset_in_bytes(std::string class_name, std::string field_name);
     Variant get_attribute_pointer(AttributeDesignator * attribute);
 
 };
@@ -615,7 +615,7 @@ void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bo
 
     // create instance of main class and run the constructor
     asm_out << "sw $fp, -4($sp)" << std::endl;
-    asm_out << "addi $fp, $fp, " << getClassSizeInBytes(program->identifier->text, symbol_table) << std::endl;
+    asm_out << "addi $fp, $fp, " << get_class_size_in_bytes(program->identifier->text, symbol_table) << std::endl;
     asm_out << "jal " << Utils::to_lower(program->identifier->text) << "_"
             << Utils::to_lower(program->identifier->text) << std::endl;
 
@@ -891,7 +891,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 {
                     AllocateObjectInstruction * allocate_instruction = (AllocateObjectInstruction *) instruction;
                     storeRegister(out, allocate_instruction->dest._int, "$fp");
-                    int size = getClassSizeInBytes(allocate_instruction->class_name, m_symbol_table);
+                    int size = get_class_size_in_bytes(allocate_instruction->class_name, m_symbol_table);
                     out << "addi $fp, $fp, " << size << std::endl;
                     break;
                 }
@@ -918,22 +918,22 @@ void MethodGenerator::print_assembly(std::ostream & out)
     assert(false);
 }
 
-int getClassSizeInBytes(std::string class_name, SymbolTable * symbol_table)
+int get_class_size_in_bytes(std::string class_name, SymbolTable * symbol_table)
 {
     ClassSymbolTable * class_symbols = symbol_table->get(class_name);
     int sum = 0;
     for(int i=0; i<class_symbols->variables->count(); ++i) {
         VariableData * field = class_symbols->variables->get(i);
-        sum += getTypeSizeInBytes(field->type);
+        sum += get_type_size_in_bytes(field->type);
     }
     return sum;
 }
 
-int getTypeSizeInBytes(TypeDenoter * type)
+int get_type_size_in_bytes(TypeDenoter * type)
 {
     if (type->type == TypeDenoter::ARRAY) {
         ArrayType * array_type = type->array_type;
-        return getTypeSizeInBytes(array_type->type) * (array_type->max - array_type->min + 1);
+        return get_type_size_in_bytes(array_type->type) * (array_type->max - array_type->min + 1);
     } else {
         return 4;
     }
@@ -1231,7 +1231,7 @@ MethodGenerator::Variant MethodGenerator::get_attribute_pointer(AttributeDesigna
 {
     Variant owner_class_ref = gen_variable_access(attribute->owner);
     std::string owner_class_name = get_class_name(attribute->owner);
-    int offset = getFieldOffsetInBytes(owner_class_name, attribute->identifier->text);
+    int offset = get_field_offset_in_bytes(owner_class_name, attribute->identifier->text);
     Variant pointer_register = next_available_register(INTEGER);
     m_instructions.push_back(new OperatorInstruction(pointer_register, owner_class_ref, OperatorInstruction::PLUS, Variant(offset, Variant::CONST_INT)));
     return pointer_register;
@@ -1294,18 +1294,29 @@ std::string MethodGenerator::get_class_name(TypeDenoter * type_denoter)
     return type_denoter->class_identifier->text;
 }
 
-int MethodGenerator::getFieldOffsetInBytes(std::string class_name, std::string field_name)
+int MethodGenerator::get_field_offset_in_bytes(std::string class_name, std::string field_name)
 {
-    ClassSymbolTable * class_symbols = m_symbol_table->get(class_name);
-    int sum = 0;
-    for(int i=0; i<class_symbols->variables->count(); ++i) {
-        VariableData * field = class_symbols->variables->get(i);
-        if (Utils::to_lower(field_name).compare(Utils::to_lower(field->name)) == 0)
-            return sum;
-        sum += getTypeSizeInBytes(field->type);
+    while (true) {
+        ClassSymbolTable * class_symbols = m_symbol_table->get(class_name);
+        int sum = 0;
+        for (int i = 0; i < class_symbols->variables->count(); i++) {
+            VariableData * field = class_symbols->variables->get(i);
+            if (Utils::to_lower(field_name).compare(Utils::to_lower(field->name)) == 0) {
+                // found it
+                int parent_size = 0;
+                if (class_symbols->class_declaration->parent_identifier != NULL)
+                    parent_size = get_class_size_in_bytes(class_symbols->class_declaration->parent_identifier->text, m_symbol_table);
+                return parent_size + sum;
+            }
+            sum += get_type_size_in_bytes(field->type);
+        }
+        if (class_symbols->class_declaration->parent_identifier == NULL) {
+            // couldn't find the field
+            assert(false);
+        }
+        // check the next type up
+        class_name = class_symbols->class_declaration->parent_identifier->text;
     }
-    // couldn't find the field
-    assert(false);
 }
 
 void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) {
