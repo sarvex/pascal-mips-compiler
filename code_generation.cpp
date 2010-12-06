@@ -50,6 +50,7 @@ private:
             METHOD_CALL,
             ALLOCATE_OBJECT,
             WRITE_POINTER,
+            READ_POINTER,
         };
         Type type;
 
@@ -403,6 +404,29 @@ private:
         }
     };
 
+    struct ReadPointerInstruction : public Instruction {
+        Variant dest; // register number
+        Variant source_pointer; // register number of pointer to read from
+        ReadPointerInstruction(Variant dest, Variant source_pointer) : Instruction(READ_POINTER), dest(dest), source_pointer(source_pointer) {}
+
+        void insertReadRegisters(std::set<int> & used_list) {
+            if (source_pointer.type == Variant::REGISTER)
+                used_list.insert(source_pointer._int);
+        }
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (dest.type == Variant::REGISTER)
+                dest._int = map[dest._int];
+            if (source_pointer.type == Variant::REGISTER)
+                source_pointer._int = map[source_pointer._int];
+        }
+    };
+
     struct BasicBlock {
         // indexes in m_instructions
         int start;
@@ -496,6 +520,7 @@ private:
     std::string get_class_name(VariableAccess * variable_access);
     std::string get_class_name(TypeDenoter * type);
     int getFieldOffsetInBytes(std::string class_name, std::string field_name);
+    Variant get_attribute_pointer(AttributeDesignator * attribute);
 
 };
 
@@ -793,7 +818,14 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     loadValue(out, write_pointer_instruction->source, "$t0");
                     loadValue(out, write_pointer_instruction->pointer, "$t1");
                     out << "sw $t0, 0($t1)" << std::endl;
-                    storeRegister(out, write_pointer_instruction->pointer._int, "$t0");
+                    break;
+                }
+                case Instruction::READ_POINTER:
+                {
+                    ReadPointerInstruction * read_pointer_instruction = (ReadPointerInstruction *) instruction;
+                    loadValue(out, read_pointer_instruction->source_pointer, "$t0");
+                    out << "lw $t0, 0($t0)" << std::endl;
+                    storeRegister(out, read_pointer_instruction->dest._int, "$t0");
                     break;
                 }
             }
@@ -894,6 +926,12 @@ void MethodGenerator::print_instruction(std::ostream & out, int address, Instruc
         {
             WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
             out << "*" << write_pointer_instruction->pointer.str() << " = " << write_pointer_instruction->source.str();
+            break;
+        }
+        case Instruction::READ_POINTER:
+        {
+            ReadPointerInstruction * read_pointer_instruction = (ReadPointerInstruction *) instruction;
+            out << read_pointer_instruction->dest.str() << " = *" << read_pointer_instruction->source_pointer.str();
             break;
         }
         default:
@@ -1165,17 +1203,31 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
     }
 }
 
+MethodGenerator::Variant MethodGenerator::get_attribute_pointer(AttributeDesignator * attribute)
+{
+    Variant owner_class_ref = gen_variable_access(attribute->owner);
+    std::string owner_class_name = get_class_name(attribute->owner);
+    int offset = getFieldOffsetInBytes(owner_class_name, attribute->identifier->text);
+    Variant pointer_register = next_available_register(INTEGER);
+    m_instructions.push_back(new OperatorInstruction(pointer_register, owner_class_ref, OperatorInstruction::PLUS, Variant(offset, Variant::CONST_INT)));
+    return pointer_register;
+}
+
 MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * variable) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
             return m_variable_numbers.get(variable->identifier->text);
         case VariableAccess::THIS:
             return m_variable_numbers.get("this");
+        case VariableAccess::ATTRIBUTE:
+        {
+            Variant dest = next_available_register(type_denoter_to_register_type(get_field(m_symbol_table, get_class_name(variable->attribute->owner), variable->attribute->identifier->text)->type));
+            m_instructions.push_back(new ReadPointerInstruction(dest, get_attribute_pointer(variable->attribute)));
+            return dest;
+        }
         /*
         case VariableAccess::INDEXED_VARIABLE:
             return check_indexed_variable(variable_access->indexed_variable);
-        case VariableAccess::ATTRIBUTE:
-            return check_attribute_designator(variable_access->attribute);
         */
         default:
             assert(false);
@@ -1235,20 +1287,11 @@ int MethodGenerator::getFieldOffsetInBytes(std::string class_name, std::string f
 void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) {
     switch (variable->type) {
         case VariableAccess::IDENTIFIER:
-        {
             m_instructions.push_back(new CopyInstruction(m_variable_numbers.get(variable->identifier->text), source));
             break;
-        }
         case VariableAccess::ATTRIBUTE:
-        {
-            Variant owner_class_ref = gen_variable_access(variable->attribute->owner);
-            std::string owner_class_name = get_class_name(variable->attribute->owner);
-            int offset = getFieldOffsetInBytes(owner_class_name, variable->attribute->identifier->text);
-            Variant pointer_register = next_available_register(INTEGER);
-            m_instructions.push_back(new OperatorInstruction(pointer_register, owner_class_ref, OperatorInstruction::PLUS, Variant(offset, Variant::CONST_INT)));
-            m_instructions.push_back(new WritePointerInstruction(pointer_register, source));
+            m_instructions.push_back(new WritePointerInstruction(get_attribute_pointer(variable->attribute), source));
             break;
-        }
         /*
         case VariableAccess::INDEXED_VARIABLE:
             return check_indexed_variable(variable_access->indexed_variable);
@@ -1522,6 +1565,12 @@ void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
                 WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
                 write_pointer_instruction->source = inline_value(block, write_pointer_instruction->source);
                 write_pointer_instruction->pointer = inline_value(block, write_pointer_instruction->pointer);
+                break;
+            }
+            case Instruction::READ_POINTER:
+            {
+                ReadPointerInstruction * read_pointer_instruction = (ReadPointerInstruction *) instruction;
+                read_pointer_instruction->source_pointer = inline_value(block, read_pointer_instruction->source_pointer);
                 break;
             }
         }
@@ -1902,6 +1951,12 @@ void MethodGenerator::dependency_management() {
                 {
                     WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
                     write_pointer_instruction->insertReadRegisters(block->used_registers);
+                    break;
+                }
+                case Instruction::READ_POINTER:
+                {
+                    ReadPointerInstruction * read_pointer_instruction = (ReadPointerInstruction *) instruction;
+                    read_pointer_instruction->insertReadRegisters(block->used_registers);
                     break;
                 }
             }
