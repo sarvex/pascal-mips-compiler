@@ -1082,6 +1082,7 @@ void MethodGenerator::gen_statement(Statement * statement) {
 bool MethodGenerator::gen_method_designator(MethodDesignator * method_designator, Variant & out_dest) {
     std::string class_name = get_class_name(method_designator->owner);
     std::string method_name = method_designator->function->identifier->text;
+    class_name = get_declaring_class(m_symbol_table, class_name, method_name);
     FunctionDeclaration * declaration = get_method(m_symbol_table, class_name, method_name);
     bool non_void = declaration->type != NULL;
     MethodCallInstruction * instruction = non_void ?

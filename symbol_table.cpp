@@ -159,13 +159,22 @@ FunctionDeclaration * get_method(SymbolTable * symbol_table, std::string class_n
     if (! symbol_table->has_key(class_name))
         return NULL;
     ClassSymbolTable * class_symbols = symbol_table->get(class_name);
-    if (class_symbols->function_symbols->has_key(method_name)) {
+    if (class_symbols->function_symbols->has_key(method_name))
         return class_symbols->function_symbols->get(method_name)->function_declaration;
-    } else if (class_symbols->class_declaration->parent_identifier == NULL) {
+    if (class_symbols->class_declaration->parent_identifier == NULL)
         return NULL;
-    } else {
-        return get_method(symbol_table, class_symbols->class_declaration->parent_identifier->text, method_name);
-    }
+    return get_method(symbol_table, class_symbols->class_declaration->parent_identifier->text, method_name);
+}
+
+std::string get_declaring_class(SymbolTable * symbol_table, std::string class_name, std::string method_name) {
+    if (! symbol_table->has_key(class_name))
+        assert(false);
+    ClassSymbolTable * class_symbols = symbol_table->get(class_name);
+    if (class_symbols->function_symbols->has_key(method_name))
+        return class_name;
+    if (class_symbols->class_declaration->parent_identifier == NULL)
+        assert(false);
+    return get_declaring_class(symbol_table, class_symbols->class_declaration->parent_identifier->text, method_name);
 }
 
 
