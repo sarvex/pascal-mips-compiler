@@ -694,7 +694,7 @@ void MethodGenerator::loadValue(std::ostream & out, Variant source_value, std::s
     } else if (source_value.type == Variant::CONST_INT) {
         out << "li " << dest_register << ", " << source_value._int << std::endl;
     } else if (source_value.type == Variant::REGISTER) {
-        out << "lw " << dest_register << ", " << (getStackSpace() - source_value._int * 4) << "($sp)" << std::endl;
+        out << "lw " << dest_register << ", " << (getStackSpace() - source_value._int * 4 - 4) << "($sp)" << std::endl;
     } else {
         assert(false);
     }
@@ -702,13 +702,13 @@ void MethodGenerator::loadValue(std::ostream & out, Variant source_value, std::s
 
 void MethodGenerator::storeRegister(std::ostream & out, int dest_register_number, std::string source_register)
 {
-    out << "sw " << source_register << ", " << (getStackSpace() - dest_register_number * 4) << "($sp)" << std::endl;
+    out << "sw " << source_register << ", " << (getStackSpace() - dest_register_number * 4 - 4) << "($sp)" << std::endl;
 }
 
 int MethodGenerator::getStackSpace()
 {
     return
-        // a slot for each register (int or boolean, each 4 bytes)
+        // a slot for each register (all types are the same size: 4 bytes)
         m_register_count * 4 +
         // a slot for return address (4 bytes)
         1 * 4;
@@ -721,7 +721,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
 
     // allocate stack space for locals
     out << "addi $sp, $sp, -" << getStackSpace() << std::endl;
-    out << "sw $ra, 4($sp)" << std::endl;
+    out << "sw $ra, 0($sp)" << std::endl;
 
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
         BasicBlock * block = m_basic_blocks[b];
@@ -835,7 +835,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                         loadValue(out, m_variable_numbers.get(m_function_declaration->identifier->text), "$v0");
                     }
                     // deallocate stack
-                    out << "lw $ra, 4($sp)" << std::endl;
+                    out << "lw $ra, 0($sp)" << std::endl;
                     out << "addi $sp, $sp, " << getStackSpace() << std::endl;
                     out << "jr $ra" << std::endl;
                     return;
@@ -880,7 +880,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
                     for (int i = 0; i < (int)method_call_instruction->parameters.size(); i++) {
                         loadValue(out, method_call_instruction->parameters[i], "$t0");
-                        out << "sw $t0, " << (-i * 4) << "($sp)" << std::endl;
+                        out << "sw $t0, " << (-i * 4 - 4) << "($sp)" << std::endl;
                     }
                     out << "jal " << Utils::to_lower(method_call_instruction->class_name) << "_" << Utils::to_lower(method_call_instruction->method_name) << std::endl;
                     if (instruction->type == Instruction::NON_VOID_METHOD_CALL)
