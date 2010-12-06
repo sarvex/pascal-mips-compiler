@@ -382,23 +382,22 @@ private:
     };
 
     struct WritePointerInstruction : public Instruction {
-        Variant dest; // register number that holds pointer to write to
+        Variant pointer; // register number that holds pointer to write to
         Variant source; // register number
-        WritePointerInstruction(Variant dest, Variant source) : Instruction(WRITE_POINTER), dest(dest), source(source) {}
+        WritePointerInstruction(Variant pointer, Variant source) : Instruction(WRITE_POINTER), pointer(pointer), source(source) {}
 
         void insertReadRegisters(std::set<int> & used_list) {
             if (source.type == Variant::REGISTER)
                 used_list.insert(source._int);
+            if (pointer.type == Variant::REGISTER)
+                used_list.insert(pointer._int);
         }
 
-        void insertMangledRegisters(std::set<int> & mangled_list) {
-            if (dest.type == Variant::REGISTER)
-                mangled_list.insert(dest._int);
-        }
+        void insertMangledRegisters(std::set<int> & mangled_list) {}
 
         void remapRegisters(std::vector<int> & map) {
-            if (dest.type == Variant::REGISTER)
-                dest._int = map[dest._int];
+            if (pointer.type == Variant::REGISTER)
+                pointer._int = map[pointer._int];
             if (source.type == Variant::REGISTER)
                 source._int = map[source._int];
         }
@@ -777,7 +776,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                         loadValue(out, method_call_instruction->parameters[i], "$t0");
                         out << "sw $t0, " << (-i * 4) << "($sp)" << std::endl;
                     }
-                    out << "jal " << method_call_instruction->class_name << "_" << method_call_instruction->method_name << std::endl;
+                    out << "jal " << Utils::to_lower(method_call_instruction->class_name) << "_" << Utils::to_lower(method_call_instruction->method_name) << std::endl;
                     break;
                 }
                 case Instruction::ALLOCATE_OBJECT:
@@ -792,9 +791,9 @@ void MethodGenerator::print_assembly(std::ostream & out)
                 {
                     WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
                     loadValue(out, write_pointer_instruction->source, "$t0");
-                    loadValue(out, write_pointer_instruction->dest, "$t1");
+                    loadValue(out, write_pointer_instruction->pointer, "$t1");
                     out << "sw $t0, 0($t1)" << std::endl;
-                    storeRegister(out, write_pointer_instruction->dest._int, "$t0");
+                    storeRegister(out, write_pointer_instruction->pointer._int, "$t0");
                     break;
                 }
             }
@@ -894,7 +893,7 @@ void MethodGenerator::print_instruction(std::ostream & out, int address, Instruc
         case Instruction::WRITE_POINTER:
         {
             WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
-            out << "*" << write_pointer_instruction->dest.str() << " = " << write_pointer_instruction->source.str();
+            out << "*" << write_pointer_instruction->pointer.str() << " = " << write_pointer_instruction->source.str();
             break;
         }
         default:
@@ -1031,7 +1030,7 @@ void MethodGenerator::gen_statement(Statement * statement) {
 }
 
 void MethodGenerator::gen_method_designator(MethodDesignator * method_designator) {
-    MethodCallInstruction * instruction = new MethodCallInstruction(m_class_name, method_designator->function->identifier->text);
+    MethodCallInstruction * instruction = new MethodCallInstruction(get_class_name(method_designator->owner), method_designator->function->identifier->text);
     instruction->parameters.push_back(gen_variable_access(method_designator->owner));
     for (ExpressionList * parameter_list = method_designator->function->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next) {
         Expression * expression = parameter_list->item;
@@ -1187,7 +1186,16 @@ std::string MethodGenerator::get_class_name(VariableAccess * variable_access)
 {
     switch (variable_access->type) {
         case VariableAccess::IDENTIFIER:
-            return variable_access->identifier->text;
+        {
+            // look for the identifier in function symbols
+            ClassSymbolTable * class_symbols = m_symbol_table->get(m_class_name);
+            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->get(m_function_declaration->identifier->text);
+            VariableData * variable =
+                    function_symbols->variables->has_key(variable_access->identifier->text) ?
+                    function_symbols->variables->get(variable_access->identifier->text) :
+                    class_symbols->variables->get(variable_access->identifier->text);
+            return get_class_name(variable->type);
+        }
         case VariableAccess::INDEXED_VARIABLE:
             return get_class_name(variable_access->indexed_variable->variable);
         case VariableAccess::ATTRIBUTE:
@@ -1513,7 +1521,7 @@ void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
             {
                 WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
                 write_pointer_instruction->source = inline_value(block, write_pointer_instruction->source);
-                block->value_numbers.associate(write_pointer_instruction->dest._int, get_value_number(block, write_pointer_instruction->source));
+                write_pointer_instruction->pointer = inline_value(block, write_pointer_instruction->pointer);
                 break;
             }
         }
@@ -1891,7 +1899,11 @@ void MethodGenerator::dependency_management() {
                 case Instruction::ALLOCATE_OBJECT:
                     break;
                 case Instruction::WRITE_POINTER:
+                {
+                    WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
+                    write_pointer_instruction->insertReadRegisters(block->used_registers);
                     break;
+                }
             }
         }
     }
