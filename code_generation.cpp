@@ -48,6 +48,7 @@ private:
             RETURN,
             PRINT,
             METHOD_CALL,
+            NON_VOID_METHOD_CALL,
             ALLOCATE_OBJECT,
             WRITE_POINTER,
             READ_POINTER,
@@ -61,6 +62,8 @@ private:
         virtual void insertMangledRegisters(std::set<int> & mangled_list) = 0;
         // remap the register indexes used to a new value based on a vector lookup
         virtual void remapRegisters(std::vector<int> & map) = 0;
+
+        virtual void print(std::ostream & out) = 0;
     };
 
     class Variant {
@@ -169,12 +172,37 @@ private:
                     used_list.insert(parameters[i]._int);
         }
 
-        void insertMangledRegisters(std::set<int> &mangled_list) {}
+        virtual void insertMangledRegisters(std::set<int> &mangled_list) {}
 
         void remapRegisters(std::vector<int> & map) {
             for (int i = 0; i < (int)parameters.size(); i++)
                 if (parameters[i].type == Variant::REGISTER)
                     parameters[i]._int = map[parameters[i]._int];
+        }
+        virtual void print(std::ostream &out) {
+            out << class_name << "::" << method_name << "(";
+            out << parameters[0].str();
+            for (int i=1; i<(int)parameters.size(); ++i) {
+                out << ", " << parameters[i].str();
+            }
+            out << ")";
+        }
+    };
+    struct NonVoidMethodCallInstruction : public MethodCallInstruction {
+        Variant dest;
+        NonVoidMethodCallInstruction(std::string class_name, std::string method_name)
+            : MethodCallInstruction(class_name, method_name)
+        {
+            this->type = NON_VOID_METHOD_CALL;
+        }
+
+        void insertMangledRegisters(std::set<int> &mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
+        }
+        void print(std::ostream &out) {
+            out << dest.str() << " = ";
+            MethodCallInstruction::print(out);
         }
     };
 
@@ -198,6 +226,9 @@ private:
                 dest._int = map[dest._int];
             if (source.type == Variant::REGISTER)
                 source._int = map[source._int];
+        }
+        void print(std::ostream &out) {
+            out << dest.str() << " = " << source.str();
         }
     };
 
@@ -276,6 +307,9 @@ private:
             if (right.type == Variant::REGISTER)
                 right._int = map[right._int];
         }
+        void print(std::ostream &out) {
+            out << str();
+        }
     };
 
     struct UnaryInstruction : public Instruction {
@@ -308,6 +342,16 @@ private:
             if (source.type == Variant::REGISTER)
                 source._int = map[source._int];
         }
+        void print(std::ostream &out) {
+            out << dest.str() << " = ";
+            if (_operator == UnaryInstruction::NEGATE)
+                out << "-";
+            else if (_operator == UnaryInstruction::NOT)
+                out << "!";
+            else
+                assert(false);
+            out << source.str();
+        }
     };
 
     struct IfInstruction : public Instruction {
@@ -327,6 +371,9 @@ private:
             if (condition.type == Variant::REGISTER)
                 condition._int = map[condition._int];
         }
+        void print(std::ostream &out) {
+            out << "if !" << condition.str() << " goto " << goto_index;
+        }
     };
 
     struct GotoInstruction : public Instruction {
@@ -337,6 +384,9 @@ private:
         void insertReadRegisters(std::set<int> & used_list) {}
         void insertMangledRegisters(std::set<int> & mangled_list) {}
         void remapRegisters(std::vector<int> & map) {}
+        void print(std::ostream &out) {
+            out << "goto " << goto_index;
+        }
     };
 
     struct ReturnInstruction : public Instruction {
@@ -345,6 +395,9 @@ private:
         void insertReadRegisters(std::set<int> & used_list) {}
         void insertMangledRegisters(std::set<int> & mangled_list) {}
         void remapRegisters(std::vector<int> & map) {}
+        void print(std::ostream &out) {
+            out << "return";
+        }
     };
 
     struct PrintInstruction : public Instruction {
@@ -361,6 +414,9 @@ private:
         void remapRegisters(std::vector<int> & map) {
             if (value.type == Variant::REGISTER)
                 value._int = map[value._int];
+        }
+        void print(std::ostream &out) {
+            out << "print " << value.str();
         }
     };
 
@@ -379,6 +435,9 @@ private:
         void remapRegisters(std::vector<int> & map) {
             if (dest.type == Variant::REGISTER)
                 dest._int = map[dest._int];
+        }
+        void print(std::ostream &out) {
+            out << dest.str() << " = new " << class_name;
         }
     };
 
@@ -402,6 +461,9 @@ private:
             if (source.type == Variant::REGISTER)
                 source._int = map[source._int];
         }
+        void print(std::ostream &out) {
+            out << "*" << pointer.str() << " = " << source.str();
+        }
     };
 
     struct ReadPointerInstruction : public Instruction {
@@ -424,6 +486,9 @@ private:
                 dest._int = map[dest._int];
             if (source_pointer.type == Variant::REGISTER)
                 source_pointer._int = map[source_pointer._int];
+        }
+        void print(std::ostream &out) {
+            out << dest.str() << " = *" << source_pointer.str();
         }
     };
 
@@ -475,7 +540,8 @@ private:
 
     void gen_statement_list(StatementList * statement_list);
     void gen_statement(Statement * statement);
-    void gen_method_designator(MethodDesignator * method_designator);
+    // returns whether it put anything in the dest
+    bool gen_method_designator(MethodDesignator * method_designator, Variant & out_dest);
     Variant gen_expression(Expression * expression);
     Variant gen_additive_expression(AdditiveExpression * additive_expression);
     Variant gen_multiplicitive_expression(MultiplicativeExpression * multiplicative_expression);
@@ -754,6 +820,10 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     out << "j " << m_class_name << "_" << method_name << "_" << block->jump_child << std::endl;
                     break;
                 case Instruction::RETURN:
+                    if (m_function_declaration->type != NULL) {
+                        // put the result in $v0
+                        loadValue(out, m_variable_numbers.get(m_function_declaration->identifier->text), "$v0");
+                    }
                     // deallocate stack
                     out << "lw $ra, 4($sp)" << std::endl;
                     out << "addi $sp, $sp, " << getStackSpace() << std::endl;
@@ -794,6 +864,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     out << "syscall" << std::endl;
                     break;
                 }
+                case Instruction::NON_VOID_METHOD_CALL:
                 case Instruction::METHOD_CALL:
                 {
                     MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
@@ -802,6 +873,8 @@ void MethodGenerator::print_assembly(std::ostream & out)
                         out << "sw $t0, " << (-i * 4) << "($sp)" << std::endl;
                     }
                     out << "jal " << Utils::to_lower(method_call_instruction->class_name) << "_" << Utils::to_lower(method_call_instruction->method_name) << std::endl;
+                    if (instruction->type == Instruction::NON_VOID_METHOD_CALL)
+                        storeRegister(out, ((NonVoidMethodCallInstruction *)method_call_instruction)->dest._int, "$v0");
                     break;
                 }
                 case Instruction::ALLOCATE_OBJECT:
@@ -858,85 +931,7 @@ int getTypeSizeInBytes(TypeDenoter * type)
 
 void MethodGenerator::print_instruction(std::ostream & out, int address, Instruction * instruction) {
     out << address << ":\t";
-    switch (instruction->type) {
-        case Instruction::COPY:
-        {
-            CopyInstruction * copy_instruction = (CopyInstruction *) instruction;
-            out << copy_instruction->dest.str() << " = " << copy_instruction->source.str();
-            break;
-        }
-        case Instruction::OPERATOR:
-        {
-            OperatorInstruction * operator_instruction = (OperatorInstruction *) instruction;
-            out << operator_instruction->str();
-            break;
-        }
-        case Instruction::UNARY:
-        {
-            UnaryInstruction * unary_instruction = (UnaryInstruction *) instruction;
-            out << unary_instruction->dest.str() << " = ";
-            if (unary_instruction->_operator == UnaryInstruction::NEGATE)
-                out << "-";
-            else if (unary_instruction->_operator == UnaryInstruction::NOT)
-                out << "!";
-            else
-                assert(false);
-            out << unary_instruction->source.str();
-            break;
-        }
-        case Instruction::IF:
-        {
-            IfInstruction * if_instruction = (IfInstruction *) instruction;
-            out << "if !" << if_instruction->condition.str() << " goto " << if_instruction->goto_index;
-            break;
-        }
-        case Instruction::GOTO:
-        {
-            GotoInstruction * goto_instruction = (GotoInstruction *) instruction;
-            out << "goto " << goto_instruction->goto_index;
-            break;
-        }
-        case Instruction::RETURN:
-            out << "return";
-            break;
-        case Instruction::PRINT:
-        {
-            PrintInstruction * print_instruction = (PrintInstruction *) instruction;
-            out << "print " << print_instruction->value.str();
-            break;
-        }
-        case Instruction::METHOD_CALL:
-        {
-            MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
-            out << method_call_instruction->class_name << "::" << method_call_instruction->method_name << "(";
-            out << method_call_instruction->parameters[0].str();
-            for (int i=1; i<(int)method_call_instruction->parameters.size(); ++i) {
-                out << ", " << method_call_instruction->parameters[i].str();
-            }
-            out << ")";
-            break;
-        }
-        case Instruction::ALLOCATE_OBJECT:
-        {
-            AllocateObjectInstruction * allocate_instruction = (AllocateObjectInstruction *) instruction;
-            out << allocate_instruction->dest.str() << " = new " << allocate_instruction->class_name;
-            break;
-        }
-        case Instruction::WRITE_POINTER:
-        {
-            WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
-            out << "*" << write_pointer_instruction->pointer.str() << " = " << write_pointer_instruction->source.str();
-            break;
-        }
-        case Instruction::READ_POINTER:
-        {
-            ReadPointerInstruction * read_pointer_instruction = (ReadPointerInstruction *) instruction;
-            out << read_pointer_instruction->dest.str() << " = *" << read_pointer_instruction->source_pointer.str();
-            break;
-        }
-        default:
-            assert(false);
-    }
+    instruction->print(out);
     out << ";" << std::endl;
 }
 
@@ -993,6 +988,10 @@ void MethodGenerator::generate() {
     for (VariableDeclarationList * variable_list = m_function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
+    }
+    if (m_function_declaration->type != NULL) {
+        // make a special return value variable
+        m_variable_numbers.put(m_function_declaration->identifier->text, next_available_register(type_denoter_to_register_type(m_function_declaration->type)));
     }
     for (VariableDeclarationList * variable_list = m_function_declaration->block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
@@ -1060,22 +1059,38 @@ void MethodGenerator::gen_statement(Statement * statement) {
             gen_statement_list(statement->compound_statement);
             break;
         case Statement::METHOD:
-            gen_method_designator(statement->method);
+        {
+            Variant ignored;
+            gen_method_designator(statement->method, ignored);
             break;
+        }
         default:
             assert(false);
     }
 }
 
-void MethodGenerator::gen_method_designator(MethodDesignator * method_designator) {
-    MethodCallInstruction * instruction = new MethodCallInstruction(get_class_name(method_designator->owner), method_designator->function->identifier->text);
+bool MethodGenerator::gen_method_designator(MethodDesignator * method_designator, Variant & out_dest) {
+    std::string class_name = get_class_name(method_designator->owner);
+    std::string method_name = method_designator->function->identifier->text;
+    FunctionDeclaration * declaration = get_method(m_symbol_table, class_name, method_name);
+    bool non_void = declaration->type != NULL;
+    MethodCallInstruction * instruction = non_void ?
+                                          new NonVoidMethodCallInstruction(class_name, method_name) :
+                                          new MethodCallInstruction(class_name, method_name);
     instruction->parameters.push_back(gen_variable_access(method_designator->owner));
     for (ExpressionList * parameter_list = method_designator->function->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next) {
         Expression * expression = parameter_list->item;
         Variant parameter = gen_expression(expression);
         instruction->parameters.push_back(parameter);
     }
+    if (non_void) {
+        // assign the result somewhere
+        NonVoidMethodCallInstruction * non_void_instruction = (NonVoidMethodCallInstruction *) instruction;
+        non_void_instruction->dest = next_available_register(type_denoter_to_register_type(declaration->type));
+        out_dest = non_void_instruction->dest;
+    }
     m_instructions.push_back(instruction);
+    return non_void;
 }
 
 
@@ -1191,13 +1206,12 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
             }
             return dest;
         }
-
-            /*
-        case PrimaryExpression::STRING:
-        case PrimaryExpression::FUNCTION:
         case PrimaryExpression::METHOD:
-             */
-
+        {
+            Variant result;
+            assert(gen_method_designator(primary_expression->method, result));
+            return result;
+        }
         default:
             assert(false);
     }
@@ -1551,11 +1565,13 @@ void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
                 print_instruction->value = inline_value(block, print_instruction->value);
                 break;
             }
+            case Instruction::NON_VOID_METHOD_CALL:
             case Instruction::METHOD_CALL:
             {
                 MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
                 for (int i = 0; i < (int)method_call_instruction->parameters.size(); i++)
                     method_call_instruction->parameters[i] = inline_value(block, method_call_instruction->parameters[i]);
+                // leave result value as unknonw
                 break;
             }
             case Instruction::ALLOCATE_OBJECT:
@@ -1939,6 +1955,7 @@ void MethodGenerator::dependency_management() {
                     break;
                 case Instruction::RETURN:
                     break;
+                case Instruction::NON_VOID_METHOD_CALL:
                 case Instruction::METHOD_CALL:
                 {
                     MethodCallInstruction * method_call_instruction = (MethodCallInstruction *) instruction;
