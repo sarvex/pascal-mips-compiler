@@ -50,7 +50,7 @@ SymbolTable * build_symbol_table(Program * program) {
                         other_variable->line_number << std::endl;
                     success = false;
                 } else {
-                    variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
+                    variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number, id_list->item->text));
                 }
             }
         }
@@ -73,7 +73,7 @@ SymbolTable * build_symbol_table(Program * program) {
 
             // add the function name to function symbol table
             function_variables->put(function_declaration->identifier->text,
-                new VariableData(function_declaration->type, function_declaration->identifier->line_number));
+                new VariableData(function_declaration->type, function_declaration->identifier->line_number, function_declaration->identifier->text));
 
             // add function parameters to symbol table
             for (VariableDeclarationList * parameter_list = function_declaration->parameter_list; parameter_list != NULL; parameter_list = parameter_list->next)
@@ -186,7 +186,7 @@ bool add_variables(OrderedInsensitiveMap<VariableData *> * function_variables, V
     bool success = true;
     for (IdentifierList * id_list = variable_declaration->id_list; id_list != NULL; id_list = id_list->next) {
         if (! function_variables->has_key(id_list->item->text)) {
-            function_variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number));
+            function_variables->put(id_list->item->text, new VariableData(variable_declaration->type, id_list->item->line_number, id_list->item->text));
         } else {
             if (function_name.compare(id_list->item->text) == 0) {
                 std::cerr << err_header(id_list->item->line_number) <<

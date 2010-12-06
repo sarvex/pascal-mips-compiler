@@ -10,10 +10,12 @@
 struct VariableData {
     TypeDenoter * type;
     int line_number;
+    std::string name;
 
-    VariableData(TypeDenoter * type, int line_number) :
+    VariableData(TypeDenoter * type, int line_number, std::string name) :
         type(type),
-        line_number(line_number) {}
+        line_number(line_number),
+        name(name) {}
 };
 typedef OrderedInsensitiveMap<VariableData *> VariableTable;
 

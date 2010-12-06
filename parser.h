@@ -313,7 +313,7 @@ struct NegatableExpression {
 struct PrimaryExpression {
     // don't change this enum without changing the corresponding one in CodeGenerator
     enum Type {INTEGER, REAL, STRING, BOOLEAN, VARIABLE, METHOD, OBJECT_INSTANTIATION, PARENS, NOT};
-    int type;
+    Type type;
     union {
         LiteralInteger * literal_integer;
         LiteralReal * literal_real;

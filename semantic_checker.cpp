@@ -634,13 +634,13 @@ LiteralInteger * SemanticChecker::constant_integer(Expression * expression)
     return negatable_expression->primary_expression->literal_integer;
 }
 
-Identifier * SemanticChecker::variable_access_identifier(VariableAccess * variable_access)
+Identifier * SemanticChecker::find_identifier(VariableAccess * variable_access)
 {
     switch (variable_access->type) {
         case VariableAccess::IDENTIFIER:
             return variable_access->identifier;
         case VariableAccess::INDEXED_VARIABLE:
-            return variable_access_identifier(variable_access->indexed_variable->variable);
+            return find_identifier(variable_access->indexed_variable->variable);
         case VariableAccess::ATTRIBUTE:
             return variable_access->attribute->identifier;
         default:
@@ -652,7 +652,7 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
 {
     TypeDenoter * array_type = check_variable_access(indexed_variable->variable);
     if (array_type->type != TypeDenoter::ARRAY) {
-        Identifier * id = variable_access_identifier(indexed_variable->variable);
+        Identifier * id = find_identifier(indexed_variable->variable);
         std::cerr << err_header(id->line_number) << "indexed variable \"" << id->text << "\" is not an array" << std::endl;
         m_success = false;
         return NULL;
@@ -695,22 +695,6 @@ TypeDenoter * SemanticChecker::check_indexed_variable(IndexedVariable * indexed_
     // it's the array type of the variable access type
     return array_type_iterator;
 }
-
-Identifier * SemanticChecker::find_identifier(VariableAccess * variable_access)
-{
-    switch (variable_access->type) {
-        case VariableAccess::IDENTIFIER:
-            return variable_access->identifier;
-        case VariableAccess::INDEXED_VARIABLE:
-            return find_identifier(variable_access->indexed_variable->variable);
-        case VariableAccess::ATTRIBUTE:
-            return variable_access->attribute->identifier;
-        case VariableAccess::THIS:
-            assert(false);
-            return NULL;
-    }
-}
-
 
 TypeDenoter * SemanticChecker::check_attribute_designator(AttributeDesignator * attribute_designator)
 {

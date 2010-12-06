@@ -45,7 +45,7 @@ int main(int argc, char * argv[]) {
     if (only_semantic_checking)
         return 0;
 
-    generate_code(program, output_intermediate, disable_optimization);
+    generate_code(program, symbol_table, output_intermediate, disable_optimization);
 
     return 0;
 }
