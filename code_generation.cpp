@@ -781,19 +781,21 @@ void MethodGenerator::print_assembly(std::ostream & out)
                         case OperatorInstruction::EQUAL:
                         {
                             int skip_label = getNextUniqueLabel();
-                            out << "li $t0, 1" << std::endl;
-                            out << "beq $t0, $t1, 1" << std::endl;
-                            out << "li $t0, 0" << std::endl;
+                            out << "li $t2, 1" << std::endl;
+                            out << "beq $t0, $t1, l" << skip_label << std::endl;
+                            out << "li $t2, 0" << std::endl;
                             out << "l" << skip_label << ":" << std::endl;
+                            out << "move $t0, $t2" << std::endl;
                             break;
                         }
                         case OperatorInstruction::NOT_EQUAL:
                         {
                             int skip_label = getNextUniqueLabel();
-                            out << "li $t0, 1" << std::endl;
-                            out << "bne $t0, $t1, 1" << std::endl;
-                            out << "li $t0, 0" << std::endl;
+                            out << "li $t2, 1" << std::endl;
+                            out << "bne $t0, $t1, l" << skip_label << std::endl;
+                            out << "li $t2, 0" << std::endl;
                             out << "l" << skip_label << ":" << std::endl;
+                            out << "move $t0, $t2" << std::endl;
                             break;
                         }
                         case OperatorInstruction::LESS:
