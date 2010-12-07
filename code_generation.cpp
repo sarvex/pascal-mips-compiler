@@ -523,7 +523,7 @@ private:
         INTEGER,
         REAL,
         BOOL,
-        REFERENCE,
+        POINTER,
     };
 
     typedef std::list<Instruction *> InstructionList;
@@ -590,7 +590,9 @@ private:
     std::string get_class_name(VariableAccess * variable_access);
     std::string get_class_name(TypeDenoter * type);
     int get_field_offset_in_bytes(std::string class_name, std::string field_name);
-    Variant get_attribute_pointer(AttributeDesignator * attribute);
+    Variant gen_attribute_pointer(AttributeDesignator * attribute);
+    Variant gen_array_pointer(IndexedVariable * indexed_variable);
+    TypeDenoter * variable_access_type(VariableAccess * variable_access);
 
 };
 
@@ -986,7 +988,9 @@ MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(Typ
         case TypeDenoter::REAL:
             return REAL;
         case TypeDenoter::CLASS:
-            return REFERENCE;
+            return POINTER;
+        case TypeDenoter::ARRAY:
+            return POINTER;
         default:
             assert(false);
             return BOOL; // BOOL is COOL
@@ -994,7 +998,7 @@ MethodGenerator::RegisterType MethodGenerator::type_denoter_to_register_type(Typ
 }
 
 void MethodGenerator::generate() {
-    m_variable_numbers.put("this", next_available_register(REFERENCE));
+    m_variable_numbers.put("this", next_available_register(POINTER));
     for (VariableDeclarationList * variable_list = m_function_declaration->parameter_list; variable_list != NULL; variable_list = variable_list->next) {
         for (IdentifierList * id_list = variable_list->item->id_list; id_list != NULL; id_list = id_list->next)
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
@@ -1200,7 +1204,7 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
         }
         case PrimaryExpression::OBJECT_INSTANTIATION:
         {
-            Variant dest = next_available_register(REFERENCE);
+            Variant dest = next_available_register(POINTER);
             // make the instance
             std::string class_name = primary_expression->object_instantiation->class_identifier->text;
             m_instructions.push_back(new AllocateObjectInstruction(dest, class_name));
@@ -1228,15 +1232,76 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
     }
 }
 
-MethodGenerator::Variant MethodGenerator::get_attribute_pointer(AttributeDesignator * attribute)
+MethodGenerator::Variant MethodGenerator::gen_attribute_pointer(AttributeDesignator * attribute)
 {
     Variant owner_class_ref = gen_variable_access(attribute->owner);
     std::string owner_class_name = get_class_name(attribute->owner);
     int offset = get_field_offset_in_bytes(owner_class_name, attribute->identifier->text);
-    Variant pointer_register = next_available_register(INTEGER);
+    Variant pointer_register = next_available_register(POINTER);
     m_instructions.push_back(new OperatorInstruction(pointer_register, owner_class_ref, OperatorInstruction::PLUS, Variant(offset, Variant::CONST_INT)));
     return pointer_register;
 }
+
+MethodGenerator::Variant MethodGenerator::gen_array_pointer(IndexedVariable * indexed_variable)
+{
+    Variant array_ref = gen_variable_access(indexed_variable->variable);
+    for (ExpressionList * expression_list = indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
+        Expression * expression = expression_list->item;
+        Variant index = gen_expression(expression);
+        Variant bytes_offset = next_available_register(INTEGER);
+        m_instructions.push_back(new OperatorInstruction(bytes_offset, index, OperatorInstruction::TIMES, Variant(4, Variant::CONST_INT)));
+        Variant array_pointer = next_available_register(POINTER);
+        m_instructions.push_back(new OperatorInstruction(array_pointer, array_ref, OperatorInstruction::PLUS, bytes_offset));
+
+        if (expression_list->next == NULL)
+            return array_pointer;
+
+        // dereference array_pointer
+        array_ref = next_available_register(POINTER);
+        m_instructions.push_back(new ReadPointerInstruction(array_ref, array_pointer));
+    }
+    assert(false);
+    return array_ref;
+}
+
+TypeDenoter * MethodGenerator::variable_access_type(VariableAccess * variable_access)
+{
+    switch (variable_access->type) {
+        case VariableAccess::IDENTIFIER:
+        {
+            VariableData * variable = get_field(m_symbol_table, m_class_name, variable_access->identifier->text);
+            return variable->type;
+        }
+        case VariableAccess::ATTRIBUTE:
+        {
+            VariableData * variable = get_field(m_symbol_table, get_class_name(variable_access->attribute->owner), variable_access->attribute->identifier->text);
+            return variable->type;
+        }
+        case VariableAccess::INDEXED_VARIABLE:
+        {
+            int iterations_to_here = 0;
+            while (true) {
+                if (variable_access->type == VariableAccess::INDEXED_VARIABLE) {
+                    iterations_to_here++;
+                    variable_access = variable_access->indexed_variable->variable;
+                } else {
+                    break;
+                }
+            }
+            TypeDenoter * type = variable_access_type(variable_access);
+            for (int i=0; i<iterations_to_here; ++i) {
+                assert(type->type == TypeDenoter::ARRAY);
+                type = type->array_type->type;
+            }
+            return type;
+        }
+        case VariableAccess::THIS:
+            return new TypeDenoter(new Identifier(m_class_name, -1));
+        default:
+            assert(false);
+    }
+}
+
 
 MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * variable) {
     switch (variable->type) {
@@ -1247,13 +1312,15 @@ MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * v
         case VariableAccess::ATTRIBUTE:
         {
             Variant dest = next_available_register(type_denoter_to_register_type(get_field(m_symbol_table, get_class_name(variable->attribute->owner), variable->attribute->identifier->text)->type));
-            m_instructions.push_back(new ReadPointerInstruction(dest, get_attribute_pointer(variable->attribute)));
+            m_instructions.push_back(new ReadPointerInstruction(dest, gen_attribute_pointer(variable->attribute)));
             return dest;
         }
-        /*
         case VariableAccess::INDEXED_VARIABLE:
-            return check_indexed_variable(variable_access->indexed_variable);
-        */
+        {
+            Variant dest = next_available_register(type_denoter_to_register_type(variable_access_type(variable)));
+            m_instructions.push_back(new ReadPointerInstruction(dest, gen_array_pointer(variable->indexed_variable)));
+            return dest;
+        }
         default:
             assert(false);
     }
@@ -1326,14 +1393,11 @@ void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) 
             m_instructions.push_back(new CopyInstruction(m_variable_numbers.get(variable->identifier->text), source));
             break;
         case VariableAccess::ATTRIBUTE:
-            m_instructions.push_back(new WritePointerInstruction(get_attribute_pointer(variable->attribute), source));
+            m_instructions.push_back(new WritePointerInstruction(gen_attribute_pointer(variable->attribute), source));
             break;
-        /*
         case VariableAccess::INDEXED_VARIABLE:
-            return check_indexed_variable(variable_access->indexed_variable);
-        case VariableAccess::THIS:
-            return new TypeDenoter(m_symbol_table->item(m_class_id)->class_declaration->identifier);
-        */
+            m_instructions.push_back(new WritePointerInstruction(gen_array_pointer(variable->indexed_variable), source));
+            break;
         default:
             assert(false);
     }
