@@ -20,7 +20,9 @@ BEGIN
       counter := counter + 1
    END;
 
-   PRINT global[95][5]
+   PRINT global[95][4];
+   PRINT global[95][5];
+   PRINT global[95][6];
 END
 
 END

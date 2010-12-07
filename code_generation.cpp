@@ -640,12 +640,9 @@ void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bo
     asm_out << "main:" << std::endl;
     asm_out << "la $fp, heap_start" << std::endl;
 
-    // create instance of main class and run the constructor
-    asm_out << "sw $fp, -4($sp)" << std::endl;
-    asm_out << "addi $fp, $fp, " << get_class_size_in_bytes(program->identifier->text, symbol_table) << std::endl;
-    asm_out << "jal " << Utils::to_lower(program->identifier->text) << "_"
-            << Utils::to_lower(program->identifier->text) << std::endl;
+    asm_out << "jal _entrypoint__entrypoint" << std::endl;
 
+    asm_out << std::endl << "# quit" << std::endl;
     asm_out << "li $v0, 10" << std::endl;
     asm_out << "syscall" << std::endl;
     for (ClassList * class_list_node = program->class_list; class_list_node != NULL; class_list_node = class_list_node->next) {

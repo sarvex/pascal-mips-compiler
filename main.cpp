@@ -1,4 +1,3 @@
-
 #include "parser.h"
 #include "symbol_table.h"
 #include "semantic_checker.h"
@@ -7,6 +6,7 @@
 #include <string>
 
 void print_usage(std::string exe_name);
+void add_entry_point(Program * program);
 
 int main(int argc, char * argv[]) {
     char * filename = NULL;
@@ -38,6 +38,9 @@ int main(int argc, char * argv[]) {
 
     Program * program = parse_input(filename);
 
+    add_entry_point(program);
+
+
     SymbolTable * symbol_table = build_symbol_table(program);
     if (symbol_table == NULL)
         return 1;
@@ -51,6 +54,18 @@ int main(int argc, char * argv[]) {
     generate_code(program, symbol_table, output_intermediate, disable_optimization, skip_lame_stuff);
 
     return 0;
+}
+
+void add_entry_point(Program * program) {
+    VariableDeclarationList * main_instance = new VariableDeclarationList(new VariableDeclaration(new IdentifierList(new Identifier("_instance", -1), NULL), new TypeDenoter(program->identifier)), NULL);
+    FunctionDeclaration * main_function = new FunctionDeclaration(new Identifier("_entrypoint", -1), NULL, NULL, new FunctionBlock(main_instance, new StatementList(
+        new Statement(new AssignmentStatement(new VariableAccess(new Identifier("_instance", -1)),
+        new Expression(new AdditiveExpression(new MultiplicativeExpression(new NegatableExpression(
+        new PrimaryExpression(new ObjectInstantiation(program->identifier)))))))), NULL)));
+    ClassDeclaration * class_declaration = new ClassDeclaration(new Identifier("_entrypoint", -1), NULL,
+        new ClassBlock(NULL, new FunctionDeclarationList(main_function, NULL)));
+
+    program->class_list = new ClassList(class_declaration, program->class_list);
 }
 
 void print_usage(std::string exe_name) {
