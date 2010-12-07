@@ -14,6 +14,7 @@ BEGIN
 
 FUNCTION testAttributeDesignatorComplex;
 BEGIN
+    object := new main;
    object.aa := object.bb + object.cc
 END
 

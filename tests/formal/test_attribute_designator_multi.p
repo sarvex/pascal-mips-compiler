@@ -14,6 +14,10 @@ BEGIN
    VAR users	 : integer;
       livingroom : room;
       garage	 : room;
+    function house; begin
+        livingroom := new room;
+        garage := new room;
+    end
 END		 
 
 

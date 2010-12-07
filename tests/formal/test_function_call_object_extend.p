@@ -34,7 +34,9 @@ BEGIN
    
 FUNCTION testFunctionCallObjectExtend;
 BEGIN
-      retval := myCustomObject.setCompilerWorks(onOff)
+    myCustomObject := new middleManClass;
+    retval := myCustomObject.setCompilerWorks(onOff);
+    print retval;
 END
 
 END
