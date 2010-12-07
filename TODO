@@ -5,7 +5,6 @@ Project 4 Release
 
 Bonus:
  * actually check constructor parameters
- * combined types
  * test for negating non-numeric types
  * test for boolean expression in if statement
  * test for invalid/valid array indicies with expressions like 8*8-32
