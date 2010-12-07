@@ -611,7 +611,7 @@ private:
     void storeRegister(std::ostream & out, int dest_register_number, std::string source_register);
     int get_stack_space();
 
-    std::string get_class_name(VariableAccess * variable_access);
+    TypeDenoter * get_class_type(VariableAccess * variable_access);
     std::string get_class_name(TypeDenoter * type);
     int get_field_offset_in_bytes(std::string class_name, std::string field_name);
     Variant gen_attribute_pointer(AttributeDesignator * attribute);
@@ -1118,7 +1118,7 @@ void MethodGenerator::gen_statement(Statement * statement) {
 }
 
 bool MethodGenerator::gen_method_designator(MethodDesignator * method_designator, Variant & out_dest) {
-    std::string class_name = get_class_name(method_designator->owner);
+    std::string class_name = get_class_name(get_class_type(method_designator->owner));
     std::string method_name = method_designator->function->identifier->text;
     class_name = get_declaring_class(m_symbol_table, class_name, method_name);
     FunctionDeclaration * declaration = get_method(m_symbol_table, class_name, method_name);
@@ -1299,7 +1299,7 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
 MethodGenerator::Variant MethodGenerator::gen_attribute_pointer(AttributeDesignator * attribute)
 {
     Variant owner_class_ref = gen_variable_access(attribute->owner);
-    std::string owner_class_name = get_class_name(attribute->owner);
+    std::string owner_class_name = get_class_name(get_class_type(attribute->owner));
     int offset = get_field_offset_in_bytes(owner_class_name, attribute->identifier->text);
     Variant pointer_register = next_available_register(POINTER);
     m_instructions.push_back(new OperatorInstruction(pointer_register, owner_class_ref, OperatorInstruction::PLUS, Variant(offset, Variant::CONST_INT)));
@@ -1345,7 +1345,7 @@ TypeDenoter * MethodGenerator::variable_access_type(VariableAccess * variable_ac
         }
         case VariableAccess::ATTRIBUTE:
         {
-            VariableData * variable = get_field(m_symbol_table, get_class_name(variable_access->attribute->owner), variable_access->attribute->identifier->text);
+            VariableData * variable = get_field(m_symbol_table, get_class_name(get_class_type(variable_access->attribute->owner)), variable_access->attribute->identifier->text);
             return variable->type;
         }
         case VariableAccess::INDEXED_VARIABLE:
@@ -1382,7 +1382,7 @@ MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * v
             return m_variable_numbers.get("this");
         case VariableAccess::ATTRIBUTE:
         {
-            Variant dest = next_available_register(type_denoter_to_register_type(get_field(m_symbol_table, get_class_name(variable->attribute->owner), variable->attribute->identifier->text)->type));
+            Variant dest = next_available_register(type_denoter_to_register_type(get_field(m_symbol_table, get_class_name(get_class_type(variable->attribute->owner)), variable->attribute->identifier->text)->type));
             m_instructions.push_back(new ReadPointerInstruction(dest, gen_attribute_pointer(variable->attribute)));
             return dest;
         }
@@ -1399,7 +1399,7 @@ MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * v
     }
 }
 
-std::string MethodGenerator::get_class_name(VariableAccess * variable_access)
+TypeDenoter * MethodGenerator::get_class_type(VariableAccess * variable_access)
 {
     switch (variable_access->type) {
         case VariableAccess::IDENTIFIER:
@@ -1411,19 +1411,23 @@ std::string MethodGenerator::get_class_name(VariableAccess * variable_access)
                     function_symbols->variables->has_key(variable_access->identifier->text) ?
                     function_symbols->variables->get(variable_access->identifier->text) :
                     class_symbols->variables->get(variable_access->identifier->text);
-            return get_class_name(variable->type);
+            return variable->type;
         }
         case VariableAccess::INDEXED_VARIABLE:
-            return get_class_name(variable_access->indexed_variable->variable);
+        {
+            TypeDenoter * type = get_class_type(variable_access->indexed_variable->variable);
+            assert(type->type == TypeDenoter::ARRAY);
+            return type->array_type->type;
+        }
         case VariableAccess::ATTRIBUTE:
         {
-            std::string owner_class_name = get_class_name(variable_access->attribute->owner);
+            std::string owner_class_name = get_class_name(get_class_type(variable_access->attribute->owner));
             ClassSymbolTable * class_symbols = m_symbol_table->get(owner_class_name);
             VariableData * variable = class_symbols->variables->get(variable_access->attribute->identifier->text);
-            return get_class_name(variable->type);
+            return variable->type;
         }
         case VariableAccess::THIS:
-            return m_class_name;
+            return new TypeDenoter(new Identifier(m_class_name, -1));
         default:
             assert(false);
     }

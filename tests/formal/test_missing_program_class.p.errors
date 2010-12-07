@@ -1,1 +1,3 @@
 ERROR: line 1: missing program class
+ERROR: line 1: class "missingProgramClass" is not defined
+ERROR: line 1: class "missingProgramClass" not declared
