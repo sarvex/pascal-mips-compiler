@@ -575,7 +575,7 @@ private:
     Variant gen_negatable_expression(NegatableExpression * negatable_expression);
     Variant gen_primary_expression(PrimaryExpression * primary_expression);
     Variant gen_variable_access(VariableAccess * variable);
-    void gen_initialize_array(Variant pointer, TypeDenoter * type);
+    Variant gen_initialize_array(TypeDenoter * type);
 
     void gen_assignment(VariableAccess * variable, Variant source);
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
@@ -609,7 +609,7 @@ private:
     void delete_block(int index);
     void loadValue(std::ostream & out, Variant source_value, std::string dest_register);
     void storeRegister(std::ostream & out, int dest_register_number, std::string source_register);
-    int getStackSpace();
+    int get_stack_space();
 
     std::string get_class_name(VariableAccess * variable_access);
     std::string get_class_name(TypeDenoter * type);
@@ -617,6 +617,7 @@ private:
     Variant gen_attribute_pointer(AttributeDesignator * attribute);
     Variant gen_array_pointer(IndexedVariable * indexed_variable, ArrayType * type);
     TypeDenoter * variable_access_type(VariableAccess * variable_access);
+    int get_stack_variable_offset_in_bytes(int variable_number);
 
 };
 
@@ -713,6 +714,11 @@ void generate_code(Program * program, SymbolTable * symbol_table, bool debug, bo
     std::cout << asm_out.str();
 }
 
+int MethodGenerator::get_stack_variable_offset_in_bytes(int variable_number)
+{
+    return get_stack_space() - variable_number * 4 - 4;
+}
+
 void MethodGenerator::loadValue(std::ostream & out, Variant source_value, std::string dest_register)
 {
     if (source_value.type == Variant::CONST_BOOL) {
@@ -720,7 +726,7 @@ void MethodGenerator::loadValue(std::ostream & out, Variant source_value, std::s
     } else if (source_value.type == Variant::CONST_INT) {
         out << "li " << dest_register << ", " << source_value._int << std::endl;
     } else if (source_value.type == Variant::REGISTER) {
-        out << "lw " << dest_register << ", " << (getStackSpace() - source_value._int * 4 - 4) << "($sp)" << std::endl;
+        out << "lw " << dest_register << ", " << get_stack_variable_offset_in_bytes(source_value._int) << "($sp)" << std::endl;
     } else {
         assert(false);
     }
@@ -728,10 +734,10 @@ void MethodGenerator::loadValue(std::ostream & out, Variant source_value, std::s
 
 void MethodGenerator::storeRegister(std::ostream & out, int dest_register_number, std::string source_register)
 {
-    out << "sw " << source_register << ", " << (getStackSpace() - dest_register_number * 4 - 4) << "($sp)" << std::endl;
+    out << "sw " << source_register << ", " << get_stack_variable_offset_in_bytes(dest_register_number) << "($sp)" << std::endl;
 }
 
-int MethodGenerator::getStackSpace()
+int MethodGenerator::get_stack_space()
 {
     return
         // a slot for each register (all types are the same size: 4 bytes)
@@ -746,7 +752,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
     out << m_class_name << "_" << method_name << ":" << std::endl;
 
     // allocate stack space for locals
-    out << "addi $sp, $sp, -" << getStackSpace() << std::endl;
+    out << "addi $sp, $sp, -" << get_stack_space() << std::endl;
     out << "sw $ra, 0($sp)" << std::endl;
 
     for (unsigned int b = 0; b < m_basic_blocks.size(); b++) {
@@ -865,7 +871,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     }
                     // deallocate stack
                     out << "lw $ra, 0($sp)" << std::endl;
-                    out << "addi $sp, $sp, " << getStackSpace() << std::endl;
+                    out << "addi $sp, $sp, " << get_stack_space() << std::endl;
                     out << "jr $ra" << std::endl;
                     return;
                 case Instruction::PRINT:
@@ -1031,6 +1037,18 @@ void MethodGenerator::generate() {
             m_variable_numbers.put(id_list->item->text, next_available_register(type_denoter_to_register_type(variable_list->item->type)));
     }
 
+    // allocate local arrays
+    ClassSymbolTable * class_symbols = m_symbol_table->get(m_class_name);
+    FunctionSymbolTable * function_symbols = class_symbols->function_symbols->get(m_function_declaration->identifier->text);
+    for (int i = 0; i < function_symbols->variables->count(); ++i) {
+        VariableData * variable = function_symbols->variables->get(i);
+        if (variable->type == NULL || variable->type->type != TypeDenoter::ARRAY)
+            continue;
+
+        Variant value = gen_initialize_array(variable->type);
+        m_instructions.push_back(new CopyInstruction(m_variable_numbers.get(variable->name), value));
+    }
+
     gen_statement_list(m_function_declaration->block->statement_list);
 
     m_instructions.push_back(new ReturnInstruction());
@@ -1187,20 +1205,21 @@ MethodGenerator::Variant MethodGenerator::gen_negatable_expression(NegatableExpr
     }
 }
 
-void MethodGenerator::gen_initialize_array(Variant pointer, TypeDenoter * type) {
+MethodGenerator::Variant MethodGenerator::gen_initialize_array(TypeDenoter * type) {
     assert(type->type == TypeDenoter::ARRAY);
 
     int count = type->array_type->max->value - type->array_type->min->value + 1;
     Variant base_array_pointer = next_available_register(POINTER);
     m_instructions.push_back(new AllocateArrayInstruction(base_array_pointer, count * 4));
-    m_instructions.push_back(new WritePointerInstruction(pointer, base_array_pointer));
     if (type->array_type->type->type == TypeDenoter::ARRAY) {
         for (int i = 0; i < count; ++i) {
             Variant entry_pointer = next_available_register(POINTER);
             m_instructions.push_back(new OperatorInstruction(entry_pointer, base_array_pointer, OperatorInstruction::PLUS, Variant(i*4, Variant::CONST_INT)));
-            gen_initialize_array(entry_pointer, type->array_type->type);
+            Variant value = gen_initialize_array(type->array_type->type);
+            m_instructions.push_back(new WritePointerInstruction(entry_pointer, value));
         }
     }
+    return base_array_pointer;
 }
 
 MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
@@ -1253,7 +1272,8 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
                 int field_offset = get_field_offset_in_bytes(class_name, variable->name);
                 Variant field_pointer = next_available_register(POINTER);
                 m_instructions.push_back(new OperatorInstruction(field_pointer, new_object_pointer, OperatorInstruction::PLUS, Variant(field_offset, Variant::CONST_INT)));
-                gen_initialize_array(field_pointer, variable->type);
+                Variant value = gen_initialize_array(variable->type);
+                m_instructions.push_back(new WritePointerInstruction(field_pointer, value));
             }
 
             bool has_constructor = class_symbols->function_symbols->has_key(class_name);
@@ -1321,7 +1341,9 @@ TypeDenoter * MethodGenerator::variable_access_type(VariableAccess * variable_ac
     switch (variable_access->type) {
         case VariableAccess::IDENTIFIER:
         {
-            VariableData * variable = get_field(m_symbol_table, m_class_name, variable_access->identifier->text);
+            ClassSymbolTable * class_symbols = m_symbol_table->get(m_class_name);
+            FunctionSymbolTable * function_symbols = class_symbols->function_symbols->get(m_function_declaration->identifier->text);
+            VariableData * variable = function_symbols->variables->get(variable_access->identifier->text);
             return variable->type;
         }
         case VariableAccess::ATTRIBUTE:
