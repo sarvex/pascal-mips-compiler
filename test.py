@@ -72,6 +72,7 @@ def main():
     parser.add_option('-f', '--failfast', help="Stop on first failed test", action="store_true")
     parser.add_option("-q", "--quiet", help="only print dots and summary", action="store_true")
     parser.add_option("-b", "--backwards", help="run tests in reverse order", action="store_true")
+    parser.add_option("-v", "--verbose", action="store_true", default=False)
     options, args = parser.parse_args()
 
     if not options.quiet:
@@ -134,10 +135,16 @@ def main():
             continue
 
         # try compiling the test file
+        if options.verbose:
+            sys.stdout.write(test_name + "...")
+            sys.stdout.flush()
         compiler = subprocess.Popen([compiler_exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = compiler.communicate(test['source'])
         if compiler.returncode not in [0, 1]:
-            sys.stdout.write('E')
+            if options.verbose:
+                sys.stdout.write("crash\n")
+            else:
+                sys.stdout.write('E')
             fails.append({
                 'errors': test['errors'],
                 'output': stderr,
@@ -148,7 +155,10 @@ def main():
             if options.failfast:
                 break
         elif stderr != test['errors']:
-            sys.stdout.write('F')
+            if options.verbose:
+                sys.stdout.write("fail\n")
+            else:
+                sys.stdout.write('F')
             fails.append({
                 'errors': test['errors'],
                 'output': stderr,
@@ -162,7 +172,10 @@ def main():
             # compiler output correct, now test the generated code output
             asm_output = interpret_command(stdout)
             if asm_output != test['out']:
-                sys.stdout.write('W')
+                if options.verbose:
+                    sys.stdout.write("wrong\n")
+                else:
+                    sys.stdout.write('W')
                 fails.append({
                     'expected_runout': test['out'],
                     'runout': asm_output,
@@ -172,8 +185,17 @@ def main():
                 if options.failfast:
                     break
             else:
-                sys.stdout.write('.')
+                if options.verbose:
+                    sys.stdout.write("pass\n")
+                else:
+                    sys.stdout.write('.')
                 passed += 1
+        else:
+            if options.verbose:
+                sys.stdout.write("pass\n")
+            else:
+                sys.stdout.write('.')
+            passed += 1
 
         sys.stdout.flush()
 
