@@ -1482,6 +1482,9 @@ void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) 
             m_instructions.push_back(new WritePointerInstruction(gen_array_pointer(variable->indexed_variable, type->array_type), source));
             break;
         }
+        case VariableAccess::THIS:
+            m_instructions.push_back(new CopyInstruction(m_variable_numbers.get("this"), source));
+            break;
         default:
             assert(false);
     }
