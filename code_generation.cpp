@@ -1419,8 +1419,11 @@ TypeDenoter * MethodGenerator::get_class_type(VariableAccess * variable_access)
         case VariableAccess::INDEXED_VARIABLE:
         {
             TypeDenoter * type = get_class_type(variable_access->indexed_variable->variable);
-            assert(type->type == TypeDenoter::ARRAY);
-            return type->array_type->type;
+            for (ExpressionList * expression_list = variable_access->indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
+                assert(type->type == TypeDenoter::ARRAY);
+                type = type->array_type->type;
+            }
+            return type;
         }
         case VariableAccess::ATTRIBUTE:
         {
