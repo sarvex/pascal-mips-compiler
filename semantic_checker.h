@@ -63,7 +63,6 @@ class SemanticChecker {
         TypeDenoter * class_variable_type(std::string class_name, Identifier * variable);
         void check_type(TypeDenoter * type, bool allow_arrays);
         bool structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type);
-        bool class_contains_class(TypeDenoter * owner, TypeDenoter * owned);
 };
 
 #endif

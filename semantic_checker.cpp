@@ -43,26 +43,6 @@ bool SemanticChecker::internal_check()
         m_success = false;
     }
 
-    // check classes for illegal recursive structures
-    for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
-        ClassDeclaration * class_declaration = class_list->item;
-        m_class_id = class_declaration->identifier->text;
-
-        TypeDenoter * class_type = new TypeDenoter(class_declaration->identifier);
-        for (VariableDeclarationList * variable_list = class_declaration->class_block->variable_list; variable_list != NULL; variable_list = variable_list->next) {
-            VariableDeclaration * variable_declaration = variable_list->item;
-
-            if (variable_declaration->type->type == TypeDenoter::CLASS) {
-                if (class_contains_class(variable_declaration->type, class_type)) {
-                    std::cerr << err_header(variable_declaration->type->class_identifier->line_number) <<
-                            "cannot have a recursive data structure" << std::endl;
-                    m_success = false;
-                    m_recursive_error = true;
-                }
-            }
-        }
-    }
-
     // check classes
     for (ClassList * class_list = m_program->class_list; class_list != NULL; class_list = class_list->next) {
         ClassDeclaration * class_declaration = class_list->item;
@@ -158,27 +138,6 @@ bool SemanticChecker::types_equal(TypeDenoter * type1, TypeDenoter * type2)
     } else {
         return false;
     }
-}
-
-bool SemanticChecker::class_contains_class(TypeDenoter * owner, TypeDenoter * owned) {
-    // return true if any of the fields or their classes has this class
-    assert(owner->type == TypeDenoter::CLASS);
-    assert(owned->type == TypeDenoter::CLASS);
-
-    if (owner->class_identifier->text == owned->class_identifier->text) {
-        return true;
-    }
-
-    if (! m_symbol_table->has_key(owner->class_identifier->text))
-        return false;
-
-    VariableTable * owner_fields = m_symbol_table->get(owner->class_identifier->text)->variables;
-    for (int i=0; i<owner_fields->count(); ++i) {
-        VariableData * variable_data = owner_fields->get(i);
-        if (variable_data->type->type == TypeDenoter::CLASS && class_contains_class(variable_data->type, owned))
-            return true;
-    }
-    return false;
 }
 
 bool SemanticChecker::is_ancestor(TypeDenoter * child, TypeDenoter * ancestor)
