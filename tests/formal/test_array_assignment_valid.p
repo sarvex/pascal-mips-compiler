@@ -9,7 +9,17 @@ BEGIN
 
 FUNCTION testArrayAssignmentValid;
 BEGIN
-   XRay := YRay
+    xRay[0] := -1;
+    xRay[3] := -1;
+
+    yRay[8] := 100;
+    yRay[11] := 200;
+
+    XRay := YRay;
+
+    print xray[0]; { prints 100 }
+    print xray[3]; { prints 200 }
+
 END
 
 END
