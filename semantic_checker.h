@@ -31,8 +31,8 @@ class SemanticChecker {
 
         void check_statement_list(StatementList * _statement_list);
         void check_statement(Statement * statement);
-        void check_variable_declaration_list(VariableDeclarationList * variable_list);
-        void check_variable_declaration(VariableDeclaration * variable);
+        void check_variable_declaration_list(VariableDeclarationList * variable_list, bool allow_arrays);
+        void check_variable_declaration(VariableDeclaration * variable, bool allow_arrays);
 
         // functions to get the types of structures
         // null means semantic error occured
@@ -61,7 +61,7 @@ class SemanticChecker {
         Identifier * find_identifier(VariableAccess * variable_access);
         FunctionDeclaration * class_method(std::string class_name, FunctionDesignator * function_designator);
         TypeDenoter * class_variable_type(std::string class_name, Identifier * variable);
-        void check_type(TypeDenoter * type);
+        void check_type(TypeDenoter * type, bool allow_arrays);
         bool structurally_equivalent(TypeDenoter * left_type, TypeDenoter * right_type);
         bool class_contains_class(TypeDenoter * owner, TypeDenoter * owned);
 };

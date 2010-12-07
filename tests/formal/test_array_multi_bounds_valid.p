@@ -9,6 +9,7 @@ VAR
 
 FUNCTION testArrayMultiBoundsValid;
 BEGIN
+   bad[5,28] := 0;
    PRINT bad[5,28];
    bad[5,28] := 67;
    PRINT bad[5,28]

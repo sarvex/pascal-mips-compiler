@@ -68,17 +68,17 @@ bool SemanticChecker::internal_check()
         ClassDeclaration * class_declaration = class_list->item;
         m_class_id = class_declaration->identifier->text;
 
-        check_variable_declaration_list(class_declaration->class_block->variable_list);
+        check_variable_declaration_list(class_declaration->class_block->variable_list, true);
 
         // check functions
         for (FunctionDeclarationList * function_list = class_declaration->class_block->function_list; function_list != NULL; function_list = function_list->next) {
             FunctionDeclaration * function_declaration = function_list->item;
             m_function_id = function_declaration->identifier->text;
 
-            check_variable_declaration_list(function_declaration->parameter_list);
-            check_variable_declaration_list(function_declaration->block->variable_list);
+            check_variable_declaration_list(function_declaration->parameter_list, false);
+            check_variable_declaration_list(function_declaration->block->variable_list, true);
             if (function_declaration->type != NULL)
-                check_type(function_declaration->type);
+                check_type(function_declaration->type, false);
 
             StatementList * statement_list = function_declaration->block->statement_list;
             check_statement_list(statement_list);
@@ -88,18 +88,18 @@ bool SemanticChecker::internal_check()
     return m_success;
 }
 
-void SemanticChecker::check_variable_declaration_list(VariableDeclarationList * _variable_list)
+void SemanticChecker::check_variable_declaration_list(VariableDeclarationList * _variable_list, bool allow_arrays)
 {
     for (VariableDeclarationList * variable_list = _variable_list; variable_list != NULL; variable_list = variable_list->next)
-        check_variable_declaration(variable_list->item);
+        check_variable_declaration(variable_list->item, allow_arrays);
 }
 
-void SemanticChecker::check_variable_declaration(VariableDeclaration * variable)
+void SemanticChecker::check_variable_declaration(VariableDeclaration * variable, bool allow_arrays)
 {
-    check_type(variable->type);
+    check_type(variable->type, allow_arrays);
 }
 
-void SemanticChecker::check_type(TypeDenoter * type)
+void SemanticChecker::check_type(TypeDenoter * type, bool allow_arrays)
 {
     switch(type->type) {
         case TypeDenoter::INTEGER:
@@ -119,6 +119,11 @@ void SemanticChecker::check_type(TypeDenoter * type)
             }
             break;
         case TypeDenoter::ARRAY:
+            if (!allow_arrays) {
+                std::cerr << err_header(type->array_type->min->line_number) << "parameters and return values are not allowed to be arrays" << std::endl;
+                m_success = false;
+                break;
+            }
             // make sure the range is valid
             if (! (type->array_type->max->value >= type->array_type->min->value)) {
                 std::cerr << err_header(type->array_type->min->line_number) << "invalid array range: [" <<
