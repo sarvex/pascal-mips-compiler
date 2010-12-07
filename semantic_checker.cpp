@@ -567,14 +567,19 @@ TypeDenoter * SemanticChecker::check_method_designator(MethodDesignator * method
 TypeDenoter * SemanticChecker::check_object_instantiation(ObjectInstantiation * object_instantiation)
 {
     // look it up in the symbol table
-    if (m_symbol_table->has_key(object_instantiation->class_identifier->text)) {
-        return new TypeDenoter(object_instantiation->class_identifier);
-    } else {
+    if (! m_symbol_table->has_key(object_instantiation->class_identifier->text)) {
         std::cerr << err_header(object_instantiation->class_identifier->line_number) <<
             "class \"" << object_instantiation->class_identifier->text << "\" not declared" << std::endl;
         m_success = false;
         return NULL;
     }
+
+    for (ExpressionList * expression_list = object_instantiation->parameter_list; expression_list != NULL; expression_list = expression_list->next) {
+        Expression * expression = expression_list->item;
+        check_expression(expression);
+    }
+
+    return new TypeDenoter(object_instantiation->class_identifier);
 }
 
 LiteralInteger * SemanticChecker::constant_integer(Expression * expression)

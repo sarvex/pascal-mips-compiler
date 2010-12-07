@@ -1279,7 +1279,8 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
                 method_call->parameters.push_back(new_object_pointer);
                 for (ExpressionList * expression_list = primary_expression->object_instantiation->parameter_list; expression_list != NULL; expression_list = expression_list->next) {
                     Expression * expression = expression_list->item;
-                    method_call->parameters.push_back(gen_expression(expression));
+                    Variant value = gen_expression(expression);
+                    method_call->parameters.push_back(value);
                 }
                 m_instructions.push_back(method_call);
             }
