@@ -15,7 +15,6 @@ int getNextUniqueLabel() {
     return g_next_unique_label++;
 }
 int get_class_size_in_bytes(std::string class_name, SymbolTable *symbol_table);
-int get_type_size_in_bytes(TypeDenoter * type);
 
 class MethodGenerator {
 public:
@@ -52,6 +51,7 @@ private:
             ALLOCATE_OBJECT,
             WRITE_POINTER,
             READ_POINTER,
+            ALLOCATE_ARRAY,
         };
         Type type;
 
@@ -496,6 +496,29 @@ private:
         }
     };
 
+
+    struct AllocateArrayInstruction : public Instruction {
+        Variant dest;
+        int size; // bytes
+        AllocateArrayInstruction(Variant dest, int size) : Instruction(ALLOCATE_ARRAY), dest(dest), size(size) {}
+
+        void insertReadRegisters(std::set<int> & used_list) {}
+
+        void insertMangledRegisters(std::set<int> & mangled_list) {
+            if (dest.type == Variant::REGISTER)
+                mangled_list.insert(dest._int);
+        }
+
+        void remapRegisters(std::vector<int> & map) {
+            if (dest.type == Variant::REGISTER)
+                dest._int = map[dest._int];
+        }
+        void print(std::ostream &out) {
+            out << dest.str() << " = new byte[" << size << "]";
+        }
+    };
+
+
     struct BasicBlock {
         // indexes in m_instructions
         int start;
@@ -552,6 +575,7 @@ private:
     Variant gen_negatable_expression(NegatableExpression * negatable_expression);
     Variant gen_primary_expression(PrimaryExpression * primary_expression);
     Variant gen_variable_access(VariableAccess * variable);
+    void gen_initialize_array(Variant pointer, TypeDenoter * type);
 
     void gen_assignment(VariableAccess * variable, Variant source);
     void link_parent_and_child(int parent_index, int jump_child, int fallthrough_child);
@@ -591,7 +615,7 @@ private:
     std::string get_class_name(TypeDenoter * type);
     int get_field_offset_in_bytes(std::string class_name, std::string field_name);
     Variant gen_attribute_pointer(AttributeDesignator * attribute);
-    Variant gen_array_pointer(IndexedVariable * indexed_variable);
+    Variant gen_array_pointer(IndexedVariable * indexed_variable, ArrayType * type);
     TypeDenoter * variable_access_type(VariableAccess * variable_access);
 
 };
@@ -734,6 +758,9 @@ void MethodGenerator::print_assembly(std::ostream & out)
         int i = block->start;
         for (InstructionList::iterator it = block->instructions.begin(); it != block->instructions.end(); ++it, ++i) {
             Instruction * instruction = *it;
+            out << std::endl << "# ";
+            instruction->print(out);
+            out << std::endl;
             switch (instruction->type) {
                 case Instruction::COPY:
                 {
@@ -897,6 +924,13 @@ void MethodGenerator::print_assembly(std::ostream & out)
                     out << "addi $fp, $fp, " << size << std::endl;
                     break;
                 }
+                case Instruction::ALLOCATE_ARRAY:
+                {
+                    AllocateArrayInstruction * allocate_instruction = (AllocateArrayInstruction *) instruction;
+                    storeRegister(out, allocate_instruction->dest._int, "$fp");
+                    out << "addi $fp, $fp, " << allocate_instruction->size << std::endl;
+                    break;
+                }
                 case Instruction::WRITE_POINTER:
                 {
                     WritePointerInstruction * write_pointer_instruction = (WritePointerInstruction *) instruction;
@@ -923,22 +957,7 @@ void MethodGenerator::print_assembly(std::ostream & out)
 int get_class_size_in_bytes(std::string class_name, SymbolTable * symbol_table)
 {
     ClassSymbolTable * class_symbols = symbol_table->get(class_name);
-    int sum = 0;
-    for(int i=0; i<class_symbols->variables->count(); ++i) {
-        VariableData * field = class_symbols->variables->get(i);
-        sum += get_type_size_in_bytes(field->type);
-    }
-    return sum;
-}
-
-int get_type_size_in_bytes(TypeDenoter * type)
-{
-    if (type->type == TypeDenoter::ARRAY) {
-        ArrayType * array_type = type->array_type;
-        return get_type_size_in_bytes(array_type->type) * (array_type->max - array_type->min + 1);
-    } else {
-        return 4;
-    }
+    return class_symbols->variables->count() * 4;
 }
 
 void MethodGenerator::print_instruction(std::ostream & out, int address, Instruction * instruction) {
@@ -1168,6 +1187,22 @@ MethodGenerator::Variant MethodGenerator::gen_negatable_expression(NegatableExpr
     }
 }
 
+void MethodGenerator::gen_initialize_array(Variant pointer, TypeDenoter * type) {
+    assert(type->type == TypeDenoter::ARRAY);
+
+    int count = type->array_type->max->value - type->array_type->min->value + 1;
+    Variant base_array_pointer = next_available_register(POINTER);
+    m_instructions.push_back(new AllocateArrayInstruction(base_array_pointer, count * 4));
+    m_instructions.push_back(new WritePointerInstruction(pointer, base_array_pointer));
+    if (type->array_type->type->type == TypeDenoter::ARRAY) {
+        for (int i = 0; i < count; ++i) {
+            Variant entry_pointer = next_available_register(POINTER);
+            m_instructions.push_back(new OperatorInstruction(entry_pointer, base_array_pointer, OperatorInstruction::PLUS, Variant(i*4, Variant::CONST_INT)));
+            gen_initialize_array(entry_pointer, type->array_type->type);
+        }
+    }
+}
+
 MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpression * primary_expression) {
     switch (primary_expression->type) {
         case PrimaryExpression::VARIABLE:
@@ -1204,22 +1239,34 @@ MethodGenerator::Variant MethodGenerator::gen_primary_expression(PrimaryExpressi
         }
         case PrimaryExpression::OBJECT_INSTANTIATION:
         {
-            Variant dest = next_available_register(POINTER);
+            Variant new_object_pointer = next_available_register(POINTER);
             // make the instance
             std::string class_name = primary_expression->object_instantiation->class_identifier->text;
-            m_instructions.push_back(new AllocateObjectInstruction(dest, class_name));
-            ClassSymbolTable * classes = m_symbol_table->get(class_name);
-            bool has_constructor = classes->function_symbols->has_key(class_name);
+            m_instructions.push_back(new AllocateObjectInstruction(new_object_pointer, class_name));
+            ClassSymbolTable * class_symbols = m_symbol_table->get(class_name);
+
+            // allocate its arrays
+            for (int i = 0; i < class_symbols->variables->count(); ++i) {
+                VariableData * variable = class_symbols->variables->get(i);
+                if (variable->type->type != TypeDenoter::ARRAY)
+                    continue;
+                int field_offset = get_field_offset_in_bytes(class_name, variable->name);
+                Variant field_pointer = next_available_register(POINTER);
+                m_instructions.push_back(new OperatorInstruction(field_pointer, new_object_pointer, OperatorInstruction::PLUS, Variant(field_offset, Variant::CONST_INT)));
+                gen_initialize_array(field_pointer, variable->type);
+            }
+
+            bool has_constructor = class_symbols->function_symbols->has_key(class_name);
             if (has_constructor) {
                 MethodCallInstruction * method_call = new MethodCallInstruction(class_name, class_name);
-                method_call->parameters.push_back(dest);
+                method_call->parameters.push_back(new_object_pointer);
                 for (ExpressionList * expression_list = primary_expression->object_instantiation->parameter_list; expression_list != NULL; expression_list = expression_list->next) {
                     Expression * expression = expression_list->item;
                     method_call->parameters.push_back(gen_expression(expression));
                 }
                 m_instructions.push_back(method_call);
             }
-            return dest;
+            return new_object_pointer;
         }
         case PrimaryExpression::METHOD:
         {
@@ -1242,12 +1289,17 @@ MethodGenerator::Variant MethodGenerator::gen_attribute_pointer(AttributeDesigna
     return pointer_register;
 }
 
-MethodGenerator::Variant MethodGenerator::gen_array_pointer(IndexedVariable * indexed_variable)
+MethodGenerator::Variant MethodGenerator::gen_array_pointer(IndexedVariable * indexed_variable, ArrayType * array_type)
 {
     Variant array_ref = gen_variable_access(indexed_variable->variable);
     for (ExpressionList * expression_list = indexed_variable->expression_list; expression_list != NULL; expression_list = expression_list->next) {
         Expression * expression = expression_list->item;
         Variant index = gen_expression(expression);
+        if (array_type->min != 0) {
+            Variant corrected_index = next_available_register(INTEGER);
+            m_instructions.push_back(new OperatorInstruction(corrected_index, index, OperatorInstruction::MINUS, Variant(array_type->min->value, Variant::CONST_INT)));
+            index = corrected_index;
+        }
         Variant bytes_offset = next_available_register(INTEGER);
         m_instructions.push_back(new OperatorInstruction(bytes_offset, index, OperatorInstruction::TIMES, Variant(4, Variant::CONST_INT)));
         Variant array_pointer = next_available_register(POINTER);
@@ -1317,8 +1369,10 @@ MethodGenerator::Variant MethodGenerator::gen_variable_access(VariableAccess * v
         }
         case VariableAccess::INDEXED_VARIABLE:
         {
-            Variant dest = next_available_register(type_denoter_to_register_type(variable_access_type(variable)));
-            m_instructions.push_back(new ReadPointerInstruction(dest, gen_array_pointer(variable->indexed_variable)));
+            TypeDenoter * type = variable_access_type(variable->indexed_variable->variable);
+            assert(type->type == TypeDenoter::ARRAY);
+            Variant dest = next_available_register(type_denoter_to_register_type(type));
+            m_instructions.push_back(new ReadPointerInstruction(dest, gen_array_pointer(variable->indexed_variable, type->array_type)));
             return dest;
         }
         default:
@@ -1376,7 +1430,7 @@ int MethodGenerator::get_field_offset_in_bytes(std::string class_name, std::stri
                     parent_size = get_class_size_in_bytes(class_symbols->class_declaration->parent_identifier->text, m_symbol_table);
                 return parent_size + sum;
             }
-            sum += get_type_size_in_bytes(field->type);
+            sum += 4;
         }
         if (class_symbols->class_declaration->parent_identifier == NULL) {
             // couldn't find the field
@@ -1396,8 +1450,12 @@ void MethodGenerator::gen_assignment(VariableAccess * variable, Variant source) 
             m_instructions.push_back(new WritePointerInstruction(gen_attribute_pointer(variable->attribute), source));
             break;
         case VariableAccess::INDEXED_VARIABLE:
-            m_instructions.push_back(new WritePointerInstruction(gen_array_pointer(variable->indexed_variable), source));
+        {
+            TypeDenoter * type = variable_access_type(variable->indexed_variable->variable);
+            assert(type->type == TypeDenoter::ARRAY);
+            m_instructions.push_back(new WritePointerInstruction(gen_array_pointer(variable->indexed_variable, type->array_type), source));
             break;
+        }
         default:
             assert(false);
     }
@@ -1661,6 +1719,8 @@ void MethodGenerator::basic_block_value_numbering(BasicBlock * block) {
                 break;
             }
             case Instruction::ALLOCATE_OBJECT:
+                break;
+            case Instruction::ALLOCATE_ARRAY:
                 break;
             case Instruction::WRITE_POINTER:
             {
@@ -2054,6 +2114,8 @@ void MethodGenerator::dependency_management() {
                     break;
                 }
                 case Instruction::ALLOCATE_OBJECT:
+                    break;
+                case Instruction::ALLOCATE_ARRAY:
                     break;
                 case Instruction::WRITE_POINTER:
                 {
