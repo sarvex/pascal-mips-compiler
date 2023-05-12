@@ -20,7 +20,7 @@ def which(executable, path=None):
         # executable files on OS/2 can have an arbitrary extension, but
         # .exe is automatically appended if no dot is present in the name
         if not ext:
-            executable = executable + ".exe"
+            executable = f"{executable}.exe"
     elif sys.platform == 'win32':
         pathext = os.environ['PATHEXT'].lower().split(os.pathsep)
         (base, ext) = os.path.splitext(executable)
@@ -30,11 +30,10 @@ def which(executable, path=None):
         execname = executable + ext
         if os.path.isfile(execname):
             return execname
-        else:
-            for p in paths:
-                f = os.path.join(p, execname)
-                if os.path.isfile(f):
-                    return f
+        for p in paths:
+            f = os.path.join(p, execname)
+            if os.path.isfile(f):
+                return f
     else:
         return None
 
@@ -62,10 +61,7 @@ def execute_spim_code(asm_code):
     except:
         pass
 
-    # chop off the 5 useless lines
-    clean_out = "\n".join(stdout.split('\n')[5:])
-
-    return clean_out
+    return "\n".join(stdout.split('\n')[5:])
 
 def main():
     parser = optparse.OptionParser()
@@ -117,13 +113,13 @@ def main():
     # complain about missing files before showing progress
     for test_name, test in test_list:
         if not test.has_key('source'):
-            print("%s missing source" % test_name)
+            print(f"{test_name} missing source")
             continue
         if not test.has_key('errors'):
-            print("%s missing .errors file for expected compiler output" % test_name)
+            print(f"{test_name} missing .errors file for expected compiler output")
             continue
         if not test.has_key('out'):
-            print("%s missing .out file for what the program should output" % test_name)
+            print(f"{test_name} missing .out file for what the program should output")
             continue
 
     for test_name, test in test_list:
@@ -136,7 +132,7 @@ def main():
 
         # try compiling the test file
         if options.verbose:
-            sys.stdout.write(test_name + "...")
+            sys.stdout.write(f"{test_name}...")
             sys.stdout.flush()
         compiler = subprocess.Popen([compiler_exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = compiler.communicate(test['source'])
@@ -199,7 +195,7 @@ def main():
 
         sys.stdout.flush()
 
-    if len(fails) > 0:
+    if fails:
         if not options.quiet:
             print("\n=========================================")
             for fail in fails:
